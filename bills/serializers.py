@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from bills import models as billModels
 from django.contrib.auth.models import User
+from vote.models import Pod
 
 class BillSerializer(serializers.ModelSerializer):
     yea_votes_count = serializers.SerializerMethodField()
@@ -48,9 +49,41 @@ class CustomVoterSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id','username']
 
+class CustomPodSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Pod
+        fields = ['id','code']
+
 class BillVoteSerializer(serializers.ModelSerializer):
     bill = CustomBillSerializer()
     voter = CustomVoterSerializer()
     class Meta:
         model = billModels.BillVote
         fields = ['id',"bill","voter","voted_by_fDel","your_vote","vote_date","last_update"]
+
+
+class DynamicFieldsModelSerializer(serializers.ModelSerializer):
+    def __init__(self, *args, **kwargs):
+        # Don't pass the 'fields' arg up to the superclass
+        fields = kwargs.pop('fields', None)
+
+        # Instantiate the superclass normally
+        super(DynamicFieldsModelSerializer, self).__init__(*args, **kwargs)
+
+        if fields is not None:
+            # Drop any fields that are not specified in the `fields` argument.
+            allowed = set(fields)
+            existing = set(self.fields.keys())
+            for field_name in existing - allowed:
+                self.fields.pop(field_name)
+
+
+class AdviceSerializer(DynamicFieldsModelSerializer):
+    bill = CustomBillSerializer()
+    voter = CustomVoterSerializer()
+    pod = CustomPodSerializer()
+    username = serializers.CharField(source='voter.username')
+    class Meta:
+        model = billModels.Advice
+        fields = ['id',"bill","voter","pod","advice","username"]
+

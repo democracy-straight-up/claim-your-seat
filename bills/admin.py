@@ -16,3 +16,5 @@ class BillVoteAdmin(admin.ModelAdmin):
     list_display_links = ["bill",'voter', 'your_vote']
 admin.site.register(models.BillVote, BillVoteAdmin)
 
+admin.site.register(models.Advice)
+

@@ -71,6 +71,20 @@ class BillVote(models.Model):
     last_update = models.DateTimeField(auto_now=True)
 
 
+class Advice(models.Model):
+
+    VOTE_CHOICES = [
+        ('Y', 'Yea'),
+        ('N', 'Nay'),
+        ('Pr', 'Present'),
+        ('Px', 'Proxy'),
+    ]
+
+    pod = models.ForeignKey(Pod, on_delete=models.CASCADE)
+    bill = models.ForeignKey(Bill, on_delete=models.CASCADE)
+    voter = models.ForeignKey(User, on_delete=models.CASCADE)
+    advice = models.CharField(max_length=2, choices=VOTE_CHOICES, default='Px')
+
 
 
 

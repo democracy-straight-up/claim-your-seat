@@ -1,10 +1,12 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
-from .models import Bill, BillVote
+from .models import Bill, BillVote, Advice
 from asgiref.sync import sync_to_async 
 from channels.db import database_sync_to_async 
 from django.contrib.auth.models import User
 from vote import models as voteModels
+from api import serializers as apiSerializers
+from .serializers import AdviceSerializer
 
 class BillConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -135,38 +137,83 @@ class AdviceConsumer(AsyncWebsocketConsumer):
             self.channel_name
         )
 
-        _, self.fdel = await self.get_fdel_instance()
-        _, advice = await self.get_existing_advice()
+        advice = await self.get_advice()
         # Accept the WebSocket connection
         await self.accept()
 
-        # Send initial vote counts to the connected client
+        # Send initial advice to the connected client
         await self.send(text_data=json.dumps(advice))
 
 
     @database_sync_to_async
-    def get_existing_advice(self):
-        try:
-            bill = Bill.objects.get(number=self.bill_id)
-        except Bill.DoesNotExist:
-            return None, None
-        obj = BillVote.objects.filter(bill=bill, voter__username=self.fdel).first()
-        vote_advice = obj.your_vote
-        return obj, vote_advice
+    def get_advice(self):
+        pod = voteModels.Pod.objects.get(code = self.podName)
+        if pod:
+            data = AdviceSerializer(Advice.objects.filter(
+                bill__number=self.bill_id, pod__code=self.podName),many=True,fields=('username','advice')
+            ).data
+
+            return list(data)
+        return 0
+
+    @database_sync_to_async
+    def get_existing_advice(self, bill, username):
+        obj = Advice.objects.filter(bill=bill, voter__username=username).first()
+        return obj
+
+    @database_sync_to_async
+    def update_existing_advice(self, existing_advice, vote_type):
+        existing_advice.advice = vote_type
+        existing_advice.save()
+
+    @database_sync_to_async
+    def create_new_advice(self, pod, bill, user, vote_type):
+        ob = Advice.objects.create(pod=pod,bill=bill, voter=user, advice=vote_type)
+        ob.save()
     
     @database_sync_to_async
-    def get_fdel_instance(self):
+    def get_user_instance(self, username):
         try:
-            d_obj = voteModels.PodMember.objects.get(pod__code = self.podName,is_delegate=True)
-            username = d_obj.user.username
             u_obj = User.objects.get(username = username)
-            return u_obj, username
+            return u_obj
         except User.DoesNotExist:
-            return None, None
+            return None
+    
+    async def receive(self, text_data):
+        data = json.loads(text_data)
+        vote_type = data['advice']
+        username = data['username']
 
+        try:
+            bill = await database_sync_to_async(Bill.objects.get)(number=self.bill_id)
+        except Bill.DoesNotExist:
+            return
+
+        pod = await database_sync_to_async(voteModels.Pod.objects.get)(code = self.podName)
+  
+        # get user instance 
+        u = await self.get_user_instance(username)
+        # Check if the user already has advice
+        existing_advice = await self.get_existing_advice(bill, username)
+
+        if existing_advice:
+            # Update the existing advice using database_sync_to_async
+            await self.update_existing_advice(existing_advice, vote_type)
+        else:
+            # Create a new advice using database_sync_to_async
+            await self.create_new_advice(pod, bill, u, vote_type)
+
+        updated_bill_advice = await self.get_advice()
+        # Send updated advices to the room group
+
+        await self.channel_layer.group_send(self.room_group_name, {
+                'type': 'update_advice',
+                'advice': updated_bill_advice,
+            }
+        )
+
+    # Send to each member
     async def update_advice(self, event):
         # Send message to WebSocket
-        await self.send(text_data=json.dumps(event['data']['advice']))    
-    
-
+        await self.send(text_data=json.dumps(event['advice']))
     
