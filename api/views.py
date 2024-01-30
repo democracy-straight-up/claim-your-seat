@@ -72,17 +72,11 @@ class PasswordResetRequestView(APIView):
         if serializer.is_valid():
             email = serializer.validated_data['email']
             user = User.objects.get(email=email)
-            # token = account_activation_token.make_token(user)
-            # uid = urlsafe_base64_encode(force_bytes(user.pk))
-            # reset_link = request.build_absolute_uri(
-            #     reverse('password_reset_confirm', kwargs={'uidb64': uid, 'token': token}))
-
             mail_subject = 'Reset your password'
-            message = render_to_string('api/accountActiveEmail.html', {
+            message = render_to_string('api/resetPasswordEmail.html', {
                 'user': user,
                 'domain': os.environ.get('APP_DOMAIN'),
                 'protocol': 'https',
-                # 'protocol': 'https' if self.serializer_class['request'].is_secure() else 'http',
                 'uid': urlsafe_base64_encode(force_bytes(user.pk)),
                 'token': account_activation_token.make_token(user),
             })
