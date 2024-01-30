@@ -97,6 +97,20 @@ class PasswordResetRequestView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+class PasswordResetConfirmView(APIView):
+    queryset = User.objects.all()
+    permission_classes = (AllowAny,)
+
+    def post(self, request):
+        serializer = apiSerializers.PasswordResetSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data['user']
+            user.set_password(serializer.validated_data['new_password'])
+            user.save()
+            return Response({"message": "Password is reset"}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 class UserPageView(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = apiSerializers.UserSerializer

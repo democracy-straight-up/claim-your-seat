@@ -12,7 +12,7 @@ from django.contrib.auth.password_validation import validate_password
 from vote import models as voteModels
 from bills import models as billModels
 import os
-
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 
 class DistrictsSerializer(serializers.ModelSerializer):
     class Meta:
@@ -116,6 +116,31 @@ class PasswordResetRequestSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "User with given email does not exist")
         return value
+    
+
+class PasswordResetSerializer(serializers.Serializer):
+    uidb64 = serializers.CharField(required=True)
+    token = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)
+    new_password2 = serializers.CharField(required=True)
+
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['new_password2']:
+            raise serializers.ValidationError(
+                {"new_password2": "Password fields didn't match."})
+
+        try:
+            uid = force_str(urlsafe_base64_decode(attrs['uidb64']))
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            raise serializers.ValidationError({"uidb64": "User is not exist."})
+
+        if not account_activation_token.check_token(user, attrs['token']):
+            raise serializers.ValidationError({"token": "Token is not valid."})
+
+        attrs['user'] = user
+        return attrs
+
 
 
 class Userializer(serializers.ModelSerializer):
