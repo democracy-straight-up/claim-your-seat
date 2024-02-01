@@ -73,6 +73,7 @@ class PasswordResetRequestView(APIView):
             email = serializer.validated_data['email']
             user = User.objects.get(email=email)
             mail_subject = 'Reset your password'
+            # prepare the email by template
             message = render_to_string('api/resetPasswordEmail.html', {
                 'user': user,
                 'domain': os.environ.get('APP_DOMAIN'),
