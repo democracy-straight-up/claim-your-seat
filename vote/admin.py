@@ -51,3 +51,13 @@ class CircleStatusAdmin(admin.ModelAdmin):
     search_fields = ['message']
 
 admin.site.register(models.CircleStatus,CircleStatusAdmin)
+
+
+class PodMemberContact_Admin(admin.ModelAdmin):
+    list_display = ['member', 'pod', 'email', 'phone']
+    list_display_links = ['member', 'pod', 'email', 'phone']
+    list_filter = ['member', 'pod', 'email', 'phone']
+    search_fields = ['member', 'pod', 'email', 'phone']
+
+
+admin.site.register(models.PodMemberContact, PodMemberContact_Admin)

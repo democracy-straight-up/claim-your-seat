@@ -1,3 +1,9 @@
+from rest_framework.views import APIView
+from .serializers import PodMemberContactSerializer
+from .models import PodMemberContact
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
 from django.shortcuts import render, HttpResponse, redirect
 from django.views.generic import DetailView, DeleteView
 from vote import models as voteModels
@@ -7,6 +13,7 @@ from django.contrib import messages
 from django.template.loader import render_to_string
 from django.utils.encoding import force_bytes,force_str
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from vote.serializers import PodMemberContactSerializer
 from vote.token import account_activation_token
 from django.core.mail import EmailMessage
 from django.contrib.sites.shortcuts import get_current_site
@@ -498,4 +505,29 @@ class Delete_POD(LoginRequiredMixin, DeleteView):
         data = super(Delete_POD, self).get_context_data(*args, **kwargs)
         data['page_title'] = 'Voter Page'
         return data
-    
+
+
+class PodMemberContactAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        serializer = PodMemberContactSerializer(
+            data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, *args, **kwargs):
+        try:
+            pod_member_contact = PodMemberContact.objects.get(
+                member__user=request.user)
+        except PodMemberContact.DoesNotExist:
+            return Response({'error': 'PodMemberContact not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = PodMemberContactSerializer(
+            pod_member_contact, data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

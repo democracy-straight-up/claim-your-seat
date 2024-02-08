@@ -23,4 +23,6 @@ urlpatterns = [
     path('pod-members/<int:pk>', voteViews.Pod_members.as_view(), name="podMember"),
     path('pod-remove/<int:pk>', voteViews.Delete_POD.as_view(), name="podRemove"),
 
+    path('podmembercontact', voteViews.PodMemberContactAPIView.as_view(), name='podmembercontact-api'),
+
 ]

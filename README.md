@@ -88,3 +88,82 @@ This repo is a prototype of the Democracy Straight-Up Project.
     - database 
         - DSU uses db.sqlite file database for production
 
+## API
+
+### Create or Update PodMemberContact
+
+- URL: /podmembercontact/
+- Method: `POST` for creation, `PUT` for update
+- Authentication Required: Yes
+- Permissions Required: User must be authenticated
+- Parameters:
+
+  | Name | Type | Description | Required |
+  | --- | ----------- | ----------- | ----------- |
+  | email | String | User's email | Yes|
+  | phone | String | User's phone number | Yes|
+
+- Example request:
+
+```json
+{
+  "email": "user@example.com",
+  "phone": "1234567890"
+}
+```
+
+- Response:
+  200 OK
+
+```json
+{
+  "email": "user@example.com",
+  "phone": "1234567890"
+}
+```
+
+- Error Response:
+400 Bad Request
+```json
+### Create or Update PodMemberContact
+
+- URL: /podmembercontact/
+- Method: `POST` for creation, `PUT` for update
+- Authentication Required: Yes
+- Permissions Required: User must be authenticated
+- Parameters:
+
+  | Name | Type | Description | Required |
+  | --- | ----------- | ----------- | ----------- |
+  | email | String | User's email | Yes|
+  | phone | String | User's phone number | Yes|
+
+- Example request:
+
+```json
+{
+  "email": "user@example.com",
+  "phone": "1234567890"
+}
+```
+
+- Response:
+  200 OK
+
+```json
+{
+  "email": "user@example.com",
+  "phone": "1234567890"
+}
+```
+
+- Error Response:
+400 Bad Request
+```json
+{
+    "phone": [
+        "This field is required."
+    ]
+}
+```
+

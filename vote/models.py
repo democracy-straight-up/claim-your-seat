@@ -165,3 +165,15 @@ class CircleStatus(models.Model):
 
     def __str__(self) -> str:
         return str(self.message)
+
+
+class PodMemberContact(models.Model):
+    pod = models.ForeignKey(Pod, on_delete=models.CASCADE)
+    member = models.ForeignKey(PodMember, on_delete=models.CASCADE)
+    email = models.CharField(max_length=250)
+    phone = models.CharField(max_length=250)
+
+    def __str__(self) -> str:
+        return str(self.member.user.username) + " - " + str(self.pod.code)
+    
+    
