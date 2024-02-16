@@ -29,6 +29,7 @@ urlpatterns = [
     path('circle-vote-out-list/',apiViews.PodMemeber_voteOut.as_view()),
     path('circle-put-farward-list/',apiViews.PodMemeber_putfarward.as_view()),
     path('status/circle/',apiViews.CircleStatus.as_view()),
+    path('get-username/', apiViews.UsernameRequestView.as_view(), name='get_username'),
     
     path('testing-api/',apiViews.TestingView.as_view())
 ]

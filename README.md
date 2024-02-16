@@ -88,3 +88,48 @@ This repo is a prototype of the Democracy Straight-Up Project.
     - database 
         - DSU uses db.sqlite file database for production
 
+## API
+
+### Retrieve Entry Code
+
+- URL: /get-username/
+- Method: `POST`
+- Authentication Required: No
+- Permissions Required: No
+- Parameters:
+
+  | Name | Type | Description | Required |
+  | --- | ----------- | ----------- | ----------- |
+  | email | String | User's email | Yes|
+
+- Example request:
+
+```json
+{
+  "email": "user@example.com",
+}
+```
+
+- Response:
+  200 OK
+
+- Email:
+
+```
+Hi {{name}},
+Your entry code is: T4N9L
+Please use this code to enter the floor.
+```
+
+
+- Error Response:
+400 Bad Request
+```json
+{
+    "non_field_errors": [
+        "User with given email does not exist"
+    ]
+}
+```
+
+

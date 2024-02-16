@@ -205,3 +205,15 @@ class TestingSerializer(serializers.ModelSerializer):
     class Meta:
         model = apiModels.TestingModel
         fields = "__all__"
+
+class UsernameRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate(self, value):
+        try:
+            email = value.get('email')
+            User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError(
+                "User with given email does not exist")
+        return value

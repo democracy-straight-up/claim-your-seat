@@ -1,3 +1,8 @@
+from django.core.mail import send_mail
+import os
+from rest_framework.permissions import AllowAny
+from django.template.loader import render_to_string
+from django.conf import settings
 from curses.ascii import NUL
 from rest_framework import viewsets
 from vote import models as voteModels
@@ -413,7 +418,37 @@ class CircleStatus(generics.ListAPIView):
     queryset = voteModels.CircleStatus.objects.all()
     permission_classes = [AllowAny]
 
+
 class TestingView(generics.ListAPIView):
     serializer_class = apiSerializers.TestingSerializer
     queryset = apiModels.TestingModel.objects.all()
     permission_classes = [AllowAny]
+
+
+class UsernameRequestView(APIView):
+    permission_classes = (AllowAny,)
+    serializer_class = apiSerializers.UsernameRequestSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = apiSerializers.UsernameRequestSerializer(
+            data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            user = User.objects.get(email=email)
+            mail_subject = 'Your Entry Code'
+
+            message = render_to_string('api/usernameEmail.html', {
+                'user': user,
+                'domain': os.environ.get('APP_DOMAIN'),
+                'protocol': 'https',
+                'entry_code': user.username,
+            })
+
+            send_mail(
+                mail_subject,
+                message,
+                settings.EMAIL_HOST_USER,
+                [email]
+            )
+            return Response({"message": "Email sent."}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
