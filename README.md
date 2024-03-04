@@ -154,11 +154,22 @@ https://http://{url}/api/activate/{uidb64}/{token}
 ```
 
 - Error Response:
+
 400 Bad Request
 ```json
 {
     "new_password2": [
         "Password fields didn't match."
+    ]
+}
+```
+
+400 Bad Request
+```json
+{
+    "new_password": [
+        "This password is too short. It must contain at least 8 characters.",
+        "This password is too common."
     ]
 }
 ```
