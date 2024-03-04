@@ -2,12 +2,12 @@
 
 This repo is a prototype of the Democracy Straight-Up Project.
 
-1. to get started, click the 'Claim Your Seat' button on Homepage, fill in the information required and register
-2. after registration, you can 'Enter The Floor' and
-   - create a Pod
-   - join a Pod
-   - manage rooms
-   - vote on bills
+1. To get started, click the 'Claim Your Seat' button on Homepage, fill in the information required and register
+2. After registration, you can 'Enter The Floor' and
+    - Create a CrCl
+    - Join a CrCl
+    - Manage rooms
+    - Vote on bills
 
 ## Structure
 
@@ -64,13 +64,12 @@ This repo is a prototype of the Democracy Straight-Up Project.
 ```
 
 ### how to set up the project on you local machine:
-
-1. make a directory anywhere in your machine.
-2. inside the directory, create python virtualenv and activate it.
-3. clone this repo inside the directory.
-4. make sure MySQL client and surver are installed on your local machine.
-5. install all the requirements inside the `requirements.txt` file.
-   - for installing the packages; user `pip install -r requirements.txt`
+1. Make a directory anywhere in your machine.
+2. Inside the directory, create python virtualenv and activate it.
+3. Clone this repo inside the directory.
+4. Make sure MySQL client and sarver are installed on your local machine.
+5. Install all the requirements inside the `requirements.txt` file.
+    - for installing the packages; user `pip install -r requirements.txt`
 6. Then simply apply the migrations:
 
    `python3 manage.py migrate`
@@ -79,15 +78,13 @@ This repo is a prototype of the Democracy Straight-Up Project.
 
    `python3 manage.py runserver`
 
-   By default it will run on local host http://127.0.0.1:8000
-
-7. to load data into district tables, run the loaddata command for fixture
+7. To load data into district tables, run the loaddata command for fixture 
    `python3 manage.py loaddata districts_data.json`
 
-8. setup the env file to set config variables.
-   - email config
-   - database
-     - DSU uses db.sqlite file database for production
+8. Setup the env file to set config variables. 
+    - email config
+    - database 
+        - DSU uses db.sqlite file database for production
 
 ## API
 

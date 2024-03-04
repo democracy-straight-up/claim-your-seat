@@ -23,6 +23,8 @@ from django.conf import settings
 from django.template.loader import render_to_string
 
 
+from api import models as apiModels
+
 class CustomPagination(PageNumberPagination):
     """
     We are creating a custome pagination 
@@ -488,4 +490,9 @@ class CircleList(viewsets.ModelViewSet):
 class CircleStatus(generics.ListAPIView):
     serializer_class = apiSerializers.CircleStatusSerializer
     queryset = voteModels.CircleStatus.objects.all()
+    permission_classes = [AllowAny]
+
+class TestingView(generics.ListAPIView):
+    serializer_class = apiSerializers.TestingSerializer
+    queryset = apiModels.TestingModel.objects.all()
     permission_classes = [AllowAny]

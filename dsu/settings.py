@@ -29,7 +29,8 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost','192.168.0.130','192.168.0.132','dsup-voting-portal.herokuapp.com','127.0.0.1', 'dsup.herokuapp.com', 'localhost:8000', 'dsu-front.herokuapp.com', 'dsu-front.herokuapp.com:8000', 'dsu-front.herokuapp.com:8080', 'dsu-front.herokuapp.com:']
+ALLOWED_HOSTS = ['localhost', '192.168.0.130', '192.168.0.132', 'dsup-voting-portal.herokuapp.com', '127.0.0.1', 'dsup.herokuapp.com', 'localhost:8000',
+                 'dsu-front.herokuapp.com', 'dsu-front.herokuapp.com:8000', 'dsu-front.herokuapp.com:8080', 'dsu-front.herokuapp.com:', 'claim-your-seat.herokuapp.com']
 
 # Application definition
 INSTALLED_APPS = [
@@ -201,9 +202,13 @@ JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
 CORS_ALLOW_ALL_ORIGINS = True # If this is used then `CORS_ALLOWED_ORIGINS` will not have any effect
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = ['*']
-CORS_ORIGIN_WHITELIST = ['http://localhost:8080','http://localhost','https://dsu-front.herokuapp.com','http://dsu-front.herokuapp.com']
+CORS_ORIGIN_WHITELIST = ['http://localhost:8080', 'http://localhost',
+                         'https://dsu-front.herokuapp.com', 'http://dsu-front.herokuapp.com',
+                         'http://claim-your-seat.herokuapp.com', 'https://claim-your-seat.herokuapp.com']
 
 CSRF_TRUSTED_ORIGINS = ['http://dsup-voting-portal.herokuapp.com',
                         'https://dsup-voting-portal.herokuapp.com',
                         'https://dsu-front.herokuapp.com',
-                        'http://dsu-front.herokuapp.com']
+                        'http://dsu-front.herokuapp.com',
+                        'http://claim-your-seat.herokuapp.com'
+                        'https://claim-your-seat.herokuapp.com']
