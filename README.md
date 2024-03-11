@@ -1,4 +1,5 @@
 # Democracy Straight-Up Project
+
 This repo is a prototype of the Democracy Straight-Up Project.
 
 1. To get started, click the 'Claim Your Seat' button on Homepage, fill in the information required and register
@@ -24,7 +25,7 @@ This repo is a prototype of the Democracy Straight-Up Project.
 |   |-- urls.py
 |   |-- serializers.py
 |   |-- tests.py
-|---dsu/ 
+|---dsu/
 │   |--- asgi.py <-- ASGI config for dsu project.
 │   |--- __init__.py
 │   |--- settings.py <-- Django settings for dsu project.
@@ -71,14 +72,11 @@ This repo is a prototype of the Democracy Straight-Up Project.
     - for installing the packages; user `pip install -r requirements.txt`
 6. Then simply apply the migrations:
 
-    `python3 manage.py migrate`
-    
+   `python3 manage.py migrate`
 
    You can now run the development server:
 
-    `python3 manage.py runserver`
-   
-   By default it will run on local host  http://127.0.0.1:8000
+   `python3 manage.py runserver`
 
 7. To load data into district tables, run the loaddata command for fixture 
    `python3 manage.py loaddata districts_data.json`
@@ -88,7 +86,95 @@ This repo is a prototype of the Democracy Straight-Up Project.
     - database 
         - DSU uses db.sqlite file database for production
 
-## API
+## APIs
+
+### Password Reset Request
+
+- URL: `/api/reset-password/`
+- Method: `POST`
+- Parameters:
+  | Name | Type | Description | Required |
+  | --- | ----------- | ----------- | ----------- |
+  | email | String | User email | Yes|
+
+- Example request:
+
+```json
+{
+  "email": "test@test.com"
+}
+```
+
+- Response:
+  200 OK
+
+```json
+{
+  "message": "Email sent."
+}
+```
+
+- Email response:
+```
+Hi XXX,
+Please click on the link to reset your password,
+https://http://{url}/api/activate/{uidb64}/{token}
+```
+
+### Password Reset Confirm
+
+- URL: `/api/reset-password-confirm/`
+- Method: `POST`
+- Parameters:
+  | Name | Type | Description | Required |
+  | --- | ----------- | ----------- | ----------- |
+  | uidb64 | String (base64) | user id | Yes|
+  | token | String | user token from email | Yes|
+  | new_password | String | new_password | Yes|
+  | new_password2 | String | new_password | Yes|
+
+- Example request:
+
+```json
+{
+  "uidb64": "Ma",
+  "token": "c1m74w-cc037873fec6bc23274xxxxcac0e98f",
+  "new_password": "123456",
+  "new_password2": "123456"
+}
+```
+
+- Response:
+  200 OK
+
+```json
+{
+    "message": "Password is reset"
+}
+```
+
+- Error Response:
+
+400 Bad Request
+```json
+{
+    "new_password2": [
+        "Password fields didn't match."
+    ]
+}
+```
+
+400 Bad Request
+```json
+{
+    "new_password": [
+        "This password is too short. It must contain at least 8 characters.",
+        "This password is too common."
+    ]
+}
+```
+
+
 
 ### Retrieve Entry Code
 
@@ -131,5 +217,4 @@ Please use this code to enter the floor.
     ]
 }
 ```
-
 
