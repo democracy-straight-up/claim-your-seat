@@ -17,7 +17,9 @@ urlpatterns = [
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('register/', apiViews.RegisterView.as_view(), name='auth_register'),
-    path('activate/<uidb64>/<token>/',apiViews.activate, name='activate'),
+    path('activate/<uidb64>/<token>/',apiViews.activate, name='activate'),  
+    path('reset-password/', apiViews.PasswordResetRequestView.as_view(), name='reset_password'),
+    path('reset-password-confirm/', apiViews.PasswordResetConfirmView.as_view(), name='reset_password_confirm'),
     path('login/', apiViews.LoginPageView.as_view()),
     path('create-pod/', apiViews.CreatePOD.as_view()),
     path('house-keeping/', apiViews.HouseKeeping.as_view()),
@@ -29,6 +31,7 @@ urlpatterns = [
     path('circle-vote-out-list/',apiViews.PodMemeber_voteOut.as_view()),
     path('circle-put-farward-list/',apiViews.PodMemeber_putfarward.as_view()),
     path('status/circle/',apiViews.CircleStatus.as_view()),
+    path('get-username/', apiViews.UsernameRequestView.as_view(), name='get_username'),
     
     path('testing-api/',apiViews.TestingView.as_view())
 ]
