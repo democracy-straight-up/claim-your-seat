@@ -260,3 +260,9 @@ Please use this code to enter the floor.
     ]
 }
 ```
+
+```
+[
+    "You are not a member of any pod. Please join a pod first."
+]
+```

@@ -9,7 +9,14 @@ class PodMemberContactSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         user = self.context['request'].user
-        pod_member = PodMember.objects.get(user=user)
+
+        try:
+            pod_member = PodMember.objects.get(user=user)
+        except PodMember.DoesNotExist:
+            # If PodMember does not exist, raise a validation error
+            raise serializers.ValidationError(
+                "You are not a member of any pod. Please join a pod first.")
+
         validated_data['member'] = pod_member
         validated_data['pod'] = pod_member.pod
         return super().create(validated_data)

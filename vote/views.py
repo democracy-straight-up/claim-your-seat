@@ -511,12 +511,22 @@ class PodMemberContactAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        serializer = PodMemberContactSerializer(
-            data=request.data, context={'request': request})
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # check if the user has already a contact
+        try:
+            pod_member_contact = PodMemberContact.objects.get(
+                member__user=request.user)
+            serializer = PodMemberContactSerializer(pod_member_contact)
+            
+            return self.put(request, *args, **kwargs)
+        except PodMemberContact.DoesNotExist:
+            # create a new contact
+            serializer = PodMemberContactSerializer(
+                data=request.data, context={'request': request})
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                return Response({'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, *args, **kwargs):
         try:
