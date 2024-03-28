@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'vote.apps.VoteConfig',
     'rest_framework',
     'rest_framework_simplejwt',
+    'drf_spectacular',
     'live.apps.LiveConfig',
     'bills.apps.BillsConfig',
     'django_extensions',
@@ -91,7 +92,7 @@ ASGI_APPLICATION = "dsu.asgi.application"
 
 import json
 if not json.loads(os.environ.get('PRODUCTION').lower()):
-    # production 
+    # production
     print("running in dev. using sqlit3 and channels in memory layer")
     DATABASES = {
         'default': {
@@ -116,11 +117,11 @@ else:
                 'HOST': os.environ.get('DB_HOST'),
                 'PORT': os.environ.get('DB_PORT'),
                 'OPTIONS': {
-                'init_command': 'SET sql_mode="STRICT_TRANS_TABLES"',    
+                'init_command': 'SET sql_mode="STRICT_TRANS_TABLES"',
                 }
             }
         }
-    
+
     print("REDIS_URL: ",os.environ.get('REDIS_URL'))
     CHANNEL_LAYERS = {
         "default": {
@@ -169,7 +170,7 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles") 
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
 
@@ -184,6 +185,7 @@ EMAIL_USE_TLS       = True
 
 
 REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
@@ -198,7 +200,7 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
 }
 
-# this is for  the backend jwt auth. 
+# this is for  the backend jwt auth.
 JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
 CORS_ALLOW_ALL_ORIGINS = True # If this is used then `CORS_ALLOWED_ORIGINS` will not have any effect
 CORS_ALLOW_CREDENTIALS = True
