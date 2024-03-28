@@ -1,7 +1,7 @@
+import pytest
 from dsu.asgi import application
 from channels.layers import get_channel_layer
 from channels.testing import WebsocketCommunicator
-import pytest
 from channels.db import database_sync_to_async
 from .models import Bill, BillVote
 from django.contrib.auth.models import User
@@ -13,7 +13,7 @@ TEST_CHANNEL_LAYERS = {
 }
 
 @database_sync_to_async
-def create_user():    
+def create_user():
     user = User.objects.create_user(username='test',
                                  email='test@test.com',
                                  password='test')
@@ -78,5 +78,3 @@ async def test_get_bill():
 def test_get_data():
     billobj = Bill.objects.get(number="6127")
     print(billobj)
-
-

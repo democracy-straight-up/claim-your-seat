@@ -35,10 +35,10 @@ class BillViewTestCase(APITestCase):
 
         # response = self.client.post('/api/token/',{
         #     "username":"test",
-        #     "password":"A123123a",   
+        #     "password":"A123123a",
         # })
         print(response)
-        
+
         token = response.data['access']
         print("\n")
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
@@ -49,38 +49,38 @@ class BillViewTestCase(APITestCase):
         self.authenticate()
 
         sample_bill = {
-            "congress": 
+            "congress":
                 118
             ,
-            "number": 
+            "number":
                 "9999"
             ,
-            "origin_chamber": 
+            "origin_chamber":
                 "House"
             ,
-            "origin_chamber_code": 
+            "origin_chamber_code":
                 "H"
             ,
-            "title": 
+            "title":
                 "test"
             ,
-            "bill_type": 
+            "bill_type":
                 "test"
             ,
-            "url": 
+            "url":
                 "https://api.congress.gov/v3/bill/118/hr/6127?format=json"
             ,
-            "latest_action_date": 
+            "latest_action_date":
                 "2023-11-01"
             ,
-            "latest_action_text": 
+            "latest_action_text":
                 "test"
             ,
-            "text": 
+            "text":
                 "This field is required."
             ,
-            "advice": 
-                "This field is required."       
+            "advice":
+                "This field is required."
         }
         response = self.client.post(self.url,json.dumps(sample_bill),content_type="application/json")
 
@@ -126,8 +126,8 @@ class BillViewTestCase(APITestCase):
 
 #     def test_add_record(self):
 #         self.authenticate()
-#         voter = 
-#         voter_id = 
+#         voter =
+#         voter_id =
 #         sample_data = {
 #         "bill": {
 #             "id":"9",
@@ -140,7 +140,7 @@ class BillViewTestCase(APITestCase):
 #         },
 #         "your_vote": "Pr"
 #         }
-        
+
 
 #     def test_update_record(self):
 #         sample_data = {
@@ -149,5 +149,3 @@ class BillViewTestCase(APITestCase):
 
 #     def test_delete_record(self):
 #         pass
-
-
