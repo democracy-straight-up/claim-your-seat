@@ -101,6 +101,18 @@ class RegisterSerializer(serializers.ModelSerializer):
         if validated_data['is_reg1']:
             user.users.is_reg = True
 
+        def get_vvat_number():
+            import random
+            import string
+            district = validated_data['district'].upper()
+            letter = random.choice(string.ascii_uppercase.replace('I', '').replace('O', ''))
+            numbers = ''.join(random.choices(string.digits, k=6))
+            vvat_number = f"{district[:4]}{letter}{numbers}"
+            return vvat_number
+
+        # add VVAT_Number to the users
+        user.users.VVAT_Number = get_vvat_number()
+
         user.save()
         # send email and get url and encode
         mail_subject = 'Activate your account.'
@@ -165,7 +177,7 @@ class Userializer(serializers.ModelSerializer):
     class Meta:
         model = voteModels.Users
         fields = ["legalName", "district", "is_reg",
-                  "verificationScore", "address", "userType", "voterID"]
+                  "verificationScore", "address", "userType", "VVAT_Number"]
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
@@ -224,7 +236,7 @@ class Userial(serializers.ModelSerializer):
     class Meta:
         model = voteModels.Users
         fields = ["id", "legalName", "is_reg",
-                  "verificationScore", "address", "userType", "voterID"]
+                  "verificationScore", "address", "userType", "VVAT_Number"]
 
 # this serializer is being used in Circle consumer file for pod members
 

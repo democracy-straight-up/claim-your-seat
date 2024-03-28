@@ -7,7 +7,7 @@ class DistrictAdmin(admin.ModelAdmin):
 admin.site.register(models.Districts, DistrictAdmin)
 
 class UsersAdmin(admin.ModelAdmin):
-    list_display = ['user','legalName', 'district', 'is_reg', 'verificationScore', 'userType', 'voterID']
+    list_display = ['user','legalName', 'district', 'is_reg', 'verificationScore', 'userType', 'VVAT_Number']
     list_display_links = ["user", "legalName", 'district']
     list_filter = [ 'is_reg', 'verificationScore', 'userType']
 admin.site.register(models.Users, UsersAdmin)

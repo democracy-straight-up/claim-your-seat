@@ -31,7 +31,7 @@ class Users(models.Model):
     address     = models.CharField(max_length=150, null=True, blank=True)
     # userType is the from 0 to 5. 
     userType    = models.PositiveSmallIntegerField(default=0)
-    voterID     = models.IntegerField(null=True, blank=True)
+    VVAT_Number = models.CharField(max_length=15, null=True, blank=True)
 
     def __str__(self):
         return str(self.user.username)
