@@ -114,6 +114,8 @@ class PodMember(models.Model):
 class PodMember_vote_in(models.Model):
     condidate   = models.ForeignKey(PodMember,related_name='voteIns', on_delete=models.CASCADE) #
     voter       = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at  = models.DateTimeField(auto_now_add=True)
+    updated_at  = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
         super(PodMember_vote_in, self).save(*args, **kwargs)
@@ -125,6 +127,8 @@ class PodMember_vote_in(models.Model):
 class PodMember_vote_out(models.Model):
     condidate   = models.ForeignKey(PodMember, related_name='voteOuts', on_delete=models.CASCADE)
     voter       = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at  = models.DateTimeField(auto_now_add=True)
+    updated_at  = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
         super(PodMember_vote_out, self).save(*args, **kwargs)
@@ -136,7 +140,9 @@ class PodMember_vote_out(models.Model):
 class PodMember_put_farward(models.Model):
     recipient   = models.ForeignKey(PodMember,related_name='putFarward', on_delete=models.CASCADE) # recipient 
     voter       = models.ForeignKey(User, on_delete=models.CASCADE)  # 
-
+    created_at  = models.DateTimeField(auto_now_add=True)
+    updated_at  = models.DateTimeField(auto_now=True)
+    
     def save(self, *args, **kwargs):
         super(PodMember_put_farward, self).save(*args, **kwargs)
         self.recipient.check_put_farward()
