@@ -79,8 +79,17 @@ class BillViewTestCase(APITestCase):
             "text":
                 "This field is required."
             ,
-            "advice":
-                "This field is required."
+            "voting_start":
+                "2023-11-01"
+            ,
+            "voting_close":
+                "2023-11-01"
+            ,
+            "schedule_date":
+                "2023-11-01"
+
+            # "advice":
+            #     "This field is required."
         }
         response = self.client.post(self.url,json.dumps(sample_bill),content_type="application/json")
 
