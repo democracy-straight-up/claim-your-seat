@@ -67,7 +67,7 @@ This repo is a prototype of the Democracy Straight-Up Project.
 1. Make a directory anywhere in your machine.
 2. Inside the directory, create python virtualenv and activate it.
 3. Clone this repo inside the directory.
-4. Make sure MySQL client and sarver are installed on your local machine.
+4. Make sure MySQL client and server are installed on your local machine.
 5. Install all the requirements inside the `requirements.txt` file.
     - for installing the packages; user `pip install -r requirements.txt`
 6. Then simply apply the migrations:
