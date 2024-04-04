@@ -25,8 +25,8 @@ class DistrictsSerializer(serializers.ModelSerializer):
 
 def entry_code_generator():
     """
-    this is the entry code generator. 
-    It uses random and checks for the database. 
+    this is the entry code generator.
+    It uses random and checks for the database.
     return the code if it's not taken
     """
     import random
@@ -91,7 +91,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         from vote.models import Districts
         dist = Districts.objects.filter(
             code=validated_data['district'].upper()).first()
-        if not dist:
+        if dist:
             raise serializers.ValidationError(
                 {"district": "district didn't match."})
 

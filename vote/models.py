@@ -1,14 +1,15 @@
 from django.db import models
 from django.contrib.auth.models import User
 
-# District model (table) is for listing of all US districts 
+# District model (table) is for listing of all US districts
 class Districts(models.Model):
     name = models.CharField(max_length=60, null=True, blank=True)
+    # code is the 5-digit entry code for the district
     code = models.CharField(max_length=4, null=True, blank=True)
 
-    # to loaddata into district tables, run the loaddata command for fixture 
+    # to loaddata into district tables, run the loaddata command for fixture
     # python loaddata <path>fileName.json
-    
+
     class Meta:
         ordering = ['code']
         pass
@@ -26,16 +27,16 @@ class Users(models.Model):
     district    = models.ForeignKey(Districts, on_delete=models.DO_NOTHING, null=True, blank=True)
     # i am registered to vote in this district
     is_reg      = models.BooleanField(default=False)
-    # this is for if the user is registered with conditional. 
+    # this is for if the user is registered with conditional.
     verificationScore = models.SmallIntegerField(default=0,null=True, blank=True)
     address     = models.CharField(max_length=150, null=True, blank=True)
-    # userType is the from 0 to 5. 
+    # userType is the from 0 to 5.
     userType    = models.PositiveSmallIntegerField(default=0)
     VVAT_Number = models.CharField(max_length=15, null=True, blank=True)
 
     def __str__(self):
         return str(self.user.username)
-    
+
 import random
 class Pod(models.Model):
     code            = models.CharField(max_length=5, unique=True)
@@ -44,10 +45,10 @@ class Pod(models.Model):
     updated_at      = models.DateTimeField(auto_now=True)
     invitation_code = models.CharField(max_length=10)
     FDel_election   =  models.BooleanField(default=False)
-    
+
     def __str__(self):
         return str(self.code)
-        
+
     @property
     def is_active(self):
         # check if the member <= 12 and return true
@@ -78,7 +79,7 @@ class PodMember(models.Model):
             self.save()
             # Delete related PodMember_vote_in instances
             PodMember_vote_in.objects.filter(condidate=self).delete()
-    
+
     def check_for_removing(self):
         total_members = PodMember.objects.filter(pod=self.pod).filter(is_member = True).count()
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
@@ -86,7 +87,7 @@ class PodMember(models.Model):
             self.user.users.userType = 0
             self.user.users.save()
             self.delete()
-            # set the deleted user.users userType to 0 
+            # set the deleted user.users userType to 0
 
     def check_put_farward(self):
         total_members = PodMember.objects.filter(pod=self.pod).filter(is_member = True).count()
@@ -100,7 +101,7 @@ class PodMember(models.Model):
             # set the current member to delegate and set is_delegate true.
             self.is_delegate = True
             self.save()
-            
+
             # Delete related PodMember_put_farward instances
             PodMember_put_farward.objects.filter(recipient=self).delete()
 
@@ -138,11 +139,11 @@ class PodMember_vote_out(models.Model):
         return str(self.voter) + '-'+str(self.condidate)
 
 class PodMember_put_farward(models.Model):
-    recipient   = models.ForeignKey(PodMember,related_name='putFarward', on_delete=models.CASCADE) # recipient 
-    voter       = models.ForeignKey(User, on_delete=models.CASCADE)  # 
+    recipient   = models.ForeignKey(PodMember,related_name='putFarward', on_delete=models.CASCADE) # recipient
+    voter       = models.ForeignKey(User, on_delete=models.CASCADE)  #
     created_at  = models.DateTimeField(auto_now_add=True)
     updated_at  = models.DateTimeField(auto_now=True)
-    
+
     def save(self, *args, **kwargs):
         super(PodMember_put_farward, self).save(*args, **kwargs)
         self.recipient.check_put_farward()
@@ -181,5 +182,3 @@ class PodMemberContact(models.Model):
 
     def __str__(self) -> str:
         return str(self.member.user.username) + " - " + str(self.pod.code)
-    
-    

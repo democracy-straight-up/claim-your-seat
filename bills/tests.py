@@ -3,6 +3,7 @@ from .views import BillViewSet, BillVoteViewSet
 from .models import Bill, BillVote
 from bills import billConsumer
 from rest_framework import status
+from rest_framework.response import Response   # added by siva
 from django.test import TransactionTestCase
 from django.contrib.auth.models import User
 import json
@@ -20,37 +21,57 @@ class BillViewTestCase(APITestCase):
         # self.bill.save()
 
     def authenticate(self):
+
         response = self.client.post(
             '/api/register/',
             {
-                "username":"test",
-                "password":"A123123a",
-                "password2":"A123123a",
-                "email":"testz@app.com",
-                "district":"NY01",
-                "legalName":"test",
-                "address":"test"
-            },
+                "username": "test",
+                "password": "muWMpROTX..",
+                "password2": "muWMpROTX..",
+                "email": "user@example.com",
+                "district": "NY01",
+                "legalName": "test",
+                "is_reg": "true",
+                "is_reg1": "true",
+                "address": "test"
+            }
         )
 
         # response = self.client.post('/api/token/',{
         #     "username":"test",
-        #     "password":"A123123a",
+        #     "password":"muWMpROTX..",
         # })
+
+        # self.assertEqual(response.data, 'the error message')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.content)
+        self.assertTrue('token' in response)
+        token = response.data['token']
+        print(token)
         print(response)
 
-        token = response.data['access']
+        # token = response.data['access']
         print("\n")
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
 
 
-    def test_add_bill(self):
+        # self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        # token = response.data['token']
+        # print(token)
+        # print(response)
+
+        # # Next post/get's will require the token to connect
+        # self.client.credentials(HTTP_AUTHORIZATION='JWT {0}'.format(token))
+        # response = self.client.get(reverse('currentUser'), data={'format': 'json'})
+        # self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+
+
+    def test_add_bill(self, **kwagrs):
 
         self.authenticate()
 
         sample_bill = {
             "congress":
-                118
+                "118"
             ,
             "number":
                 "9999"

@@ -9,26 +9,26 @@ class BillSerializer(serializers.ModelSerializer):
     proxy_votes_count = serializers.SerializerMethodField()
     class Meta:
         model = billModels.Bill
-        fields = "__all__" 
-    
+        fields = "__all__"
+
     def get_yea_votes_count(self, obj):
         # Use the count_yea_votes method from your Bill model
-        return obj.count_yea_votes()  
-    
+        return obj.count_yea_votes()
+
     def get_nay_votes_count(self, obj):
-        return obj.count_nay_votes()  
-    
+        return obj.count_nay_votes()
+
     def get_present_votes_count(self, obj):
-        return obj.count_present_votes()  
-    
+        return obj.count_present_votes()
+
     def get_proxy_votes_count(self, obj):
-        return obj.count_proxy_votes() 
+        return obj.count_proxy_votes()
 
     def get_district_yea_votes_count(self, obj, district_code):
-        return obj.count_district_yea_votes(district_code)  
+        return obj.count_district_yea_votes(district_code)
 
     def get_district_nay_votes_count(self, obj, district_code):
-        return obj.count_district_nay_votes(district_code)  
+        return obj.count_district_nay_votes(district_code)
 
     def get_district_present_votes_count(self, obj, district_code):
         return obj.count_district_present_votes(district_code)

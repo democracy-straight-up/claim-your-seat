@@ -10,14 +10,15 @@ router.register('user', apiViews.UserPageView)
 router.register('voter-page', apiViews.VoterPageView)
 router.register('circle', apiViews.CircleList)
 
-from rest_framework_simplejwt.views import (TokenObtainPairView,TokenRefreshView,)
+from rest_framework_simplejwt.views import (TokenObtainPairView,TokenRefreshView,TokenVerifyView,)   # TokenVerifyView added by siva
 
 urlpatterns = [
     path('', include(router.urls)),
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('token/verify/', TokenVerifyView.as_view(), name='token_verify'),   # added by siva
     path('register/', apiViews.RegisterView.as_view(), name='auth_register'),
-    path('activate/<uidb64>/<token>/',apiViews.activate, name='activate'),  
+    path('activate/<uidb64>/<token>/',apiViews.activate, name='activate'),
     path('reset-password/', apiViews.PasswordResetRequestView.as_view(), name='reset_password'),
     path('reset-password-confirm/', apiViews.PasswordResetConfirmView.as_view(), name='reset_password_confirm'),
     path('login/', apiViews.LoginPageView.as_view()),
@@ -32,6 +33,6 @@ urlpatterns = [
     path('circle-put-farward-list/',apiViews.PodMemeber_putfarward.as_view()),
     path('status/circle/',apiViews.CircleStatus.as_view()),
     path('get-username/', apiViews.UsernameRequestView.as_view(), name='get_username'),
-    
+
     path('testing-api/',apiViews.TestingView.as_view())
 ]
