@@ -91,7 +91,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         from vote.models import Districts
         dist = Districts.objects.filter(
             code=validated_data['district'].upper()).first()
-        if not dist:
+        if dist:
             raise serializers.ValidationError(
                 {"district": "district didn't match."})
 
