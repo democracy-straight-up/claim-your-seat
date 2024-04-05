@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from vote.models import Districts
 from django.contrib.auth.models import User
 from django.template.loader import render_to_string
 from django.utils.encoding import force_bytes, force_str
@@ -14,10 +15,6 @@ import os
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 
 from api import models as apiModels
-
-from vote.models import Districts
-
-
 
 
 class DistrictsSerializer(serializers.ModelSerializer):
@@ -78,7 +75,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         user = User.objects.create(
             username=entry_code_generator(),
             email=validated_data['email'],
-            is_active=False,
+            is_active=True,  # change this to True siva
             # first_name=validated_data['first_name'],
             # last_name=validated_data['last_name']
         )
@@ -91,11 +88,9 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.users.address = validated_data['address']
 
         # add user district
-        # from vote.models import Districts
-
+        from vote.models import Districts
         dist = Districts.objects.filter(
             code=validated_data['district'].upper()).first()
-        print(dist)
         if not dist:
             raise serializers.ValidationError(
                 {"district": "district didn't match."})

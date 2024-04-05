@@ -1,6 +1,6 @@
 [
     {
-        "model":"vote.user",
+        "model":"vote.Users",
         "fields":{
             "district":"NY01",
             "name":"test1",
@@ -11,7 +11,7 @@
         }
     },
     {
-        "model":"vote.user",
+        "model":"vote.Users",
         "fields":{
             "district":"NY01",
             "name":"test2",
