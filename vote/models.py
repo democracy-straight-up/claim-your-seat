@@ -12,7 +12,7 @@ class Districts(models.Model):
 
     class Meta:
         ordering = ['code']
-        pass
+
 
     def __str__(self):
         return str(self.code)

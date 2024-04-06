@@ -75,7 +75,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         user = User.objects.create(
             username=entry_code_generator(),
             email=validated_data['email'],
-            is_active=False,
+            is_active=True,  # change this to True siva
             # first_name=validated_data['first_name'],
             # last_name=validated_data['last_name']
         )
@@ -91,7 +91,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         from vote.models import Districts
         dist = Districts.objects.filter(
             code=validated_data['district'].upper()).first()
-        if dist:
+        if not dist:
             raise serializers.ValidationError(
                 {"district": "district didn't match."})
 
