@@ -22,16 +22,16 @@
     <div class="row">
         <div class="col">
             <!-- if the user has ir_reg-->
-            {%if user.users.is_reg%}
+            {%if user.users.is_reg %}
             <div class="alert alert-warning mt-3">
                 <p>
                     You have to got until {{is_reg}} to
-                    registered to vote in your district or your account will be deleted! Yikes! 
-                    <a href="#"> Learn More</a>. 
+                    registered to vote in your district or your account will be deleted! Yikes!
+                    <a href="#"> Learn More</a>.
                 </p>
                 <p>
                     But, if you have gotten registered since the last time you entered the floor,
-                    <a href="#"> click here</a>.  
+                    <a href="#"> click here</a>.
                 </p>
             </div>
             {%endif%}
@@ -62,7 +62,7 @@
                 <div class="col-sm-12 ">
                     <a class="btn btn-primary m-2" href="{% url 'createPod' %}">Create a Pod</a>
                 </div>
-            </div> 
+            </div>
         </div>
         <!-- the third col. contains comoon links-->
         <div class="col-sm-12 col-md-6 col-lg-4 d-flex justify-content-center"> </div>
@@ -187,5 +187,3 @@
 </div>
 
 {%endblock content%}
-
-
