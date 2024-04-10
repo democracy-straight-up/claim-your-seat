@@ -78,13 +78,18 @@ This repo is a prototype of the Democracy Straight-Up Project.
 
    `python3 manage.py runserver`
 
-7. To load data into district tables, run the loaddata command for fixture 
+7. To load data into district tables, run the loaddata command for fixture
    `python3 manage.py loaddata districts_data.json`
 
-8. Setup the env file to set config variables. 
+8. Setup the env file to set config variables.
     - email config
-    - database 
+    - database
         - DSU uses db.sqlite file database for production
+
+9. Access the live development server at [localhost:8000/api/docs/](http://localhost:8000/api/docs/).
+
+10. To download the schema file [api/docs/](http://localhost:8000/api/schema/)
+
 
 ## APIs
 
