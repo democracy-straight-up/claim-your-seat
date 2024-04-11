@@ -7,19 +7,19 @@
 <div class="container">
     <div class="row mt-3">
         <h1 class="text-center">House Keeping Page</h1>
-        <h3 class="text-center">Pod: {{object.district}}-{{object}} </h3>
+        <h3 class="text-center">Circle: {{object.district}}-{{object}} </h3>
         <h4 class="text-center">Invitation Key: {{object.invitation_code}} </h4>
-        <p class="text-center">Pod Status: 
-          {% if object.is_active %} 
-            Active 
-          {%else%} 
-            This Pod will become Active once it has six Members.
+        <p class="text-center">Circle Status:
+          {% if object.is_active %}
+            Active
+          {%else%}
+            This Circle will become Active once it has six Members.
            {%endif%}</p>
         {% if is_delegate %}
         <div class="col text-center m-1">
             {% if object.is_active is False %}
             <form action="" method="post"> {%csrf_token%}
-                <input type="hidden" name="pod" value="{{object}}">
+                <input type="hidden" name="circle" value="{{object}}">
                 <button class="btn btn-success mb-2">Generate New Key</button>
             </form>
             {%endif%}
@@ -27,11 +27,11 @@
         </div>
 
         {%else%}
-        <!-- this the pod memeber -->
+        <!-- this the circle memeber -->
 
         {%endif%}
         <div class="col-sm-12 text-center my-1">
-          <a href="{%url 'podMember' pk=object.pk %}" class="text-center btn btn-primary">Member Page</a>
+          <a href="{%url 'circleMember' pk=object.pk %}" class="text-center btn btn-primary">Member Page</a>
         </div>
         {% if messages %}
             {% for message in messages %}
@@ -50,35 +50,35 @@
             <th class="text-uppercase ">No</th>
             <th class="text-uppercase ">Member </th>
             <th class="text-uppercase ">in or Out</th>
-            <!-- show the put forward when pod has 6 members at least -->
-            {% if object.podmember_set.count >= 6 %}
+            <!-- show the put forward when circle has 6 members at least -->
+            {% if object.circlemember_set.count >= 6 %}
             <th class="text-uppercase ">Put Farward</th>
             {%endif%}
             {% if is_delegate %}
             <th class="text-uppercase ">Action</th>
             {%endif%}
           </tr>
-        </thead> 
+        </thead>
         <tbody>
-            {%for member in object.podmember_set.all %}
-          
+            {%for member in object.circlemember_set.all %}
+
                 {%if member.is_member%}
                     <tr class="">
                         <td class="">{{forloop.counter}}  </td>
-                        <td class="">{{member.user.users.legalName}} 
+                        <td class="">{{member.user.users.legalName}}
                             {% if member.is_delegate %}
-                            <span class="badge bg-success">DELEGATE</span> 
+                            <span class="badge bg-success">DELEGATE</span>
                             {%endif%}
                         <td class="">
-                            IN: <span class="badge bg-info text-dark">{{member.podmember_vote_in_set.count}}</span>  &nbsp; &nbsp; 
-                            OUT: <span class="badge bg-info text-dark">{{member.podmember_vote_out_set.count}}</span>
-                            {%if member.user == user or member.is_delegate %} 
+                            IN: <span class="badge bg-info text-dark">{{member.circlemember_vote_in_set.count}}</span>  &nbsp; &nbsp;
+                            OUT: <span class="badge bg-info text-dark">{{member.circlemember_vote_out_set.count}}</span>
+                            {%if member.user == user or member.is_delegate %}
                             <!-- <button class="mx-1 btn btn-secondary disabled">IN</button>
                             <button class="btn btn-secondary disabled">OUT</button> -->
                             {%endif%}
                         </td>
 
-                        {% if object.podmember_set.count >= 6 %}
+                        {% if object.circlemember_set.count >= 6 %}
                         <td class="">
                             {%if member.user == user or member.is_delegate %}
                             <button class="btn btn-secondary disabled ">PUT FARWARD</button>
@@ -98,84 +98,84 @@
                         {% if is_delegate%}
                         <td class="">
                             {%if member.user != user %}
-                            <form action="{% url 'removePodMember' %}" method="post"> {%csrf_token%}
-                                <input type="hidden" name="pod" value="{{object}}">
+                            <form action="{% url 'removeCircleMember' %}" method="post"> {%csrf_token%}
+                                <input type="hidden" name="circle" value="{{object}}">
                                 <input type="hidden" name="member" value="{{member.pk}}">
                                 <button class="btn btn-danger" type="submit" name="remove">REMOVE</button>
                             </form>
                             {%else%}
-                                {% if object.podmember_set.count == 1 %}
-                                <a href="{% url 'podRemove' pk=object.pk %}" class="btn btn-danger">Dissolve Pod</a>
+                                {% if object.circlemember_set.count == 1 %}
+                                <a href="{% url 'circleRemove' pk=object.pk %}" class="btn btn-danger">Dissolve Circle</a>
                                 {%else%}
                                 F-Del
                               {%endif%}
                             {%endif%}
-                        
+
                         </td>
                         {%endif %}
                     </tr>
                 {%endif%}
             {%endfor%}
-            <!-- if there is condidate -->
-            <!-- condidate shall not not itself viewing -->
+            <!-- if there is candidate -->
+            <!-- candidate shall not not itself viewing -->
             <!-- each user shall vote once.  -->
-            {%if condidate and condidate.user != user %}
-  
+            {%if candidate and candidate.user != user %}
+
             <tr class="">
-                <td class="">{{condidate.member_number}}  </td>
-                <td class="">{{condidate.user.users.legalName}} </td>
+                <td class="">{{candidate.member_number}}  </td>
+                <td class="">{{candidate.user.users.legalName}} </td>
                 <td class="">
                     {%if not voted %}
-                    <form class="float-start mx-1" action="{% url 'pod_vote_in' %}" method="post"> {%csrf_token%}
-                        <input type="hidden" name="pod" value="{{object}}">
-                        <input type="hidden" name="member" value="{{condidate.pk}}">
+                    <form class="float-start mx-1" action="{% url 'circle_vote_in' %}" method="post"> {%csrf_token%}
+                        <input type="hidden" name="circle" value="{{object}}">
+                        <input type="hidden" name="member" value="{{candidate.pk}}">
                         <button type="submit" name="IN" class="btn btn-success ">IN</button>
                     </form>
-                    <form class="float-start mx-1 " action="{% url 'pod_vote_out' %}" method="post"> {%csrf_token%}
-                        <input type="hidden" name="pod" value="{{object}}">
-                        <input type="hidden" name="member" value="{{condidate.pk}}">
+                    <form class="float-start mx-1 " action="{% url 'circle_vote_out' %}" method="post"> {%csrf_token%}
+                        <input type="hidden" name="circle" value="{{object}}">
+                        <input type="hidden" name="member" value="{{candidate.pk}}">
                         <button type="submit" name="OUT" class="btn btn-danger">OUT</button>
                     </form>
                     {%else%}
-                    IN: <span class="badge bg-info text-dark">{{condidate.podmember_vote_in_set.count}}</span> &nbsp; &nbsp; 
-                    OUT: <span class="badge bg-info text-dark">{{condidate.podmember_vote_out_set.count}}</span>
+                    IN: <span class="badge bg-info text-dark">{{candidate.circlemember_vote_in_set.count}}</span> &nbsp; &nbsp;
+                    OUT: <span class="badge bg-info text-dark">{{candidate.circlemember_vote_out_set.count}}</span>
                     {%endif%}
                 </td>
-                {% if object.podmember_set.count >= 6 %}
+                {% if object.circlemember_set.count >= 6 %}
                 <td></td>
                 {%endif%}
                 {% if is_delegate%}
                 <td class="">
-                    {%if condidate.user != user %}
-                    <form action="{% url 'removePodMember' %}" method="post"> {%csrf_token%}
-                        <input type="hidden" name="pod" value="{{object}}">
-                        <input type="hidden" name="member" value="{{condidate.pk}}">
+                    {%if candidate.user != user %}
+                    <form action="{% url 'removeCircleMember' %}" method="post"> {%csrf_token%}
+                        <input type="hidden" name="circle" value="{{object}}">
+                        <input type="hidden" name="member" value="{{candidate.pk}}">
                         <button class="btn btn-danger" type="submit" name="remove">REMOVE</button>
                     </form>
                     {%else%}
-                        F-Del 
+                        F-Del
                     {%endif%}
-                
+
                 </td>
                 {%endif %}
             </tr>
-       
+
             {%endif%}
 
-        </tbody> 
+        </tbody>
         {%comment%}
-        <tbody>   
-          
-          {% for users_list in stat%}    
-        <tr>  
+        <tbody>
+
+          {% for users_list in stat%}
+        <tr>
           {%if forloop.counter < 10%}
           <td>{{0}}{{forloop.counter}}
           {%endif%}
-          
+
           <td>{{users_list.member.name }}</td>
           <td class="text-center">
             {% if  votegive == 0 and users_list.member_status == 0 %}
-              <button type="submit" class="btn btn-sm btn-success vote" name="submit"  value={{users_list.id}}>vote now</button>       
+              <button type="submit" class="btn btn-sm btn-success vote" name="submit"  value={{users_list.id}}>vote now</button>
             {% endif  %}
           </td>
           <td>
@@ -185,16 +185,16 @@
           </td>
 
           <td>
-            {% if  podlen >= 5 and users_list.member_status == 1 and evote == 0 %}
+            {% if  circlelen >= 5 and users_list.member_status == 1 and evote == 0 %}
               <button type="submit" name="elect" value={{users_list.id}}>Election</button>
             {% endif  %}
           </td>
-          
+
           <td class="text-center">
             {% if  users_list.member_status == 0 and owner_id == request.user.id %}
-              <button type="submit" class="btn btn-danger btn-sm delete" name="Delete" value={{users_list.id}}>Delete</button>  
+              <button type="submit" class="btn btn-danger btn-sm delete" name="Delete" value={{users_list.id}}>Delete</button>
             {% endif  %}
-          </td>    
+          </td>
           {%endfor%}
 
         </tbody>
@@ -209,7 +209,5 @@
 {%endblock content%}
 
 {%block js%}
-<script src="{% static 'pod_invitationKeyCopy.js' %}"></script>
+<script src="{% static 'circle_invitationKeyCopy.js' %}"></script>
 {%endblock js%}
-
-

@@ -47,7 +47,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'drf_spectacular',
-    'drf_spectacular',
     'live.apps.LiveConfig',
     'bills.apps.BillsConfig',
     'django_extensions',
@@ -174,7 +173,6 @@ USE_TZ = True
 STATIC_URL = '/static/'  # / added by siva
 
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
 
@@ -190,7 +188,6 @@ EMAIL_USE_TLS       = True
 
 
 REST_FRAMEWORK = {
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -211,7 +208,6 @@ SIMPLE_JWT = {
     'ALGORITHM': 'HS256',
 }
 
-# this is for  the backend jwt auth.
 # this is for  the backend jwt auth.
 JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
 CORS_ALLOW_ALL_ORIGINS = True # If this is used then `CORS_ALLOWED_ORIGINS` will not have any effect

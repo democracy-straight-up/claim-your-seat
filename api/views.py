@@ -32,7 +32,7 @@ from api import models as apiModels
 
 class CustomPagination(PageNumberPagination):
     """
-    We are creating a custome pagination 
+    We are creating a custome pagination
     to limit the query and more """
     page_size = 10  # Number of items per page
     # Allows the client to override the page size
@@ -166,40 +166,40 @@ class LoginPageView(APIView):
             return Response({"status": messages}, status=status.HTTP_400_BAD_REQUEST)
 
 
-def pod_invitation_generator():
+def circle_invitation_generator():
     """ this function is being used in cnosumerCircle as well
-    this is the pod code generator. 
-    It uses random and checks for the database. 
+    this is the circle code generator.
+    It uses random and checks for the database.
     return the code if it's not taken
     """
     import random
     code = str(random.randint(0, 9999999999))
-    is_exist = voteModels.Pod.objects.filter(invitation_code=code).exists()
+    is_exist = voteModels.Circle.objects.filter(invitation_code=code).exists()
     if is_exist:
-        pod_invitation_generator()
+        circle_invitation_generator()
     return code
 
 
-def pod_code_generator():
+def circle_code_generator():
     """
-    this is the pod code generator. 
-    It uses random and checks for the database. 
+    this is the circle code generator.
+    It uses random and checks for the database.
     return the code if it's not taken
     """
     import random
     code = str(random.randint(1, 99999))
-    is_exist = voteModels.Pod.objects.filter(code=code).exists()
+    is_exist = voteModels.Circle.objects.filter(code=code).exists()
 
     if is_exist:
-        pod_code_generator()
+        circle_code_generator()
     return code
 
 
-class CreatePOD(APIView):
+class CreateCIRCLE(APIView):
     """
-    creates a pod. 
+    creates a circle.
     it set the userType to 1.
-    it set the user as a delegate pod member
+    it set the user as a delegate circle member
     """
 
     def post(self, request):
@@ -216,46 +216,46 @@ class CreatePOD(APIView):
 
             # check if the userType is not 0 return
             if user.users.userType != 0:
-                messages = "Already belongs to a pod."
+                messages = "Already belongs to a circle."
                 return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
 
-            # create a pod
-            pod = voteModels.Pod.objects.create(
-                code=pod_code_generator(),
+            # create a circle
+            circle = voteModels.Circle.objects.create(
+                code=circle_code_generator(),
                 district=district,
-                invitation_code=pod_invitation_generator()
+                invitation_code=circle_invitation_generator()
             )
-            pod.save()
+            circle.save()
 
             # set the userType attribute of the creator to 1
             user.users.userType += 1
             user.save()
             user.users.save()
 
-            # add the user to pod member as delegate
-            pod_member_obj = voteModels.PodMember.objects.create(
+            # add the user to circle member as delegate
+            circle_member_obj = voteModels.CircleMember.objects.create(
                 user=user,
-                pod=pod,
+                circle=circle,
                 is_delegate=True,
                 is_member=True,
                 member_number=1,
             )
-            pod_member_obj.save()
-            obj = apiSerializers.PodSerializer(pod)
+            circle_member_obj.save()
+            obj = apiSerializers.CircleSerializer(circle)
             return JsonResponse(obj.data)
         except:
             messages = "Something Went Wrong."
             return Response({"message:": messages}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class PodMem(APIView):
+class CircleMem(APIView):
     # check if this class is even being used...
-    # It retrives all the podmembers of all pods.
+    # It retrives all the circlemembers of all circles.
     # something we do not want
     def post(self, request):
         try:
-            pod = voteModels.PodMember.objects.all()
-            return Response(apiSerializers.PODMemberSer(pod, many=True).data, status=status.HTTP_200_OK)
+            circle = voteModels.CircleMember.objects.all()
+            return Response(apiSerializers.CIRCLEMemberSer(circle, many=True).data, status=status.HTTP_200_OK)
         except:
             return JsonResponse({False: True})
 
@@ -270,10 +270,10 @@ class UserView(APIView):
                 messages = "user is required."
                 return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
 
-            # if user.users.userstype is 1 then send the pod info as well.
+            # if user.users.userstype is 1 then send the circle info as well.
             if user.users.userType == 1:
                 return JsonResponse({
-                    "pod": apiSerializers.PodSerializer(user.podmember_set.first().pod).data,
+                    "circle": apiSerializers.CircleSerializer(user.circlemember_set.first().circle).data,
                     "user": apiSerializers.UserSerializer(user).data,
                 })
 
@@ -287,19 +287,19 @@ class UserView(APIView):
 class HouseKeeping(APIView):
     def post(self, request):
         try:
-            pod = NUL
-            if 'pod' in request.data:
-                pod = voteModels.Pod.objects.get(code=request.data['pod'])
+            circle = NUL
+            if 'circle' in request.data:
+                circle = voteModels.Circle.objects.get(code=request.data['circle'])
             else:
-                messages = "POD is required."
+                messages = "CIRCLE is required."
                 return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
 
-            # get all the pod members.
-            podMembers = pod.podmember_set.all()
+            # get all the circle members.
+            circleMembers = circle.circlemember_set.all()
 
             data = {
-                "pod": apiSerializers.PodSerializer(pod).data,
-                "podMembers": apiSerializers.PODMemberSer(podMembers, many=True).data
+                "circle": apiSerializers.CircleSerializer(circle).data,
+                "circleMembers": apiSerializers.CIRCLEMemberSer(circleMembers, many=True).data
             }
             return JsonResponse(data)
         except:
@@ -307,68 +307,68 @@ class HouseKeeping(APIView):
             return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
 
 
-def pod_joining_validation(user, pod):
+def circle_joining_validation(user, circle):
     """
-    this function validate weather a user can enter a pod.
-    It check if pod is active.
+    this function validate weather a user can enter a circle.
+    It check if circle is active.
     It check if user is already a member
     It check if userType is 0
-    It checks if the user is the same districts as pod distract
+    It checks if the user is the same districts as circle distract
     """
     result = True
-    # if not pod.is_active():
-    #     print("pod is active")
+    # if not circle.is_active():
+    #     print("circle is active")
     #     result = False
 
-    podmembers = pod.podmember_set.all()
-    if podmembers.count() >= 12:
+    circlemembers = circle.circlemember_set.all()
+    if circlemembers.count() >= 12:
         result = False
 
-    if podmembers.filter(user=user):
+    if circlemembers.filter(user=user):
         result = False
 
     if user.users.userType > 0:
         result = False
 
-    if user.users.district != pod.district:
+    if user.users.district != circle.district:
         result = False
 
     return result
 
 
-class JoinPOD(APIView):
+class JoinCIRCLE(APIView):
     def post(self, request):
         try:
-            pod = NUL
+            circle = NUL
             user = NUL
-            if 'pod' in request.data and 'user' in request.data:
-                pod = voteModels.Pod.objects.get(
-                    invitation_code=request.data['pod'])
+            if 'circle' in request.data and 'user' in request.data:
+                circle = voteModels.Circle.objects.get(
+                    invitation_code=request.data['circle'])
                 user = User.objects.get(username=request.data['user'])
             else:
-                messages = "POD  and user are required."
+                messages = "CIRCLE  and user are required."
                 return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
 
-            # get the pod and add the user as the member or candidate
-            if pod:
-                # check if user can join the pod
-                if pod_joining_validation(user, pod):
-                    podMember = voteModels.PodMember.objects.create(
+            # get the circle and add the user as the member or candidate
+            if circle:
+                # check if user can join the circle
+                if circle_joining_validation(user, circle):
+                    circleMember = voteModels.CircleMember.objects.create(
                         user=user,
-                        pod=pod,
+                        circle=circle,
                         is_member=False,
                         is_delegate=False,
-                        member_number=pod.podmember_set.count()+1
+                        member_number=circle.circlemember_set.count()+1
                     )
-                    podMember.save()
+                    circleMember.save()
                     # set the userType of the member to 0
                     # when the user become the member via majority votes, then the userType is set to 1
-                    podMember.user.users.userType = 1
-                    podMember.user.users.save()
-                    return JsonResponse(apiSerializers.PodSerializer(pod).data)
+                    circleMember.user.users.userType = 1
+                    circleMember.user.users.save()
+                    return JsonResponse(apiSerializers.CircleSerializer(circle).data)
                 else:
-                    # else of pod is active
-                    messages = 'either the pod is not accepting memebers or you are not eligible to join this pod'
+                    # else of circle is active
+                    messages = 'either the circle is not accepting memebers or you are not eligible to join this circle'
                     return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
 
             messages = 'your request did not get processed.'
@@ -379,8 +379,8 @@ class JoinPOD(APIView):
             return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
 
 
-def pod_desolve_check(user, pod):
-    members = pod.podmember_set.filter(is_member=True)
+def circle_desolve_check(user, circle):
+    members = circle.circlemember_set.filter(is_member=True)
     if members.first().user.username != user.username:
         return False
     if not members.first().is_delegate:
@@ -391,31 +391,31 @@ def pod_desolve_check(user, pod):
     return True
 
 
-class DesolvePod(APIView):
+class DesolveCircle(APIView):
     def post(self, request):
 
         try:
-            pod = NUL
+            circle = NUL
             user = NUL
-            if 'pod' in request.data and 'user' in request.data:
-                pod = voteModels.Pod.objects.get(code=request.data['pod'])
+            if 'circle' in request.data and 'user' in request.data:
+                circle = voteModels.Circle.objects.get(code=request.data['circle'])
                 user = User.objects.get(username=request.data['user'])
             else:
-                messages = "Pod  and user are required."
+                messages = "Circle  and user are required."
                 return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
 
-            # get the pod and check weather the pod is eligible to be desolved!
-            if pod:
-                # check if user can join the pod
-                if pod_desolve_check(user, pod):
-                    pod.delete()
+            # get the circle and check weather the circle is eligible to be desolved!
+            if circle:
+                # check if user can join the circle
+                if circle_desolve_check(user, circle):
+                    circle.delete()
                     user.users.userType = 0
                     user.users.save()
                     # the user automatically sets back to userType = 0
                     return JsonResponse({"status": "desolved"})
                 else:
-                    # else of pod is active
-                    messages = 'can not desolve the pod at the moment.'
+                    # else of circle is active
+                    messages = 'can not desolve the circle at the moment.'
                     return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
         except:
             messages = "Something Went Wrong."
@@ -423,59 +423,59 @@ class DesolvePod(APIView):
 
 
 # do we use this view ?
-class PodBackNForth(APIView):
-    # list all the messsages to that Pod
-    def post(self, request, pod):
+class CircleBackNForth(APIView):
+    # list all the messsages to that Circle
+    def post(self, request, circle):
         try:
-            chats = voteModels.PodBackNForth.objects.all()
-            return Response(apiSerializers.PodBackNForthSerializer(chats, many=True).data, status=status.HTTP_200_OK)
+            chats = voteModels.CircleBackNForth.objects.all()
+            return Response(apiSerializers.CircleBackNForthSerializer(chats, many=True).data, status=status.HTTP_200_OK)
         except:
-            return JsonResponse({False: pod})
+            return JsonResponse({False: circle})
 
 # do we use this view as well ?
 
 
-class PodBackNForthAdd(APIView):
-    # add a message to Pod Back and Forth
-    def post(self, request, pod):
+class CircleBackNForthAdd(APIView):
+    # add a message to Circle Back and Forth
+    def post(self, request, circle):
         try:
-            return Response({"date": "added one message to the pod: " + pod}, status=status.HTTP_200_OK)
+            return Response({"date": "added one message to the circle: " + circle}, status=status.HTTP_200_OK)
         except:
-            return JsonResponse({False: pod})
+            return JsonResponse({False: circle})
 
 
 # get the vote in for user for a circle
-class PodMemeber_voteIn(generics.ListAPIView):
-    serializer_class = apiSerializers.PodMember_VoteInSer
-    queryset = voteModels.PodMember_vote_in.objects.filter()
+class CircleMemeber_voteIn(generics.ListAPIView):
+    serializer_class = apiSerializers.CircleMember_VoteInSer
+    queryset = voteModels.CircleMember_vote_in.objects.filter()
     permission_classes = [AllowAny]
 
     def get_queryset(self):
         candidate_id = self.request.query_params.get('candidate')
         if candidate_id:
-            self.queryset = self.queryset.filter(condidate__pk=candidate_id)
+            self.queryset = self.queryset.filter(candidate__pk=candidate_id)
         return self.queryset
 
 # get the vote out for user of a circle
 
 
-class PodMemeber_voteOut(generics.ListAPIView):
-    serializer_class = apiSerializers.PodMember_VoteOutSer
-    queryset = voteModels.PodMember_vote_out.objects.filter()
+class CircleMemeber_voteOut(generics.ListAPIView):
+    serializer_class = apiSerializers.CircleMember_VoteOutSer
+    queryset = voteModels.CircleMember_vote_out.objects.filter()
     permission_classes = [AllowAny]
 
     def get_queryset(self):
         member_id = self.request.query_params.get('member')
         if member_id:
-            self.queryset = self.queryset.filter(condidate__pk=member_id)
+            self.queryset = self.queryset.filter(candidate__pk=member_id)
         return self.queryset
 
 # get the put farward for gelegation of a member of a circle
 
 
-class PodMemeber_putfarward(generics.ListAPIView):
-    serializer_class = apiSerializers.PodMember_put_farwardSer
-    queryset = voteModels.PodMember_put_farward.objects.filter()
+class CircleMemeber_putfarward(generics.ListAPIView):
+    serializer_class = apiSerializers.CircleMember_put_farwardSer
+    queryset = voteModels.CircleMember_put_farward.objects.filter()
     permission_classes = [AllowAny]
 
     def get_queryset(self):
@@ -486,8 +486,8 @@ class PodMemeber_putfarward(generics.ListAPIView):
 
 
 class CircleList(viewsets.ModelViewSet):
-    serializer_class = apiSerializers.PodSerializer
-    queryset = voteModels.Pod.objects.all()
+    serializer_class = apiSerializers.CircleSerializer
+    queryset = voteModels.Circle.objects.all()
     pagination_class = CustomPagination
     permission_classes = [AllowAny]
 

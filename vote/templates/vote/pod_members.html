@@ -14,9 +14,9 @@
 <div class="container">
     <div class="row">
         <h1 class="text-center">House Keeping Page</h1>
-        <h3 class="text-center">POD: {{object.district}}-{{object}} </h3>
+        <h3 class="text-center">CIRCLE: {{object.district}}-{{object}} </h3>
         <h4 class="text-center">invitation key: {{object}} </h4>
-        <p class="text-center">pod status: {% if object.is_active %} Active {%else%} Inactive{%endif%}</p>
+        <p class="text-center">circle status: {% if object.is_active %} Active {%else%} Inactive{%endif%}</p>
         {% if messages %}
             {% for message in messages %}
             <div class="container">
@@ -35,7 +35,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for member in object.podmember_set.all%}
+                {% for member in object.circlemember_set.all%}
                 <tr>
                     <td>{{forloop.counter}}</td>
                     <td>{{member.user.users.legalName}}</td>

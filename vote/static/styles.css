@@ -36,7 +36,7 @@ footer.footer {
     justify-content: space-between;
     position: relative;
     top: 100px;
-} 
+}
 ul#bs-example-navbar-collapse-1 a {
   font-size: 20px;
   font-weight: 600;
@@ -54,7 +54,7 @@ ul.nav-item li {
     list-style: none;
     margin-left: 15px;
 }
- 
+
 .center.jumbotron.section_first {
   position: relative;
   top: 60px;
@@ -232,15 +232,15 @@ ul#bs-example-navbar-collapse-1 {
 
 
 
-a.btn.btn-primary.text-center.Creat_pod.My_pod {
+a.btn.btn-primary.text-center.Creat_circle.My_circle {
   width: 50%;
   margin: 0 auto;
 }
 
 input[type=text], select {
   width: 100%;
-  padding: 12px 20px; 
-  margin: 0px 0; 
+  padding: 12px 20px;
+  margin: 0px 0;
   display: inline-block;
   border: 1px solid #ccc;
   border-radius: 4px;
@@ -286,4 +286,3 @@ ul.messages {
     margin-right: 0px;
     height: 30px;
 }
-

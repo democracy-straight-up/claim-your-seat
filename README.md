@@ -42,7 +42,7 @@ This repo is a prototype of the Democracy Straight-Up Project.
 |   |-- urls.py
 |   |-- consumers.py
 |   |-- tests.py
-|   |-- podBackNForthConsumers.py
+|   |-- circleBackNForthConsumers.py
 |   |-- routing.py
 |---vote/
 |   |-- migrations/
@@ -224,9 +224,9 @@ Please use this code to enter the floor.
 ```
 
 
-### Create or Update PodMemberContact
+### Create or Update CircleMemberContact
 
-- URL: /podmembercontact/
+- URL: /circlemembercontact/
 - Method: `POST` for creation, `PUT` for update
 - Authentication Required: Yes
 - Permissions Required: User must be authenticated
@@ -268,6 +268,6 @@ Please use this code to enter the floor.
 
 ```
 [
-    "You are not a member of any pod. Please join a pod first."
+    "You are not a member of any circle. Please join a circle first."
 ]
 ```
