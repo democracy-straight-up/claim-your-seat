@@ -12,17 +12,17 @@ urlpatterns = [
     # the home page of user
     path('home',voteViews.voterPage, name='voterPage'),
 
-    path('pod-create',voteViews.CreatePod, name='createPod'),
-    path('pod-join',voteViews.joinPod, name='joinPod'),
-    path('pod/<int:pk>/', voteViews.HouseKeepingPod.as_view(), name='pod'),
+    path('circle-create',voteViews.CreateCircle, name='createCircle'),
+    path('circle-join',voteViews.joinCircle, name='joinCircle'),
+    path('circle/<int:pk>/', voteViews.HouseKeepingCircle.as_view(), name='circle'),
 
-    path('pod-vote-in', voteViews.podVoteIN, name="pod_vote_in"),
-    path('pod-vote-out', voteViews.podVoteOUT, name="pod_vote_out"),
-    path('pod-remove-member', voteViews.removePodMember, name="removePodMember"),
-    path('pod-put-farward', voteViews.putFarward, name="putFarward"),
-    path('pod-members/<int:pk>', voteViews.Pod_members.as_view(), name="podMember"),
-    path('pod-remove/<int:pk>', voteViews.Delete_POD.as_view(), name="podRemove"),
+    path('circle-vote-in', voteViews.circleVoteIN, name="circle_vote_in"),
+    path('circle-vote-out', voteViews.circleVoteOUT, name="circle_vote_out"),
+    path('circle-remove-member', voteViews.removeCircleMember, name="removeCircleMember"),
+    path('circle-put-farward', voteViews.putFarward, name="putFarward"),
+    path('circle-members/<int:pk>', voteViews.Circle_members.as_view(), name="circleMember"),
+    path('circle-remove/<int:pk>', voteViews.Delete_CIRCLE.as_view(), name="circleRemove"),
 
-    path('podmembercontact', voteViews.PodMemberContactAPIView.as_view(), name='podmembercontact-api'),
+    path('circlemembercontact', voteViews.CircleMemberContactAPIView.as_view(), name='circlemembercontact-api'),
 
 ]

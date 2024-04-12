@@ -17,7 +17,7 @@ class ClaimYourSeatForm(UserCreationForm):
     district = forms.CharField(
         widget=forms.TextInput(
             attrs={
-                'placeholder': 'ENTER YOUR DISTRICT', 
+                'placeholder': 'ENTER YOUR DISTRICT',
                 'style':'text-transform: uppercase',
                 'autofocus':True
             }
@@ -52,7 +52,7 @@ class ClaimYourSeatForm(UserCreationForm):
         required=False,
         widget=forms.CheckboxInput(
             attrs={
-                'class': 'form-check-input', 
+                'class': 'form-check-input',
                 'type':'radio',
                 'id':'is_reg'
             }
@@ -62,7 +62,7 @@ class ClaimYourSeatForm(UserCreationForm):
         required=False,
         widget=forms.CheckboxInput(
             attrs={
-                'class': 'form-check-input', 
+                'class': 'form-check-input',
                 'type':'radio',
                 'id':'is_reg1'
             }
@@ -77,14 +77,14 @@ class ClaimYourSeatForm(UserCreationForm):
     )
 
     address = forms.CharField(
-        widget=forms.TextInput, 
+        widget=forms.TextInput,
         label='Address'
     )
 
     password1 = forms.CharField(
         widget=forms.PasswordInput(
             attrs={'placeholder':'ENTER YOUR PASSWORD', 'class':'form-control'}
-        ), 
+        ),
         label='Password'
     )
     password2 = forms.CharField(
@@ -102,25 +102,25 @@ class UsersForm(forms.ModelForm):
     class Meta:
         model = voteModels.Users
         fields = '__all__'
-    
 
 
 
-class JoinPodMemberForm(forms.ModelForm):
-    # is_delegate false, is_member false, user and pod
+
+class JoinCircleMemberForm(forms.ModelForm):
+    # is_delegate false, is_member false, user and circle
     invitationCode = forms.CharField(
         max_length=10,
         label='Invitation Code',
         widget=forms.TextInput(
             attrs={
-                'placeholder': 'ENTER YOUR POD INVITATION CODE', 
+                'placeholder': 'ENTER YOUR CIRCLE INVITATION CODE',
                 'style':'text-transform: uppercase',
                 'autofocus':True
             }
         )
     )
-    
+
 
     class Meta:
-        model = voteModels.PodMember
+        model = voteModels.CircleMember
         fields = ['invitationCode']

@@ -1,8 +1,8 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from .models import Bill, BillVote
-from asgiref.sync import sync_to_async 
-from channels.db import database_sync_to_async 
+from asgiref.sync import sync_to_async
+from channels.db import database_sync_to_async
 from django.contrib.auth.models import User
 from vote import models as voteModels
 
@@ -20,7 +20,7 @@ class BillConsumer(AsyncWebsocketConsumer):
 
         # Fetch existing votes for the bill using database_sync_to_async
         bill_votes = await self.get_bill_votes()
-        
+
         # Accept the WebSocket connection
         await self.accept()
 
@@ -39,7 +39,7 @@ class BillConsumer(AsyncWebsocketConsumer):
                 'present_votes': 0,
                 'proxy_votes': 0,
             }
-        
+
         if district_code:
             return {
                 'yea_votes': bill.count_yea_votes(),
@@ -74,7 +74,7 @@ class BillConsumer(AsyncWebsocketConsumer):
     def create_new_vote(self, bill, user, vote_type):
         ob = BillVote.objects.create(bill=bill, voter=user, your_vote=vote_type)
         ob.save()
-    
+
     @database_sync_to_async
     def get_user_instance(self, username):
         try:
@@ -83,7 +83,7 @@ class BillConsumer(AsyncWebsocketConsumer):
             return u_obj, district_code
         except User.DoesNotExist:
             return None, None
-        
+
     async def receive(self, text_data):
         data = json.loads(text_data)
         vote_type = data['vote_type']
@@ -95,7 +95,7 @@ class BillConsumer(AsyncWebsocketConsumer):
         except Bill.DoesNotExist:
             return
 
-        # get user instance 
+        # get user instance
         u, district_code = await self.get_user_instance(username)
         # Check if the user has already voted for this bill
         existing_vote = await self.get_existing_vote(bill, username)
@@ -121,7 +121,7 @@ class BillConsumer(AsyncWebsocketConsumer):
     async def update_vote_counts(self, event):
         # Send message to WebSocket
         await self.send(text_data=json.dumps(event['votes']))
-    
+
 
 
 class AdviceConsumer(AsyncWebsocketConsumer):
@@ -154,11 +154,11 @@ class AdviceConsumer(AsyncWebsocketConsumer):
         obj = BillVote.objects.filter(bill=bill, voter__username=self.fdel).first()
         vote_advice = obj.your_vote
         return obj, vote_advice
-    
+
     @database_sync_to_async
     def get_fdel_instance(self):
         try:
-            d_obj = voteModels.PodMember.objects.get(pod__code = self.podName,is_delegate=True)
+            d_obj = voteModels.CircleMember.objects.get(pod__code = self.podName,is_delegate=True)
             username = d_obj.user.username
             u_obj = User.objects.get(username = username)
             return u_obj, username
@@ -167,7 +167,4 @@ class AdviceConsumer(AsyncWebsocketConsumer):
 
     async def update_advice(self, event):
         # Send message to WebSocket
-        await self.send(text_data=json.dumps(event['data']['advice']))    
-    
-
-    
+        await self.send(text_data=json.dumps(event['data']['advice']))
