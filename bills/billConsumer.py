@@ -127,8 +127,8 @@ class BillConsumer(AsyncWebsocketConsumer):
 class AdviceConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.bill_id = self.scope['url_route']['kwargs']['bill_id']
-        self.podName = self.scope['url_route']['kwargs']['podName']
-        self.room_group_name = f'bill_{self.bill_id}_pod_{self.podName}'
+        self.circleName = self.scope['url_route']['kwargs']['circleName']
+        self.room_group_name = f'bill_{self.bill_id}_circle_{self.circleName}'
 
         # Join room group
         await self.channel_layer.group_add(
@@ -158,7 +158,7 @@ class AdviceConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_fdel_instance(self):
         try:
-            d_obj = voteModels.CircleMember.objects.get(pod__code = self.podName,is_delegate=True)
+            d_obj = voteModels.CircleMember.objects.get(circle__code = self.circleName,is_delegate=True)
             username = d_obj.user.username
             u_obj = User.objects.get(username = username)
             return u_obj, username
