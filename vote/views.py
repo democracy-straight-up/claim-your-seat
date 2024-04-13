@@ -502,7 +502,7 @@ class Delete_CIRCLE(LoginRequiredMixin, DeleteView):
     success_url = '/home'
 
     def get_context_data(self, *args, **kwargs):
-        data = super(Delete_POD, self).get_context_data(*args, **kwargs)
+        data = super(Delete_CIRCLE, self).get_context_data(*args, **kwargs)
         data['page_title'] = 'Voter Page'
         return data
 
