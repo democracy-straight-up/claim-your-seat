@@ -181,22 +181,22 @@ class HouseKeepingCircle(LoginRequiredMixin,DetailView):
         # check if the user is the circle delegate
         circle = voteModels.Circle.objects.get(pk = self.kwargs['pk'])
         is_delegate = False
-        condidate = circle.circlemember_set.filter(is_member = False).first()
+        candidate = circle.circlemember_set.filter(is_member = False).first()
         for member in circle.circlemember_set.all():
             if member.is_delegate and member.user == self.request.user:
                 is_delegate = True
 
-        # check the condidates vote in/out list and if the logged in user is on the list, set current_used_voted to true
+        # check the candidates vote in/out list and if the logged in user is on the list, set current_used_voted to true
         current_user_voted = False
-        if condidate:
+        if candidate:
             # vote in
-            voteINs = condidate.circlemember_vote_in_set.filter(voter = self.request.user)
+            voteINs = candidate.circlemember_vote_in_set.filter(voter = self.request.user)
             for voter in voteINs:
                 if voter.voter == self.request.user:
                     current_user_voted = True
 
             # vote out
-            voteINs = condidate.circlemember_vote_out_set.filter(voter = self.request.user)
+            voteINs = candidate.circlemember_vote_out_set.filter(voter = self.request.user)
             for voter in voteINs:
                 if voter.voter == self.request.user:
                     current_user_voted = True
@@ -210,7 +210,7 @@ class HouseKeepingCircle(LoginRequiredMixin,DetailView):
         #         current_user_delegated = True
 
         context['title'] = "DSU - House Keeping Page"
-        context['condidate'] = condidate
+        context['candidate'] = candidate
         context['is_delegate'] = is_delegate
         context['voted'] = current_user_voted
         context['delegated'] = current_user_delegated
@@ -362,7 +362,7 @@ def circleVoteIN(request):
             check if the vote in is 50% + 1 to become the member (majority votes)
             make sure that members can only vote in/out once"""
         member = voteModels.CircleMember.objects.get(pk = request.POST.get('member'))
-        voteIN = voteModels.CircleMember_vote_in.objects.create(condidate = member, voter = request.user)
+        voteIN = voteModels.CircleMember_vote_in.objects.create(candidate = member, voter = request.user)
         voteIN.save()
         # check if he/she has got the majority votes
         if majorityVotes(member.circle, member):
@@ -400,7 +400,7 @@ def circleVoteOUT(request):
             check if the vote does not have the majority, he/she has to leave the circle
             leaving means that that record has to be removed from circlemember """
         member = voteModels.CircleMember.objects.get(pk = request.POST.get('member'))
-        voteOUT = voteModels.CircleMember_vote_out.objects.create(condidate = member, voter = request.user)
+        voteOUT = voteModels.CircleMember_vote_out.objects.create(candidate = member, voter = request.user)
         voteOUT.save()
 
         if not majorityVotes(member.circle, member):

@@ -76,8 +76,8 @@ def majorityputFarward(recipient):
         return True
     return False
 
-def majorityVotes(condidate):
-    if condidate.voteIns.all().count() > (condidate.circle.circlemember_set.filter(is_member=True).count()/2):
+def majorityVotes(candidate):
+    if candidate.voteIns.all().count() > (candidate.circle.circlemember_set.filter(is_member=True).count()/2):
         return True
     return False
 
@@ -98,54 +98,54 @@ def switch(text_data_json):
             return {'type':text_data_json['type'], 'data':apiSerializers.CIRCLEMemberSer(circle.circlemember_set.all(), many=True).data}
 
         case 'voteIn':
-            """vote a condidate in and check if the condidate has 50+1 vote to become members or circle.
+            """vote a candidate in and check if the candidate has 50+1 vote to become members or circle.
             if so, return the circlemembers. else return that the vote in has been done only.
             also check if the user already voted in for him/her
             """
-            # search on vote In for condidate and the user
+            # search on vote In for candidate and the user
             user = User.objects.get(username = text_data_json['voter'])
-            condidate = voteModels.CircleMember.objects.get(pk = text_data_json['condidate'])
-            votedIn = voteModels.CircleMember_vote_in.objects.filter(condidate = condidate, voter = user).exists()
+            candidate = voteModels.CircleMember.objects.get(pk = text_data_json['candidate'])
+            votedIn = voteModels.CircleMember_vote_in.objects.filter(candidate = candidate, voter = user).exists()
             if votedIn:
                 return {
                     'type':text_data_json['type'],
                     'done': False,
                     'voter': user.username,
-                    'condidate': condidate.user.username,
+                    'candidate': candidate.user.username,
                     'data':'you have already voted in for the candidate.'
                     }
 
-            voteIN = voteModels.CircleMember_vote_in.objects.create(condidate = condidate, voter = user)
+            voteIN = voteModels.CircleMember_vote_in.objects.create(candidate = candidate, voter = user)
             voteIN.save()
-            # check if condidate has got the majority votes
-            if majorityVotes(condidate):
-                condidate.is_member = True
-                condidate.save()
+            # check if candidate has got the majority votes
+            if majorityVotes(candidate):
+                candidate.is_member = True
+                candidate.save()
                 # set the member.user.users.userType to 1 as it becomes the member in a circle.
-                userType = condidate.user
+                userType = candidate.user
                 userType.users.userType = 1
                 userType.save()
                 # remove all votes in for this members
-                votedIn = voteModels.CircleMember_vote_in.objects.filter(condidate = condidate).delete()
-                circleMembers = condidate.circle.circlemember_set.all()
+                votedIn = voteModels.CircleMember_vote_in.objects.filter(candidate = candidate).delete()
+                circleMembers = candidate.circle.circlemember_set.all()
                 data = {
-                    'circle':apiSerializers.CircleSerializer(condidate.circle).data,
+                    'circle':apiSerializers.CircleSerializer(candidate.circle).data,
                     'circlemembers':apiSerializers.CIRCLEMemberSer(circleMembers, many=True).data
                 }
                 return {
                     'type': text_data_json['type'],
                     'done': True,
                     'voter': user.username,
-                    'condidate': condidate.user.username,
-                    'is_member':condidate.is_member,
+                    'candidate': candidate.user.username,
+                    'is_member':candidate.is_member,
                     'data':data
                     }
             return {
                 'type': text_data_json['type'],
                 'done':True,
-                'condidate': condidate.user.username,
+                'candidate': candidate.user.username,
                 'voter':user.username,
-                'data':apiSerializers.CIRCLEMemberSer(condidate.circle.circlemember_set.all(), many=True).data
+                'data':apiSerializers.CIRCLEMemberSer(candidate.circle.circlemember_set.all(), many=True).data
                 }
 
         case 'voteOut':
@@ -153,17 +153,17 @@ def switch(text_data_json):
             user = User.objects.get(username = text_data_json['voter'])
             member =voteModels.CircleMember.objects.get(pk = text_data_json['member'])
             # check if the voter is already in the vote out:
-            votedOut = voteModels.CircleMember_vote_out.objects.filter(voter = user, condidate = member).exists()
+            votedOut = voteModels.CircleMember_vote_out.objects.filter(voter = user, candidate = member).exists()
             if votedOut:
                 return {
                     'type':text_data_json['type'],
                     'done': False,
                     'voter': user.username,
-                    'condidate': member.user.username,
+                    'candidate': member.user.username,
                     'data':'you have already voted out for this member.'
                     }
 
-            voteOut = voteModels.CircleMember_vote_out.objects.create(condidate = member, voter = user)
+            voteOut = voteModels.CircleMember_vote_out.objects.create(candidate = member, voter = user)
             voteOut.save()
             circleMembers = member.circle.circlemember_set.all()
             return {
@@ -243,7 +243,7 @@ def switch(text_data_json):
             return {'type': text_data_json['type'],'done':False, 'data':"unable to remove"}
 
         case 'removemember':
-            """ this case removes the condidate or member"""
+            """ this case removes the candidate or member"""
             circle = voteModels.Circle.objects.get(code = text_data_json['circle'])
             member = voteModels.CircleMember.objects.get(pk = text_data_json['member'])
             member.delete()

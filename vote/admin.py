@@ -25,13 +25,13 @@ class CircleMemberAdmin(admin.ModelAdmin):
 admin.site.register(models.CircleMember, CircleMemberAdmin)
 
 class CircleMember_vote_inAdmin(admin.ModelAdmin):
-    list_display = ['condidate', 'voter']
-    list_display_links = ["condidate", "voter"]
+    list_display = ['candidate', 'voter']
+    list_display_links = ["candidate", "voter"]
 admin.site.register(models.CircleMember_vote_in, CircleMember_vote_inAdmin)
 
 class CircleMember_vote_outAdmin(admin.ModelAdmin):
-    list_display = ['condidate', 'voter']
-    list_display_links = ["condidate", "voter"]
+    list_display = ['candidate', 'voter']
+    list_display_links = ["candidate", "voter"]
 admin.site.register(models.CircleMember_vote_out, CircleMember_vote_outAdmin)
 
 class CircleMember_put_farwardAdmin(admin.ModelAdmin):

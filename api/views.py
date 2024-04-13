@@ -349,7 +349,7 @@ class JoinCIRCLE(APIView):
                 messages = "CIRCLE  and user are required."
                 return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
 
-            # get the circle and add the user as the member or condidate
+            # get the circle and add the user as the member or candidate
             if circle:
                 # check if user can join the circle
                 if circle_joining_validation(user, circle):
@@ -451,9 +451,9 @@ class CircleMemeber_voteIn(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        condidate_id = self.request.query_params.get('condidate')
-        if condidate_id:
-            self.queryset = self.queryset.filter(condidate__pk=condidate_id)
+        candidate_id = self.request.query_params.get('candidate')
+        if candidate_id:
+            self.queryset = self.queryset.filter(candidate__pk=candidate_id)
         return self.queryset
 
 # get the vote out for user of a circle
@@ -467,7 +467,7 @@ class CircleMemeber_voteOut(generics.ListAPIView):
     def get_queryset(self):
         member_id = self.request.query_params.get('member')
         if member_id:
-            self.queryset = self.queryset.filter(condidate__pk=member_id)
+            self.queryset = self.queryset.filter(candidate__pk=member_id)
         return self.queryset
 
 # get the put farward for gelegation of a member of a circle

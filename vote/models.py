@@ -78,7 +78,7 @@ class CircleMember(models.Model):
             self.is_member = True
             self.save()
             # Delete related CircleMember_vote_in instances
-            CircleMember_vote_in.objects.filter(condidate=self).delete()
+            CircleMember_vote_in.objects.filter(candidate=self).delete()
 
     def check_for_removing(self):
         total_members = CircleMember.objects.filter(circle=self.circle).filter(is_member = True).count()
@@ -106,37 +106,37 @@ class CircleMember(models.Model):
             CircleMember_put_farward.objects.filter(recipient=self).delete()
 
     def count_vote_in(self):
-        return CircleMember_vote_in.objects.filter(condidate=self).count()
+        return CircleMember_vote_in.objects.filter(candidate=self).count()
     def count_vote_out(self):
-        return CircleMember_vote_out.objects.filter(condidate=self).count()
+        return CircleMember_vote_out.objects.filter(candidate=self).count()
     def count_put_farward(self):
         return CircleMember_put_farward.objects.filter(recipient=self).count()
 
 class CircleMember_vote_in(models.Model):
-    condidate   = models.ForeignKey(CircleMember,related_name='voteIns', on_delete=models.CASCADE) #
+    candidate   = models.ForeignKey(CircleMember,related_name='voteIns', on_delete=models.CASCADE) #
     voter       = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at  = models.DateTimeField(auto_now_add=True)
     updated_at  = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
         super(CircleMember_vote_in, self).save(*args, **kwargs)
-        self.condidate.check_for_majority()
+        self.candidate.check_for_majority()
 
     def __str__(self):
-        return str(self.voter) + '-'+ str(self.condidate)
+        return str(self.voter) + '-'+ str(self.candidate)
 
 class CircleMember_vote_out(models.Model):
-    condidate   = models.ForeignKey(CircleMember, related_name='voteOuts', on_delete=models.CASCADE)
+    candidate   = models.ForeignKey(CircleMember, related_name='voteOuts', on_delete=models.CASCADE)
     voter       = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at  = models.DateTimeField(auto_now_add=True)
     updated_at  = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
         super(CircleMember_vote_out, self).save(*args, **kwargs)
-        self.condidate.check_for_removing()
+        self.candidate.check_for_removing()
 
     def __str__(self):
-        return str(self.voter) + '-'+str(self.condidate)
+        return str(self.voter) + '-'+str(self.candidate)
 
 class CircleMember_put_farward(models.Model):
     recipient   = models.ForeignKey(CircleMember,related_name='putFarward', on_delete=models.CASCADE) # recipient

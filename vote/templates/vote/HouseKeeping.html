@@ -116,29 +116,29 @@
                     </tr>
                 {%endif%}
             {%endfor%}
-            <!-- if there is condidate -->
-            <!-- condidate shall not not itself viewing -->
+            <!-- if there is candidate -->
+            <!-- candidate shall not not itself viewing -->
             <!-- each user shall vote once.  -->
-            {%if condidate and condidate.user != user %}
+            {%if candidate and candidate.user != user %}
 
             <tr class="">
-                <td class="">{{condidate.member_number}}  </td>
-                <td class="">{{condidate.user.users.legalName}} </td>
+                <td class="">{{candidate.member_number}}  </td>
+                <td class="">{{candidate.user.users.legalName}} </td>
                 <td class="">
                     {%if not voted %}
                     <form class="float-start mx-1" action="{% url 'circle_vote_in' %}" method="post"> {%csrf_token%}
                         <input type="hidden" name="circle" value="{{object}}">
-                        <input type="hidden" name="member" value="{{condidate.pk}}">
+                        <input type="hidden" name="member" value="{{candidate.pk}}">
                         <button type="submit" name="IN" class="btn btn-success ">IN</button>
                     </form>
                     <form class="float-start mx-1 " action="{% url 'circle_vote_out' %}" method="post"> {%csrf_token%}
                         <input type="hidden" name="circle" value="{{object}}">
-                        <input type="hidden" name="member" value="{{condidate.pk}}">
+                        <input type="hidden" name="member" value="{{candidate.pk}}">
                         <button type="submit" name="OUT" class="btn btn-danger">OUT</button>
                     </form>
                     {%else%}
-                    IN: <span class="badge bg-info text-dark">{{condidate.circlemember_vote_in_set.count}}</span> &nbsp; &nbsp;
-                    OUT: <span class="badge bg-info text-dark">{{condidate.circlemember_vote_out_set.count}}</span>
+                    IN: <span class="badge bg-info text-dark">{{candidate.circlemember_vote_in_set.count}}</span> &nbsp; &nbsp;
+                    OUT: <span class="badge bg-info text-dark">{{candidate.circlemember_vote_out_set.count}}</span>
                     {%endif%}
                 </td>
                 {% if object.circlemember_set.count >= 6 %}
@@ -146,10 +146,10 @@
                 {%endif%}
                 {% if is_delegate%}
                 <td class="">
-                    {%if condidate.user != user %}
+                    {%if candidate.user != user %}
                     <form action="{% url 'removeCircleMember' %}" method="post"> {%csrf_token%}
                         <input type="hidden" name="circle" value="{{object}}">
-                        <input type="hidden" name="member" value="{{condidate.pk}}">
+                        <input type="hidden" name="member" value="{{candidate.pk}}">
                         <button class="btn btn-danger" type="submit" name="remove">REMOVE</button>
                     </form>
                     {%else%}
