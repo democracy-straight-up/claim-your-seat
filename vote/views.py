@@ -154,7 +154,7 @@ def voterPage(request):
     time = request.user.date_joined
     if request.user.users.is_reg:
         from datetime import timedelta
-        time = request.user.date_joined + timedelta(30)
+        time = request.user.date_joined + timedelta(days=30) # timedelta(30)
     data={
         'circle': circleMember,
         'title': 'Voter Page',
