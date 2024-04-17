@@ -1,3 +1,4 @@
+import json
 from django.core.mail import send_mail
 import os
 from rest_framework.permissions import AllowAny
@@ -269,18 +270,27 @@ class UserView(APIView):
             else:
                 messages = "user is required."
                 return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # check if the user is a member of a circle
+            circle_members = voteModels.CircleMember.objects.filter(user_id=user.id).first()
 
-            # if user.users.userstype is 1 then send the circle info as well.
-            if user.users.userType == 1:
-                return JsonResponse({
-                    "circle": apiSerializers.CircleSerializer(user.circlemember_set.first().circle).data,
-                    "user": apiSerializers.UserSerializer(user).data,
-                })
+            if circle_members:
+                # get the circle of the user
+                circle = circle_members.circle
+                
+                # check if the user is a delegate
+                if user.users.userType == 1:
+                    return JsonResponse({
+                        "circle": apiSerializers.CircleSerializer(circle).data,
+                        "user": apiSerializers.UserSerializer(user).data,
+                    })
 
             return JsonResponse({"user": apiSerializers.UserSerializer(user).data, })
 
-        except:
+        except Exception as e:
             messages = "Something Went Wrong."
+            if not json.loads(os.environ.get('PRODUCTION').lower()):
+                print(f'Error: {e}')
             return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
 
 
