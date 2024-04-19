@@ -71,8 +71,8 @@ class HouseKeepingConsumer(WebsocketConsumer):
         }))
 
 
-def majorityputFarward(recipient):
-    if recipient.putFarward.all().count() >= (recipient.circle.circlemember_set.all().count()/2):
+def majorityputForward(recipient):
+    if recipient.putForward.all().count() >= (recipient.circle.circlemember_set.all().count() / 2):
         return True
     return False
 
@@ -181,7 +181,7 @@ def switch(text_data_json):
             # voter: the member who voted
             user = User.objects.get(username = text_data_json['voter'])
             recipient = voteModels.CircleMember.objects.get(pk = text_data_json['recipient'])
-            delegated = voteModels.CircleMember_put_farward.objects.filter(voter = user, recipient = recipient).exists()
+            delegated = voteModels.CircleMember_put_forward.objects.filter(voter = user, recipient = recipient).exists()
             if delegated:
                 return {
                     'type':text_data_json['type'],
@@ -190,9 +190,9 @@ def switch(text_data_json):
                     'recipient': recipient.user.username,
                     'data':'you have already delegated for this member.'
                     }
-            putFrwd = voteModels.CircleMember_put_farward.objects.create(recipient = recipient, voter = user)
+            putFrwd = voteModels.CircleMember_put_forward.objects.create(recipient = recipient, voter = user)
             putFrwd.save()
-            if majorityputFarward(recipient):
+            if majorityputForward(recipient):
                 # revoke the prev delegate to member
                 prevDel = recipient.circle.circlemember_set.get(is_delegate = True)
 
@@ -201,8 +201,8 @@ def switch(text_data_json):
 
                 prevDel.is_delegate = False
                 prevDel.save()
-                # remove all the pufarward votes of prevDel
-                recipient.putFarward.all().delete()
+                # remove all the put forward votes of prevDel
+                recipient.putForward.all().delete()
 
 
                 # here you have to update the FDel field of the circle as true

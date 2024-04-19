@@ -34,10 +34,10 @@ class CircleMember_vote_outAdmin(admin.ModelAdmin):
     list_display_links = ["candidate", "voter"]
 admin.site.register(models.CircleMember_vote_out, CircleMember_vote_outAdmin)
 
-class CircleMember_put_farwardAdmin(admin.ModelAdmin):
+class CircleMember_put_forwardAdmin(admin.ModelAdmin):
     list_display = ['recipient', 'voter']
     list_display_links = ["recipient", "voter"]
-admin.site.register(models.CircleMember_put_farward, CircleMember_put_farwardAdmin)
+admin.site.register(models.CircleMember_put_forward, CircleMember_put_forwardAdmin)
 
 class CircleBackNForthAdmin(admin.ModelAdmin):
     list_display = ['circle', 'sender', 'date', 'message']

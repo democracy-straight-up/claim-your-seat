@@ -480,12 +480,12 @@ class CircleMemeber_voteOut(generics.ListAPIView):
             self.queryset = self.queryset.filter(candidate__pk=member_id)
         return self.queryset
 
-# get the put farward for gelegation of a member of a circle
+# get the put forward for delegation of a member of a circle
 
 
-class CircleMemeber_putfarward(generics.ListAPIView):
-    serializer_class = apiSerializers.CircleMember_put_farwardSer
-    queryset = voteModels.CircleMember_put_farward.objects.filter()
+class CircleMemeber_putforward(generics.ListAPIView):
+    serializer_class = apiSerializers.CircleMember_put_forwardSer
+    queryset = voteModels.CircleMember_put_forward.objects.filter()
     permission_classes = [AllowAny]
 
     def get_queryset(self):

@@ -52,7 +52,7 @@
             <th class="text-uppercase ">in or Out</th>
             <!-- show the put forward when circle has 6 members at least -->
             {% if object.circlemember_set.count >= 6 %}
-            <th class="text-uppercase ">Put Farward</th>
+            <th class="text-uppercase ">Put Forward</th>
             {%endif%}
             {% if is_delegate %}
             <th class="text-uppercase ">Action</th>
@@ -81,15 +81,15 @@
                         {% if object.circlemember_set.count >= 6 %}
                         <td class="">
                             {%if member.user == user or member.is_delegate %}
-                            <button class="btn btn-secondary disabled ">PUT FARWARD</button>
+                            <button class="btn btn-secondary disabled ">PUT FORWARD</button>
                             {%else%}
                             <!-- check if the user has already voted for a member delegation -->
                             {% if delegated %}
-                                <button class="btn btn-secondary disabled ">PUT FARWARD</button>
+                                <button class="btn btn-secondary disabled ">PUT FORWARD</button>
                                 {% else %}
-                                <form action="{%url 'putFarward' %}" method="post">  {%csrf_token%}
+                                <form action="{%url 'putForward' %}" method="post">  {%csrf_token%}
                                     <input type="hidden" name="member" value="{{member.pk}}" id="">
-                                    <button class="btn btn-success ">PUT FARWARD</button>
+                                    <button class="btn btn-success ">PUT FORWARD</button>
                                 </form>
                                 {%endif %}
                             {%endif%}
