@@ -7,7 +7,7 @@ class BillAdmin(admin.ModelAdmin):
     list_display = ['number','title','schedule_date','created_at', 'updated_at']
     list_display_links = ["number", "title"]
     list_filter = ['schedule_date', 'created_at', 'updated_at']
-    
+
 admin.site.register(models.Bill, BillAdmin)
 
 class BillVoteAdmin(admin.ModelAdmin):
@@ -15,4 +15,3 @@ class BillVoteAdmin(admin.ModelAdmin):
     list_filter = ['vote_date', 'last_update', 'your_vote']
     list_display_links = ["bill",'voter', 'your_vote']
 admin.site.register(models.BillVote, BillVoteAdmin)
-

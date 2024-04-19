@@ -1,19 +1,19 @@
 <!-- the first col. contains common links -->
-<div class="col-sm-12 col-md-4 col-lg-4 d-flex justify-content-center"> 
+<div class="col-sm-12 col-md-4 col-lg-4 d-flex justify-content-center">
     <ul class="a">
         <li><a href="#">List of Delegates</a></li>
         <li><a href="#">Back-and-Forth</a></li>
         <li><a href="#">Member Contact Page</a></li>
-        <li><a href="#">Pod Housekeeping Page</a></li>
+        <li><a href="#">Circle Housekeeping Page</a></li>
     </ul>
 </div>
 <!-- the second col. contains users varous buttons-->
 <div class="col-sm-12 col-md-4 col-lg-4 d-flex justify-content-center">
-    <!-- check if the user is a member of the pod and is delegate -->
-    {% if pod.is_delegate %}
+    <!-- check if the user is a member of the circle and is delegate -->
+    {% if circle.is_delegate %}
     <div class="row text-center">
         <div class="col-sm-12 col-md-6 col-lg-6">
-            <a class="btn btn-primary m-2" href="{% url 'pod' pk=pod.pod.pk %}">My pod</a>
+            <a class="btn btn-primary m-2" href="{% url 'circle' pk=circle.circle.pk %}">My circle</a>
         </div>
         <div class="col-sm-12 col-md-6 col-lg-6">
             <a class="btn btn-primary m-2" href="#">Join First Link</a>
@@ -26,10 +26,10 @@
         </div>
     </div>
     {%else%}
-    <!-- check if the user is just a member of the pod -->
+    <!-- check if the user is just a member of the circle -->
     <div class="row text-center">
         <div class="col-sm-12 col-md-6 col-lg-6">
-            <a class="btn btn-primary m-2" href="{% url 'pod' pk=pod.pod.pk %}">My pod</a>
+            <a class="btn btn-primary m-2" href="{% url 'circle' pk=circle.circle.pk %}">My circle</a>
         </div>
         <div class="col-sm-12 col-md-6 col-lg-6">
             <a class="btn btn-primary m-2" href="#">Back-and-Forth</a>

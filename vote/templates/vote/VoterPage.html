@@ -22,16 +22,16 @@
     <div class="row">
         <div class="col">
             <!-- if the user has ir_reg-->
-            {%if user.users.is_reg%}
+            {%if user.users.is_reg %}
             <div class="alert alert-warning mt-3">
                 <p>
                     You have to got until {{is_reg}} to
-                    registered to vote in your district or your account will be deleted! Yikes! 
-                    <a href="#"> Learn More</a>. 
+                    registered to vote in your district or your account will be deleted! Yikes!
+                    <a href="#"> Learn More</a>.
                 </p>
                 <p>
                     But, if you have gotten registered since the last time you entered the floor,
-                    <a href="#"> click here</a>.  
+                    <a href="#"> click here</a>.
                 </p>
             </div>
             {%endif%}
@@ -54,21 +54,21 @@
         <div class="col-sm-12 col-md-4 col-lg-4 d-flex justify-content-center"> </div>
         <!-- the second col. contains users varous buttons-->
         <div class="col-sm-12 col-md-4 col-lg-4 d-flex justify-content-center">
-            <!-- check if userType is 0 that means that he has not yet created or joined a pod -->
+            <!-- check if userType is 0 that means that he has not yet created or joined a circle -->
             <div class="row text-center">
                 <div class="col-sm-12 ">
-                    <a class="btn  btn-primary m-2" href="{% url 'joinPod' %}">Join a Pod</a>
+                    <a class="btn  btn-primary m-2" href="{% url 'joinCircle' %}">Join a Circle</a>
                 </div>
                 <div class="col-sm-12 ">
-                    <a class="btn btn-primary m-2" href="{% url 'createPod' %}">Create a Pod</a>
+                    <a class="btn btn-primary m-2" href="{% url 'createCircle' %}">Create a Circle</a>
                 </div>
-            </div> 
+            </div>
         </div>
         <!-- the third col. contains comoon links-->
         <div class="col-sm-12 col-md-6 col-lg-4 d-flex justify-content-center"> </div>
 
         {%elif user.users.userType == 1%}
-            {%include 'vote/pod_voter_page.html' %}
+            {%include 'vote/circle_voter_page.html' %}
 
         {%elif user.users.userType == 2%}
             {%include 'vote/first_link_group.html' %}
@@ -187,5 +187,3 @@
 </div>
 
 {%endblock content%}
-
-

@@ -13,13 +13,13 @@
             <div class="col-lg-3"></div>
             <div class="col-sm-12 col-lg-6 align-items-center">
                 <div class="mt-4">
-                    <h3 class="card-title text-center">Desolve this Pod</h3>
+                    <h3 class="card-title text-center">Desolve this Circle</h3>
                   <form method="POST"> {% csrf_token %}
                     <div class=" text-center">
-                        <p>This action will permanently delete this Pod from the database. Are you sure?</p>
+                        <p>This action will permanently delete this Circle from the database. Are you sure?</p>
                     </div>
                     <div class="text-center">
-                      <a class="btn btn-outline-secondary " href="{% url 'pod' pk=object.pk %}"> No, Cancel</a>
+                      <a class="btn btn-outline-secondary " href="{% url 'circle' pk=object.pk %}"> No, Cancel</a>
                       <button type="submit" class="btn btn-outline-danger  mx-2 "> Yes, Remove</button>
                     </div>
                   </form>
