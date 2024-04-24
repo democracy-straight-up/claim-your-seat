@@ -182,3 +182,37 @@ class CircleMemberContact(models.Model):
 
     def __str__(self) -> str:
         return str(self.member.user.username) + " - " + str(self.circle.code)
+
+class Group(models.Model):
+    code            = models.CharField(max_length=5, unique=True)
+    created_at      = models.DateTimeField(auto_now_add=True)
+    updated_at      = models.DateTimeField(auto_now=True)
+    district        = models.ForeignKey(Districts, on_delete=models.CASCADE)
+    parent_id = models.IntegerField()
+    invitation_code = models.CharField(max_length=10)
+    FDel_election   = models.BooleanField(default=False)
+    group_type = models.CharField(max_length=250)
+    parent_group = models.ForeignKey(CircleBackNForth, on_delete=models.CASCADE)
+    def __str__(self):
+        return str(self.code)
+
+
+class GroupMemberContact(models.Model):
+    group = models.ForeignKey(Group, on_delete=models.CASCADE)
+    member = models.ForeignKey(CircleMember, on_delete=models.CASCADE)
+    email = models.CharField(max_length=250)
+    phone = models.CharField(max_length=250)
+    def __str__(self) -> str:
+        return str(self.member.user.username) + " - " + str(self.group.code)
+
+class GroupMember(models.Model):
+    group = models.ForeignKey(Group, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    date_joined = models.DateTimeField(auto_now_add=True)
+    date_updated = models.DateTimeField(auto_now=True)
+    is_member = models.BooleanField(default=False)
+    is_delegate = models.BooleanField(default=False)
+    member_number = models.PositiveSmallIntegerField(null=True, blank=True)
+    member_type = models.CharField(max_length=5)
+    def __str__(self) -> str:
+        return str(self.user.username) + " - " + str(self.group.code)
