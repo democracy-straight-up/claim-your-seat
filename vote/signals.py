@@ -15,10 +15,10 @@ def save_profile(sender, instance, *args, **kwargs):
     # print("user profile saved")
 
 
-@receiver(pre_delete, sender=models.Circle)
+@receiver(pre_delete, sender=models.Group)
 def setUserType(sender, instance,*args, **kwargs):
     """this signal sets the circle member's userType to zero"""
-    members = models.CircleMember.objects.filter(circle = instance)
+    members = models.GroupMember.objects.filter(group = instance)
     for i in members:
         ut = i.user
         ut.users.userType = 0

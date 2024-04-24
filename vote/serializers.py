@@ -1,24 +1,24 @@
 from rest_framework import serializers
-from .models import CircleMember, CircleMemberContact
+from .models import GroupMember, GroupMemberContact
 
 
 class CircleMemberContactSerializer(serializers.ModelSerializer):
     class Meta:
-        model = CircleMemberContact
+        model = GroupMemberContact
         fields = ['email', 'phone']
 
     def create(self, validated_data):
         user = self.context['request'].user
 
         try:
-            circle_member = CircleMember.objects.get(user=user)
-        except CircleMember.DoesNotExist:
+            circle_member = GroupMember.objects.get(user=user)
+        except GroupMember.DoesNotExist:
             # If CircleMember does not exist, raise a validation error
             raise serializers.ValidationError(
                 "You are not a member of any circle. Please join a circle first.")
 
         validated_data['member'] = circle_member
-        validated_data['circle'] = circle_member.circle
+        validated_data['circle'] = circle_member.group
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
