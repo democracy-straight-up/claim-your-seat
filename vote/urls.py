@@ -19,7 +19,7 @@ urlpatterns = [
     path('circle-vote-in', voteViews.circleVoteIN, name="circle_vote_in"),
     path('circle-vote-out', voteViews.circleVoteOUT, name="circle_vote_out"),
     path('circle-remove-member', voteViews.removeCircleMember, name="removeCircleMember"),
-    path('circle-put-farward', voteViews.putFarward, name="putFarward"),
+    path('circle-put-forward', voteViews.putForward, name="putForward"),
     path('circle-members/<int:pk>', voteViews.Circle_members.as_view(), name="circleMember"),
     path('circle-remove/<int:pk>', voteViews.Delete_CIRCLE.as_view(), name="circleRemove"),
 

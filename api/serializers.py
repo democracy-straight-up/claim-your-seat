@@ -206,9 +206,9 @@ class CircleMember_VoteInSer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class CircleMember_put_farwardSer(serializers.ModelSerializer):
+class CircleMember_put_forwardSer(serializers.ModelSerializer):
     class Meta:
-        model = voteModels.CircleMember_put_farward
+        model = voteModels.CircleMember_put_forward
         fields = '__all__'
 
 
@@ -223,12 +223,12 @@ class CIRCLEMemberSer(serializers.ModelSerializer):
     circle = CircleSerializer()
     voteIns = serializers.StringRelatedField(many=True)
     voteOuts = serializers.StringRelatedField(many=True)
-    putFarward = serializers.StringRelatedField(many=True)
+    putForward = serializers.StringRelatedField(many=True)
 
     class Meta:
         model = voteModels.GroupMember
         fields = ["is_delegate", "member_number", "id", 'user',
-                  'circle', "is_member", 'voteIns', 'voteOuts', 'putFarward']
+                  'circle', "is_member", 'voteIns', 'voteOuts', 'putForward']
 
 
 # This serializer is being used in Circle consumer file for circle members

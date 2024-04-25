@@ -204,7 +204,7 @@ class HouseKeepingCircle(LoginRequiredMixin,DetailView):
         # if user is_member
         # to check if the logged in user has voted for delegated
         current_user_delegated = False
-        # circle_delegates = voteModels.CircleMember_put_farward.objects.filter(delegated__circle = circle)
+        # circle_delegates = voteModels.CircleMember_put_forward.objects.filter(delegated__circle = circle)
         # for i in circle_delegates:
         #     if i.voter == self.request.user:
         #         current_user_delegated = True
@@ -435,7 +435,7 @@ def Can_be_delegate(member):
     """
     result = False
     circlemembers = member.circle.circlemember_set.all()
-    delegated = member.circlemember_put_farward_set.all()
+    delegated = member.circlemember_put_forward_set.all()
 
     if delegated.count() > circlemembers.count()/2:
         result = True
@@ -443,11 +443,11 @@ def Can_be_delegate(member):
     return result
 
 @login_required(login_url='EnterTheFloor')
-def putFarward(request):
+def putForward(request):
     if request.method == 'POST':
         member = voteModels.CircleMember.objects.get(pk = request.POST.get('member'))
-        # save one record in put_farward and
-        delegated = voteModels.CircleMember_put_farward.objects.create(recipient = member, voter = request.user)
+        # save one record in put_forward and
+        delegated = voteModels.CircleMember_put_forward.objects.create(recipient = member, voter = request.user)
         delegated.save()
         # check if the member is eligible to be delegate
 

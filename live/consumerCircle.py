@@ -91,15 +91,15 @@ class CircleConsumer(AsyncWebsocketConsumer):
             return {"status": "error","action":"vote_in", "message": "Could note remove candidate.","user":vote.data}
 
     @database_sync_to_async
-    def put_farward(self, data):
+    def put_forward(self, data):
         """ change the circle gelegation.
         """
         try:
             voter = User.objects.get(username = data['voter'])
             member = voteModels.CircleMember.objects.get(pk = data['member'])
-            voteModels.CircleMember_put_farward.objects.update_or_create(voter=voter, recipient=member)
+            voteModels.CircleMember_put_forward.objects.update_or_create(voter=voter, recipient=member)
             vote = serializers.UserSerializer(voter)
-            return {"status":"success","action":'put_farward', "message":"voted for gelegation.", "user":vote.data}
+            return {"status":"success","action":'put_forward', "message":"voted for gelegation.", "user":vote.data}
         except:
             vote = serializers.UserSerializer(voter)
             return {"status": "error","action":"vote_out", "message": "Could not vote for gelegation.","user":vote.data}
@@ -209,8 +209,8 @@ class CircleConsumer(AsyncWebsocketConsumer):
                     )
                 return
 
-            case "putFarward":
-                res = await self.put_farward(data["payload"])
+            case "putForward":
+                res = await self.put_forward(data["payload"])
                 if res['status'] == 'error':
                     await self.channel_layer.group_send(self.room_group_name, {
                         'type': 'send_members',

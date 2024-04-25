@@ -30,7 +30,7 @@ urlpatterns = [
     path('circlemember/', apiViews.CircleMem.as_view()),
     path('circle-vote-in-list/',apiViews.CircleMemeber_voteIn.as_view()),
     path('circle-vote-out-list/',apiViews.CircleMemeber_voteOut.as_view()),
-    path('circle-put-farward-list/',apiViews.CircleMemeber_putfarward.as_view()),
+    path('circle-put-forward-list/',apiViews.CircleMemeber_putforward.as_view()),
     path('status/circle/',apiViews.CircleStatus.as_view()),
     path('get-username/', apiViews.UsernameRequestView.as_view(), name='get_username'),
 
