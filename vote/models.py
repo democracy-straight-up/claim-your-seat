@@ -181,8 +181,8 @@ class CircleMember_vote_out(models.Model):
     def __str__(self):
         return str(self.voter) + '-'+str(self.candidate)
 
-class CircleMember_put_farward(models.Model):
-    recipient   = models.ForeignKey(GroupMember,related_name='putFarward', on_delete=models.CASCADE) # recipient
+class CircleMember_put_forward(models.Model):
+    recipient   = models.ForeignKey(GroupMember,related_name='putFarward', on_delete=models.CASCADE, default=False) # recipient
     voter       = models.ForeignKey(User, on_delete=models.CASCADE)  #
     created_at  = models.DateTimeField(auto_now_add=True)
     updated_at  = models.DateTimeField(auto_now=True)
