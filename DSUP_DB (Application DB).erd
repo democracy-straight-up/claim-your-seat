@@ -4,7 +4,11 @@
   "settings": {
     "width": 2000,
     "height": 2000,
+<<<<<<< HEAD
     "scrollTop": -833,
+=======
+    "scrollTop": -1325,
+>>>>>>> main
     "scrollLeft": -275.0095,
     "zoomLevel": 0.9,
     "show": 431,
