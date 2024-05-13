@@ -38,13 +38,15 @@ class Users(models.Model):
         return str(self.user.username)
 
 import random
-class Circle(models.Model):
+class Group(models.Model):
     code            = models.CharField(max_length=5, unique=True)
     district        = models.ForeignKey(Districts, on_delete=models.CASCADE)
     created_at      = models.DateTimeField(auto_now_add=True)
     updated_at      = models.DateTimeField(auto_now=True)
     invitation_code = models.CharField(max_length=10)
     FDel_election   =  models.BooleanField(default=False)
+    group_type = models.IntegerField()
+    parent_group = models.ForeignKey('self', on_delete=models.CASCADE)
 
     def __str__(self):
         return str(self.code)
@@ -56,12 +58,15 @@ class Circle(models.Model):
             return True
         return False
 
-class CircleMember(models.Model):
+class GroupMember(models.Model):
+    # user = models.IntegerField()
+    # group = models.IntegerField()
     user    = models.ForeignKey(User, on_delete=models.CASCADE)
-    circle     = models.ForeignKey(Circle, on_delete=models.CASCADE)
+    group     = models.ForeignKey(Group, on_delete=models.CASCADE)
+    is_member       = models.BooleanField(default=False)
     date_joined     = models.DateTimeField(auto_now_add=True)
     date_updated    = models.DateTimeField(auto_now=True)
-    is_member       = models.BooleanField(default=False)
+    member_type = models.CharField(max_length=10)
     is_delegate     = models.BooleanField(default=False)
     member_number   = models.PositiveSmallIntegerField(null=True, blank=True)
 
@@ -72,7 +77,7 @@ class CircleMember(models.Model):
         ordering = ['-is_delegate', 'date_joined']
 
     def check_for_majority(self):
-        total_members = CircleMember.objects.filter(circle=self.circle).filter(is_member = True).count()
+        total_members = GroupMember.objects.filter(group=self.group).filter(is_member = True).count()
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_vote_in() >= majority_threshold:
             self.is_member = True
@@ -81,7 +86,7 @@ class CircleMember(models.Model):
             CircleMember_vote_in.objects.filter(candidate=self).delete()
 
     def check_for_removing(self):
-        total_members = CircleMember.objects.filter(circle=self.circle).filter(is_member = True).count()
+        total_members = GroupMember.objects.filter(group=self.group).filter(is_member = True).count()
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_vote_out() >= majority_threshold:
             self.user.users.userType = 0
@@ -89,12 +94,12 @@ class CircleMember(models.Model):
             self.delete()
             # set the deleted user.users userType to 0
 
-    def check_put_forward(self):
-        total_members = CircleMember.objects.filter(circle=self.circle).filter(is_member = True).count()
+    def check_put_farward(self):
+        total_members = GroupMember.objects.filter(group=self.group).filter(is_member = True).count()
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_put_forward() >= majority_threshold:
             # find the current delegate and set is_delegate false.
-            current_delegate = CircleMember.objects.filter(circle=self.circle).filter(is_delegate = True).first()
+            current_delegate = GroupMember.objects.filter(group=self.group).filter(is_delegate = True).first()
             current_delegate.is_delegate = False
             current_delegate.save()
 
@@ -106,27 +111,65 @@ class CircleMember(models.Model):
             CircleMember_put_forward.objects.filter(recipient=self).delete()
 
     def count_vote_in(self):
-        return CircleMember_vote_in.objects.filter(candidate=self).count()
+        return CircleMember_vote_in.objects.filter(recipient=self).count()
     def count_vote_out(self):
         return CircleMember_vote_out.objects.filter(candidate=self).count()
     def count_put_forward(self):
         return CircleMember_put_forward.objects.filter(recipient=self).count()
 
+
+class GroupMemberContact(models.Model):
+    group = models.ForeignKey(Group, on_delete=models.CASCADE)
+    member = models.ForeignKey(GroupMember, on_delete=models.CASCADE)
+    email = models.CharField(max_length=250)
+    phone = models.CharField(max_length=250)
+
+    def __str__(self) -> str:
+        return str(self.member.user.username) + " - " + str(self.circle.code)
+class CircleBackNForth(models.Model):
+    circle = models.ForeignKey(Group, on_delete=models.CASCADE)
+    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    date = models.DateTimeField(auto_created=True, auto_now_add=True)
+    message = models.TextField(max_length=5000)
+    handle = models.PositiveSmallIntegerField(default=0)
+
+    def __str__(self) -> str:
+        return str(self.sender.username) + " - " + str(self.circle.code)
+
+
+class GroupMemberContact(models.Model):
+    group = models.ForeignKey(Group, on_delete=models.CASCADE)
+    member = models.ForeignKey(GroupMember, on_delete=models.CASCADE)
+    email = models.CharField(max_length=250)
+    phone = models.CharField(max_length=250)
+
+    def __str__(self) -> str:
+        return str(self.member.user.username) + " - " + str(self.circle.code)
+class CircleBackNForth(models.Model):
+    circle = models.ForeignKey(Group, on_delete=models.CASCADE)
+    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    date = models.DateTimeField(auto_created=True, auto_now_add=True)
+    message = models.TextField(max_length=5000)
+    handle = models.PositiveSmallIntegerField(default=0)
+
+    def __str__(self) -> str:
+        return str(self.sender.username) + " - " + str(self.circle.code)
+
 class CircleMember_vote_in(models.Model):
-    candidate   = models.ForeignKey(CircleMember,related_name='voteIns', on_delete=models.CASCADE) #
+    recipient   = models.ForeignKey(GroupMember,related_name='voteIns', on_delete=models.CASCADE, default=False)
     voter       = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at  = models.DateTimeField(auto_now_add=True)
     updated_at  = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
         super(CircleMember_vote_in, self).save(*args, **kwargs)
-        self.candidate.check_for_majority()
+        self.recipient.check_for_majority()
 
     def __str__(self):
-        return str(self.voter) + '-'+ str(self.candidate)
+        return str(self.voter) + '-'+ str(self.recipient)
 
 class CircleMember_vote_out(models.Model):
-    candidate   = models.ForeignKey(CircleMember, related_name='voteOuts', on_delete=models.CASCADE)
+    candidate   = models.ForeignKey(GroupMember, related_name='voteOuts', on_delete=models.CASCADE)
     voter       = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at  = models.DateTimeField(auto_now_add=True)
     updated_at  = models.DateTimeField(auto_now=True)
@@ -138,8 +181,8 @@ class CircleMember_vote_out(models.Model):
     def __str__(self):
         return str(self.voter) + '-'+str(self.candidate)
 
-class CircleMember_put_forward(models.Model):
-    recipient   = models.ForeignKey(CircleMember,related_name='putForward', on_delete=models.CASCADE) # recipient
+class CircleMember_put_farward(models.Model):
+    recipient   = models.ForeignKey(GroupMember,related_name='putFarward', on_delete=models.CASCADE) # recipient
     voter       = models.ForeignKey(User, on_delete=models.CASCADE)  #
     created_at  = models.DateTimeField(auto_now_add=True)
     updated_at  = models.DateTimeField(auto_now=True)
@@ -151,18 +194,6 @@ class CircleMember_put_forward(models.Model):
     def __str__(self):
         return str(self.voter) + '-'+str(self.recipient)
 
-
-class CircleBackNForth(models.Model):
-    circle = models.ForeignKey(Circle, on_delete=models.CASCADE)
-    sender = models.ForeignKey(User, on_delete=models.CASCADE)
-    date = models.DateTimeField(auto_created=True, auto_now_add=True)
-    message = models.TextField(max_length=5000)
-
-
-    def __str__(self) -> str:
-        return str(self.sender.username) + " - " + str(self.circle.code)
-
-
 class CircleStatus(models.Model):
     message = models.TextField()
     is_candidate = models.BooleanField(default=False)
@@ -172,13 +203,3 @@ class CircleStatus(models.Model):
 
     def __str__(self) -> str:
         return str(self.message)
-
-
-class CircleMemberContact(models.Model):
-    circle = models.ForeignKey(Circle, on_delete=models.CASCADE)
-    member = models.ForeignKey(CircleMember, on_delete=models.CASCADE)
-    email = models.CharField(max_length=250)
-    phone = models.CharField(max_length=250)
-
-    def __str__(self) -> str:
-        return str(self.member.user.username) + " - " + str(self.circle.code)

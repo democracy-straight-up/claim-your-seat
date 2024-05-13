@@ -122,5 +122,5 @@ class JoinCircleMemberForm(forms.ModelForm):
 
 
     class Meta:
-        model = voteModels.CircleMember
+        model = voteModels.GroupMember
         fields = ['invitationCode']

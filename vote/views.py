@@ -1,6 +1,6 @@
 from rest_framework.views import APIView
 from .serializers import CircleMemberContactSerializer
-from .models import CircleMemberContact
+from .models import GroupMemberContact
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
@@ -165,11 +165,11 @@ def voterPage(request):
 
 # this the home page of a circle
 class HouseKeepingCircle(LoginRequiredMixin,DetailView):
-    model = voteModels.Circle
+    model = voteModels.Group
     template_name = 'vote/HouseKeeping.html'
 
     def post(self,request, *args, **kwargs):
-        circle = voteModels.Circle.objects.get(code = request.POST['circle'])
+        circle = voteModels.Group.objects.get(code = request.POST['circle'])
         circle.invitation_code = circle_invitation_generator()
         circle.save()
         messages.success(request, "The circle key has been updated.", extra_tags="success")
@@ -466,7 +466,7 @@ def putForward(request):
 
 
 class Circle_members(LoginRequiredMixin, DetailView):
-    model = voteModels.Circle
+    model = voteModels.Group
     template_name = 'vote/circle_members.html'
 
 
@@ -497,7 +497,7 @@ def creating():
 
 
 class Delete_CIRCLE(LoginRequiredMixin, DeleteView):
-    model = voteModels.Circle
+    model = voteModels.Group
     template_name = "vote/circle_remove.html"
     success_url = '/home'
 

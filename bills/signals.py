@@ -3,14 +3,14 @@ from django.dispatch import receiver
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from .models import BillVote
-from vote.models import CircleMember
+from vote.models import GroupMember
 
 @receiver(post_save, sender=BillVote)
 def order_offer_observer(sender, instance, created, **kwargs):
     if not created:
         voter = instance.voter.username
         bill_id = instance.bill.number
-        pm_obj = CircleMember.objects.get(user__username=voter)
+        pm_obj = GroupMember.objects.get(user__username=voter)
         circleName = pm_obj.circle.code
         is_delegate = pm_obj.is_delegate
         room_group_name = f'bill_{bill_id}_circle_{circleName}'

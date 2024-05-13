@@ -221,7 +221,7 @@ class CreateCIRCLE(APIView):
                 return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
 
             # create a circle
-            circle = voteModels.Circle.objects.create(
+            circle = voteModels.Group.objects.create(
                 code=circle_code_generator(),
                 district=district,
                 invitation_code=circle_invitation_generator()
@@ -234,7 +234,7 @@ class CreateCIRCLE(APIView):
             user.users.save()
 
             # add the user to circle member as delegate
-            circle_member_obj = voteModels.CircleMember.objects.create(
+            circle_member_obj = voteModels.GroupMember.objects.create(
                 user=user,
                 circle=circle,
                 is_delegate=True,
@@ -270,14 +270,14 @@ class UserView(APIView):
             else:
                 messages = "user is required."
                 return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
-            
+
             # check if the user is a member of a circle
             circle_members = voteModels.CircleMember.objects.filter(user_id=user.id).first()
 
             if circle_members:
                 # get the circle of the user
                 circle = circle_members.circle
-                
+
                 # check if the user is a delegate
                 if user.users.userType == 1:
                     return JsonResponse({
@@ -497,7 +497,7 @@ class CircleMemeber_putforward(generics.ListAPIView):
 
 class CircleList(viewsets.ModelViewSet):
     serializer_class = apiSerializers.CircleSerializer
-    queryset = voteModels.Circle.objects.all()
+    queryset = voteModels.Group.objects.all()
     pagination_class = CustomPagination
     permission_classes = [AllowAny]
 

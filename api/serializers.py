@@ -196,7 +196,7 @@ class CircleSerializer(serializers.ModelSerializer):
     is_active = serializers.ReadOnlyField()
 
     class Meta:
-        model = voteModels.Circle
+        model = voteModels.Group
         fields = "__all__"
 
 
@@ -226,7 +226,7 @@ class CIRCLEMemberSer(serializers.ModelSerializer):
     putForward = serializers.StringRelatedField(many=True)
 
     class Meta:
-        model = voteModels.CircleMember
+        model = voteModels.GroupMember
         fields = ["is_delegate", "member_number", "id", 'user',
                   'circle', "is_member", 'voteIns', 'voteOuts', 'putForward']
 
@@ -255,10 +255,10 @@ class CircleMemberSerializer(serializers.ModelSerializer):
     circle = CircleSerializer()
 
     class Meta:
-        model = voteModels.CircleMember
+        model = voteModels.GroupMember
         fields = ['id', 'is_member', 'is_delegate',
-                  'date_joined', 'date_updated', 'circle', 'user', 'count_vote_in',
-                  'count_vote_out', 'count_put_forward']
+                  'date_joined', 'date_updated', 'group', 'user', 'count_vote_in',
+                  'count_vote_out', 'count_put_farward']
 
 
 class VoterPageSerializer(serializers.HyperlinkedModelSerializer):
