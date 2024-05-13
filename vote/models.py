@@ -136,25 +136,6 @@ class CircleBackNForth(models.Model):
     def __str__(self) -> str:
         return str(self.sender.username) + " - " + str(self.circle.code)
 
-
-class GroupMemberContact(models.Model):
-    group = models.ForeignKey(Group, on_delete=models.CASCADE)
-    member = models.ForeignKey(GroupMember, on_delete=models.CASCADE)
-    email = models.CharField(max_length=250)
-    phone = models.CharField(max_length=250)
-
-    def __str__(self) -> str:
-        return str(self.member.user.username) + " - " + str(self.circle.code)
-class CircleBackNForth(models.Model):
-    circle = models.ForeignKey(Group, on_delete=models.CASCADE)
-    sender = models.ForeignKey(User, on_delete=models.CASCADE)
-    date = models.DateTimeField(auto_created=True, auto_now_add=True)
-    message = models.TextField(max_length=5000)
-    handle = models.PositiveSmallIntegerField(default=0)
-
-    def __str__(self) -> str:
-        return str(self.sender.username) + " - " + str(self.circle.code)
-
 class CircleMember_vote_in(models.Model):
     recipient   = models.ForeignKey(GroupMember,related_name='voteIns', on_delete=models.CASCADE, default=False)
     voter       = models.ForeignKey(User, on_delete=models.CASCADE)
