@@ -202,7 +202,7 @@ class CircleSerializer(serializers.ModelSerializer):
 
 class CircleMember_VoteInSer(serializers.ModelSerializer):
     class Meta:
-        model = voteModels.CircleMember_vote_in
+        model = voteModels.GroupMember_vote_in
         fields = '__all__'
 
 
@@ -214,22 +214,8 @@ class CircleMember_put_forwardSer(serializers.ModelSerializer):
 
 class CircleMember_VoteOutSer(serializers.ModelSerializer):
     class Meta:
-        model = voteModels.CircleMember_vote_out
+        model = voteModels.GroupMember_vote_out
         fields = '__all__'
-
-
-class CIRCLEMemberSer(serializers.ModelSerializer):
-    user = UserSerializer()
-    circle = CircleSerializer()
-    voteIns = serializers.StringRelatedField(many=True)
-    voteOuts = serializers.StringRelatedField(many=True)
-    putForward = serializers.StringRelatedField(many=True)
-
-    class Meta:
-        model = voteModels.GroupMember
-        fields = ["is_delegate", "member_number", "id", 'user',
-                  'circle', "is_member", 'voteIns', 'voteOuts', 'putForward']
-
 
 # This serializer is being used in Circle consumer file for circle members
 class Userial(serializers.ModelSerializer):
@@ -249,16 +235,25 @@ class User_Serializer(serializers.ModelSerializer):
         fields = ["id", "username", "email", "date_joined", "users"]
 
 
-# this serializer is being used in Circle consumer file for circle members
-class CircleMemberSerializer(serializers.ModelSerializer):
+class CIRCLEMemberSer(serializers.ModelSerializer):
     user = User_Serializer()
-    circle = CircleSerializer()
+    group = CircleSerializer()
 
     class Meta:
         model = voteModels.GroupMember
         fields = ['id', 'is_member', 'is_delegate',
-                  'date_joined', 'date_updated', 'group', 'user', 'count_vote_in',
-                  'count_vote_out', 'count_put_farward']
+                  'date_joined', 'date_updated', 'group', 'user']
+
+
+# this serializer is being used in Circle consumer file for circle members
+class CircleMemberSerializer(serializers.ModelSerializer):
+    user = User_Serializer()
+    group = CircleSerializer()
+
+    class Meta:
+        model = voteModels.GroupMember
+        fields = ['id', 'is_member', 'is_delegate',
+                  'date_joined', 'date_updated', 'group', 'user']
 
 
 class VoterPageSerializer(serializers.HyperlinkedModelSerializer):

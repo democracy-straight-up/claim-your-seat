@@ -479,7 +479,7 @@
       },
       "Ou0xisJBS9jxHCkWoFODO": {
         "id": "Ou0xisJBS9jxHCkWoFODO",
-        "name": "vote_circlemember_vote_in",
+        "name": "vote_groupmember_vote_in",
         "comment": "",
         "columnIds": [
           "PZkDI33xDD8EXCT49_bIS",
@@ -559,7 +559,7 @@
       },
       "h1f2XC3smohd0BBb9KWcK": {
         "id": "h1f2XC3smohd0BBb9KWcK",
-        "name": "vote_circlemember_vote_out",
+        "name": "vote_groupmember_vote_out",
         "comment": "",
         "columnIds": [
           "VnXclEbZ2Va5dSdZVytDS",

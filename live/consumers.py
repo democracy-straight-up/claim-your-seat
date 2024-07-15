@@ -293,7 +293,7 @@ class CircleBackNForth(AsyncWebsocketConsumer):
         """ Get the B&f entries and paginate them in 10 entries per page.
         The entries are sorted from the latest to the oldest.
         """
-        circle = voteModels.Circle.objects.get(code = self.circleName)
+        circle = voteModels.Group.objects.get(code = self.circleName)
         if circle:
             objects = apiSerializers.CircleBackNForthSerializer(
                 voteModels.CircleBackNForth.objects.filter(circle=circle).order_by('-date'), many=True

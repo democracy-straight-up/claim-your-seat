@@ -3,7 +3,7 @@
     <ul class="a">
         <li><a href="#">List of Delegates</a></li>
         <li><a href="#">Back-and-Forth</a></li>
-        <li><a href="#">Member Contact Page</a></li>
+        <li><a href="#">Contact Circle Members</a></li>
         <li><a href="#">Circle Housekeeping Page</a></li>
     </ul>
 </div>
@@ -13,7 +13,7 @@
     {% if circle.is_delegate %}
     <div class="row text-center">
         <div class="col-sm-12 col-md-6 col-lg-6">
-            <a class="btn btn-primary m-2" href="{% url 'circle' pk=circle.circle.pk %}">My circle</a>
+            <a class="btn btn-primary m-2" href="{% url 'circle' pk=circle.group_id %}">My circle</a>
         </div>
         <div class="col-sm-12 col-md-6 col-lg-6">
             <a class="btn btn-primary m-2" href="#">Join First Link</a>
@@ -26,15 +26,20 @@
         </div>
     </div>
     {%else%}
-    <!-- check if the user is just a member of the circle -->
     <div class="row text-center">
-        <div class="col-sm-12 col-md-6 col-lg-6">
-            <a class="btn btn-primary m-2" href="{% url 'circle' pk=circle.circle.pk %}">My circle</a>
-        </div>
-        <div class="col-sm-12 col-md-6 col-lg-6">
-            <a class="btn btn-primary m-2" href="#">Back-and-Forth</a>
-        </div>
+    <!-- check if the user is just a member of the circle -->
+    <div class="col-sm-12 col-md-6 col-lg-6">
+        {% if circle and circle.circle %}
+            <a class="btn btn-primary m-2" href="{% url 'circle' pk=circle.pk %}">My circle</a>
+        {% else %}
+            <p>You are not a member of any circle.</p>
+        {% endif %}
     </div>
+    <div class="col-sm-12 col-md-6 col-lg-6">
+        <a class="btn btn-primary m-2" href="#">Back-and-Forth</a>
+    </div>
+</div>
+
     {%endif%}
 </div>
 <!-- the third col. contains comoon links-->

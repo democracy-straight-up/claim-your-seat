@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+
 # District model (table) is for listing of all US districts
 class Districts(models.Model):
     name = models.CharField(max_length=60, null=True, blank=True)
@@ -13,7 +14,6 @@ class Districts(models.Model):
     class Meta:
         ordering = ['code']
 
-
     def __str__(self):
         return str(self.code)
 
@@ -22,29 +22,32 @@ class Districts(models.Model):
 # firstName, lastName,userName, email, password, isActive,
 class Users(models.Model):
     # the username is districtCode + 5-digit entry code
-    user        = models.OneToOneField(User, on_delete=models.CASCADE)
-    legalName   = models.CharField(max_length=60,null=True,blank=True)
-    district    = models.ForeignKey(Districts, on_delete=models.DO_NOTHING, null=True, blank=True)
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    legalName = models.CharField(max_length=60, null=True, blank=True)
+    district = models.ForeignKey(Districts, on_delete=models.DO_NOTHING, null=True, blank=True)
     # i am registered to vote in this district
-    is_reg      = models.BooleanField(default=False)
+    is_reg = models.BooleanField(default=False)
     # this is for if the user is registered with conditional.
-    verificationScore = models.SmallIntegerField(default=0,null=True, blank=True)
-    address     = models.CharField(max_length=150, null=True, blank=True)
+    verificationScore = models.SmallIntegerField(default=0, null=True, blank=True)
+    address = models.CharField(max_length=150, null=True, blank=True)
     # userType is the from 0 to 5.
-    userType    = models.PositiveSmallIntegerField(default=0)
+    userType = models.PositiveSmallIntegerField(default=0)
     VVAT_Number = models.CharField(max_length=15, null=True, blank=True)
 
     def __str__(self):
         return str(self.user.username)
 
+
 import random
+
+
 class Group(models.Model):
-    code            = models.CharField(max_length=5, unique=True)
-    district        = models.ForeignKey(Districts, on_delete=models.CASCADE)
-    created_at      = models.DateTimeField(auto_now_add=True)
-    updated_at      = models.DateTimeField(auto_now=True)
+    code = models.CharField(max_length=5, unique=True)
+    district = models.ForeignKey(Districts, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     invitation_code = models.CharField(max_length=10)
-    FDel_election   =  models.BooleanField(default=False)
+    FDel_election = models.BooleanField(default=False)
     group_type = models.IntegerField()
     parent_group = models.ForeignKey('self', on_delete=models.CASCADE)
 
@@ -54,21 +57,21 @@ class Group(models.Model):
     @property
     def is_active(self):
         # check if the member <= 12 and return true
-        if 6 <= self.circlemember_set.filter(is_member = True).count() <= 12:
+        total_members = GroupMember.objects.filter(group=self).filter(is_member=True).count()
+        if 6 <= total_members <= 12:
             return True
         return False
 
+
 class GroupMember(models.Model):
-    # user = models.IntegerField()
-    # group = models.IntegerField()
-    user    = models.ForeignKey(User, on_delete=models.CASCADE)
-    group     = models.ForeignKey(Group, on_delete=models.CASCADE)
-    is_member       = models.BooleanField(default=False)
-    date_joined     = models.DateTimeField(auto_now_add=True)
-    date_updated    = models.DateTimeField(auto_now=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    group = models.ForeignKey(Group, on_delete=models.CASCADE)
+    is_member = models.BooleanField(default=False)
+    date_joined = models.DateTimeField(auto_now_add=True)
+    date_updated = models.DateTimeField(auto_now=True)
     member_type = models.CharField(max_length=10)
-    is_delegate     = models.BooleanField(default=False)
-    member_number   = models.PositiveSmallIntegerField(null=True, blank=True)
+    is_delegate = models.BooleanField(default=False)
+    member_number = models.PositiveSmallIntegerField(null=True, blank=True)
 
     def __str__(self):
         return str(self.user.username)
@@ -77,7 +80,7 @@ class GroupMember(models.Model):
         ordering = ['-is_delegate', 'date_joined']
 
     def check_for_majority(self):
-        total_members = GroupMember.objects.filter(group=self.group).filter(is_member = True).count()
+        total_members = GroupMember.objects.filter(group=self.group).filter(is_member=True).count()
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_vote_in() >= majority_threshold:
             self.is_member = True
@@ -86,7 +89,7 @@ class GroupMember(models.Model):
             CircleMember_vote_in.objects.filter(candidate=self).delete()
 
     def check_for_removing(self):
-        total_members = GroupMember.objects.filter(group=self.group).filter(is_member = True).count()
+        total_members = GroupMember.objects.filter(group=self.group).filter(is_member=True).count()
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_vote_out() >= majority_threshold:
             self.user.users.userType = 0
@@ -95,11 +98,11 @@ class GroupMember(models.Model):
             # set the deleted user.users userType to 0
 
     def check_put_farward(self):
-        total_members = GroupMember.objects.filter(group=self.group).filter(is_member = True).count()
+        total_members = GroupMember.objects.filter(group=self.group).filter(is_member=True).count()
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_put_forward() >= majority_threshold:
             # find the current delegate and set is_delegate false.
-            current_delegate = GroupMember.objects.filter(group=self.group).filter(is_delegate = True).first()
+            current_delegate = GroupMember.objects.filter(group=self.group).filter(is_delegate=True).first()
             current_delegate.is_delegate = False
             current_delegate.save()
 
@@ -111,9 +114,11 @@ class GroupMember(models.Model):
             CircleMember_put_forward.objects.filter(recipient=self).delete()
 
     def count_vote_in(self):
-        return CircleMember_vote_in.objects.filter(recipient=self).count()
+        return GroupMember_vote_in.objects.filter(recipient=self).count()
+
     def count_vote_out(self):
-        return CircleMember_vote_out.objects.filter(candidate=self).count()
+        return GroupMember_vote_out.objects.filter(candidate=self).count()
+
     def count_put_forward(self):
         return CircleMember_put_forward.objects.filter(recipient=self).count()
 
@@ -126,6 +131,8 @@ class GroupMemberContact(models.Model):
 
     def __str__(self) -> str:
         return str(self.member.user.username) + " - " + str(self.circle.code)
+
+
 class CircleBackNForth(models.Model):
     circle = models.ForeignKey(Group, on_delete=models.CASCADE)
     sender = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -136,51 +143,82 @@ class CircleBackNForth(models.Model):
     def __str__(self) -> str:
         return str(self.sender.username) + " - " + str(self.circle.code)
 
-class CircleMember_vote_in(models.Model):
-    recipient   = models.ForeignKey(GroupMember,related_name='voteIns', on_delete=models.CASCADE, default=False)
-    voter       = models.ForeignKey(User, on_delete=models.CASCADE)
-    created_at  = models.DateTimeField(auto_now_add=True)
-    updated_at  = models.DateTimeField(auto_now=True)
+
+# class CircleMember_vote_in(models.Model):
+#     recipient = models.ForeignKey(GroupMember, related_name='voteIns', on_delete=models.CASCADE)
+#     voter = models.ForeignKey(User, on_delete=models.CASCADE)
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     updated_at = models.DateTimeField(auto_now=True)
+#
+#     def save(self, *args, **kwargs):
+#         super(CircleMember_vote_in, self).save(*args, **kwargs)
+#         self.recipient.check_for_majority()
+#
+#     def __str__(self):
+#         return str(self.voter) + '-' + str(self.recipient)
+
+
+class GroupMember_vote_in(models.Model):
+    recipient = models.ForeignKey(GroupMember, related_name='voteIns', on_delete=models.CASCADE)
+    voter = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
-        super(CircleMember_vote_in, self).save(*args, **kwargs)
+        super(GroupMember_vote_in, self).save(*args, **kwargs)
         self.recipient.check_for_majority()
 
     def __str__(self):
-        return str(self.voter) + '-'+ str(self.recipient)
+        return str(self.voter) + '-' + str(self.recipient)
 
-class CircleMember_vote_out(models.Model):
-    candidate   = models.ForeignKey(GroupMember, related_name='voteOuts', on_delete=models.CASCADE)
-    voter       = models.ForeignKey(User, on_delete=models.CASCADE)
-    created_at  = models.DateTimeField(auto_now_add=True)
-    updated_at  = models.DateTimeField(auto_now=True)
+
+# class CircleMember_vote_out(models.Model):
+#     candidate = models.ForeignKey(GroupMember, related_name='voteOuts', on_delete=models.CASCADE)
+#     voter = models.ForeignKey(User, on_delete=models.CASCADE)
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     updated_at = models.DateTimeField(auto_now=True)
+#
+#     def save(self, *args, **kwargs):
+#         super(CircleMember_vote_out, self).save(*args, **kwargs)
+#         self.candidate.check_for_removing()
+#
+#     def __str__(self):
+#         return str(self.voter) + '-' + str(self.candidate)
+
+class GroupMember_vote_out(models.Model):
+    candidate = models.ForeignKey(GroupMember, related_name='voteOuts', on_delete=models.CASCADE)
+    voter = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
-        super(CircleMember_vote_out, self).save(*args, **kwargs)
+        super(GroupMember_vote_out, self).save(*args, **kwargs)
         self.candidate.check_for_removing()
 
     def __str__(self):
-        return str(self.voter) + '-'+str(self.candidate)
+        return str(self.voter) + '-' + str(self.candidate)
 
 class CircleMember_put_forward(models.Model):
-    recipient   = models.ForeignKey(GroupMember,related_name='putForward', on_delete=models.CASCADE, default=False) # recipient
-    voter       = models.ForeignKey(User, on_delete=models.CASCADE)  #
-    created_at  = models.DateTimeField(auto_now_add=True)
-    updated_at  = models.DateTimeField(auto_now=True)
+    recipient = models.ForeignKey(GroupMember, related_name='putForward', on_delete=models.CASCADE,
+                                  default=False)  # recipient
+    voter = models.ForeignKey(User, on_delete=models.CASCADE)  #
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
         super(CircleMember_put_forward, self).save(*args, **kwargs)
         self.recipient.check_put_forward()
 
     def __str__(self):
-        return str(self.voter) + '-'+str(self.recipient)
+        return str(self.voter) + '-' + str(self.recipient)
+
 
 class CircleStatus(models.Model):
     message = models.TextField()
     is_candidate = models.BooleanField(default=False)
     is_member = models.BooleanField(default=False)
     is_delegate = models.BooleanField(default=False)
-    is_activeCircle =  models.BooleanField(default=False)
+    is_activeCircle = models.BooleanField(default=False)
 
     def __str__(self) -> str:
         return str(self.message)

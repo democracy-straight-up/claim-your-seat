@@ -19,7 +19,6 @@ pymysql.install_as_MySQLdb()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
@@ -29,8 +28,10 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '192.168.0.130', '192.168.0.132', 'dsup-voting-portal.herokuapp.com', '127.0.0.1', 'dsup.herokuapp.com', 'localhost:8000',
-                 'dsu-front.herokuapp.com', 'dsu-front.herokuapp.com:8000', 'dsu-front.herokuapp.com:8080', 'dsu-front.herokuapp.com:', 'claim-your-seat.herokuapp.com']
+ALLOWED_HOSTS = ['localhost', '192.168.0.130', '192.168.0.132', 'dsup-voting-portal.herokuapp.com', '127.0.0.1',
+                 'dsup.herokuapp.com', 'localhost:8000', 'localhost:3000', '127.0.0.1:8000', '127.0.0.1:3000',
+                 'dsu-front.herokuapp.com', 'dsu-front.herokuapp.com:8000', 'dsu-front.herokuapp.com:8080',
+                 'dsu-front.herokuapp.com:', 'claim-your-seat.herokuapp.com']
 
 # Application definition
 INSTALLED_APPS = [
@@ -44,33 +45,36 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'api.apps.ApiConfig',
     'vote.apps.VoteConfig',
-    'rest_framework',
     'rest_framework_simplejwt',
     'drf_spectacular',
     'live.apps.LiveConfig',
     'bills.apps.BillsConfig',
     'django_extensions',
-
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     "whitenoise.middleware.WhiteNoiseMiddleware",
-    'corsheaders.middleware.CorsMiddleware',
 ]
+
+CORS_ORIGIN_ALLOW_ALL = True
+
+CSRF_TRUSTED_ORIGINS = ['https://*.localhost', 'https://127.0.0.1']
+
 
 ROOT_URLCONF = 'dsu.urls'
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'static')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -85,7 +89,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'dsu.wsgi.application'
 ASGI_APPLICATION = "dsu.asgi.application"
-
 
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
@@ -110,19 +113,19 @@ else:
     print("runnig the app in production with main database")
     DATABASES = {
         'default': {
-                'ENGINE': os.environ.get('DB_ENGINE'),
-                'NAME':  os.environ.get('DB_NAME'),
-                'USER': os.environ.get('DB_USER'),
-                'PASSWORD': os.environ.get('DB_PASSWORD'),
-                'HOST': os.environ.get('DB_HOST'),
-                'PORT': os.environ.get('DB_PORT'),
-                'OPTIONS': {
+            'ENGINE': os.environ.get('DB_ENGINE'),
+            'NAME': os.environ.get('DB_NAME'),
+            'USER': os.environ.get('DB_USER'),
+            'PASSWORD': os.environ.get('DB_PASSWORD'),
+            'HOST': os.environ.get('DB_HOST'),
+            'PORT': os.environ.get('DB_PORT'),
+            'OPTIONS': {
                 'init_command': 'SET sql_mode="STRICT_TRANS_TABLES"',
-                }
             }
         }
+    }
 
-    print("REDIS_URL: ",os.environ.get('REDIS_URL'))
+    print("REDIS_URL: ", os.environ.get('REDIS_URL'))
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
@@ -132,7 +135,6 @@ else:
             # "ROUTING": "chat.routing.channel_routing",
         },
     }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
@@ -152,7 +154,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/4.0/topics/i18n/
 
@@ -164,12 +165,13 @@ USE_I18N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 
 STATIC_URL = '/static/'  # / added by siva
-
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static/static'),
+]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
@@ -191,19 +193,20 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'ceewa30@gmail.com'
 EMAIL_HOST_PASSWORD = 'lphxoimlvsuwhynz'
 
-
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ]
 }
 
-
 from datetime import timedelta
+
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
@@ -215,7 +218,7 @@ SIMPLE_JWT = {
 
 # this is for  the backend jwt auth.
 JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
-CORS_ALLOW_ALL_ORIGINS = True # If this is used then `CORS_ALLOWED_ORIGINS` will not have any effect
+CORS_ALLOW_ALL_ORIGINS = True  # If this is used then `CORS_ALLOWED_ORIGINS` will not have any effect
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = ['*']
 CORS_ORIGIN_WHITELIST = ['http://localhost:8080', 'http://localhost',

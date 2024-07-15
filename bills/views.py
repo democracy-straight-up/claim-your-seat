@@ -1,3 +1,6 @@
+from django.core.cache import cache
+from rest_framework.response import Response
+
 from bills import models as billModels
 from bills import serializers as billSerializers
 from rest_framework import viewsets
@@ -12,6 +15,7 @@ class CustomPagination(PageNumberPagination):
     page_size = 10  # Number of items per page
     page_size_query_param = 'page_size'  # Allows the client to override the page size
     max_page_size = 100  # Maximum page size to prevent abuse
+
 
 class BillViewSet(viewsets.ModelViewSet):
     """endpoints for Bills
@@ -29,6 +33,32 @@ class BillViewSet(viewsets.ModelViewSet):
     serializer_class = billSerializers.BillSerializer
     pagination_class = CustomPagination
     permission_classes = [AllowAny]
+
+    def list(self, request, *args, **kwargs):
+        cache_key = 'bill_list'
+        cache_time = 60 * 15  # 缓存时间，单位是秒
+        data = cache.get(cache_key)
+
+        if not data:
+            response = super().list(request, *args, **kwargs)
+            data = response.data
+            cache.set(cache_key, data, cache_time)
+        return Response(data)
+
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        cache.delete('bill_list')
+        return response
+
+    def update(self, request, *args, **kwargs):
+        response = super().update(request, *args, **kwargs)
+        cache.delete('bill_list')
+        return response
+
+    def destroy(self, request, *args, **kwargs):
+        response = super().destroy(request, *args, **kwargs)
+        cache.delete('bill_list')
+        return response
 
 
 class BillVoteViewSet(viewsets.ModelViewSet):

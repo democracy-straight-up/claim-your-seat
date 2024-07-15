@@ -37,7 +37,7 @@ class CircleConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def get_members(self):
-        MemberInstances = voteModels.CircleMember.objects.filter(circle__code=self.circle_name)
+        MemberInstances = voteModels.GroupMember.objects.filter(circle__code=self.circle_name)
         members = serializers.CircleMemberSerializer(MemberInstances, many=True)
         return members.data
 
@@ -47,10 +47,11 @@ class CircleConsumer(AsyncWebsocketConsumer):
         make sure to not forget about the mejority votes to make
         the candidate a member
         """
+        global voter
         try:
             voter = User.objects.get(username = data['voter'])
-            candidate = voteModels.CircleMember.objects.get(pk = data['candidate'])
-            voteModels.CircleMember_vote_in.objects.update_or_create(voter=voter, candidate=candidate)
+            candidate = voteModels.GroupMember.objects.get(pk = data['candidate'])
+            voteModels.GroupMember_vote_in.objects.update_or_create(voter=voter, candidate=candidate)
             vote = serializers.UserSerializer(voter)
             return {"status":"success","action":'vote_in', "message":"voted successfully.", "user":vote.data}
         except:
@@ -62,10 +63,11 @@ class CircleConsumer(AsyncWebsocketConsumer):
         """ Vote for member out. If the majority of the members agree on removing this member,
         she/he shall be removed.
         """
+        global voter
         try:
             voter = User.objects.get(username = data['voter'])
-            member = voteModels.CircleMember.objects.get(pk = data['member'])
-            voteModels.CircleMember_vote_out.objects.update_or_create(voter=voter, candidate=member)
+            member = voteModels.GroupMember.objects.get(pk = data['member'])
+            voteModels.GroupMember_vote_out.objects.update_or_create(voter=voter, candidate=member)
             vote = serializers.UserSerializer(voter)
             return {"status":"success","action":'vote_out', "message":"voted out successfully.", "user":vote.data}
         except:
@@ -76,9 +78,10 @@ class CircleConsumer(AsyncWebsocketConsumer):
     def remove_candidate(self, data):
         """ remove the candidate or members from this circle
         """
+        global remover
         try:
             remover = User.objects.get(username = data['remover'])
-            member = voteModels.CircleMember.objects.get(pk = data['candidate'])
+            member = voteModels.GroupMember.objects.get(pk = data['candidate'])
             # set back the userType to 0 while removing.
             member.user.users.userType = 0
             member.user.users.save()
@@ -94,9 +97,10 @@ class CircleConsumer(AsyncWebsocketConsumer):
     def put_forward(self, data):
         """ change the circle gelegation.
         """
+        global voter
         try:
             voter = User.objects.get(username = data['voter'])
-            member = voteModels.CircleMember.objects.get(pk = data['member'])
+            member = voteModels.GroupMember.objects.get(pk = data['member'])
             voteModels.CircleMember_put_forward.objects.update_or_create(voter=voter, recipient=member)
             vote = serializers.UserSerializer(voter)
             return {"status":"success","action":'put_forward', "message":"voted for gelegation.", "user":vote.data}
@@ -109,7 +113,7 @@ class CircleConsumer(AsyncWebsocketConsumer):
         """removing this Circle."""
         try:
             # this is the only member which is fdel as well. same as voter
-            member = voteModels.CircleMember.objects.get(pk = data['member'])
+            member = voteModels.GroupMember.objects.get(pk = data['member'])
             # get the circle
             if member.is_delegate and member.circle.circlemember_set.all().count() == 1:
                 member.circle.delete()
@@ -123,7 +127,7 @@ class CircleConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def invitation_key(self):
         try:
-            circle = voteModels.Circle.objects.get(code=self.circle_name)
+            circle = voteModels.Group.objects.get(code=self.circle_name)
             circle.invitation_code = apiViews.circle_invitation_generator()
             circle.save()
             serialized = serializers.CircleSerializer(circle)

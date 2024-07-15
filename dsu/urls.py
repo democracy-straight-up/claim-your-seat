@@ -24,8 +24,8 @@ from django.urls import path, include
 
 
 urlpatterns = [
-    path('',include('vote.urls')),
-    path('api/',include('api.urls')),
+    path('', include('vote.urls')),
+    path('api/', include('api.urls')),
     path('api/schema/', SpectacularAPIView.as_view(), name='api-schema'),
     path(
         'api/docs/',

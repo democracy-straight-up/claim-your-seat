@@ -27,12 +27,12 @@ admin.site.register(models.GroupMember, CircleMemberAdmin)
 class CircleMember_vote_inAdmin(admin.ModelAdmin):
     list_display = ['recipient', 'voter']
     list_display_links = ["recipient", "voter"]
-admin.site.register(models.CircleMember_vote_in, CircleMember_vote_inAdmin)
+admin.site.register(models.GroupMember_vote_in, CircleMember_vote_inAdmin)
 
 class CircleMember_vote_outAdmin(admin.ModelAdmin):
     list_display = ['candidate', 'voter']
     list_display_links = ["candidate", "voter"]
-admin.site.register(models.CircleMember_vote_out, CircleMember_vote_outAdmin)
+admin.site.register(models.GroupMember_vote_out, CircleMember_vote_outAdmin)
 
 class CircleMember_put_forwardAdmin(admin.ModelAdmin):
     list_display = ['recipient', 'voter']
