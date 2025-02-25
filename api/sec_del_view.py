@@ -6,7 +6,7 @@ from vote.models import Districts
 from rest_framework.response import Response
 from rest_framework import status
 from django.http import JsonResponse
-
+from rest_framework.decorators import action
 
 class SecDelViewSet(viewsets.ModelViewSet):
     queryset = apiModels.SecDelModel.objects.all()
@@ -44,8 +44,21 @@ class SecDelViewSet(viewsets.ModelViewSet):
             return Response({"message:": messages}, status=status.HTTP_400_BAD_REQUEST)
         
 
-
-
 class SecDelMembersViewSet(viewsets.ModelViewSet):
     queryset = apiModels.SecDelMembers.objects.all()
     serializer_class = apiSerializer.SecDelMembersSerializer
+
+    @action(detail=False, methods=['POST'])
+    def join_invite_key(self,request):
+        try:
+            sec_del = apiModels.SecDelModel.objects.get(invitation_key=request.data['inviteKey'])
+            user = User.objects.get(username=request.data['user'])
+            apiModels.SecDelMembers.objects.create(user=user, sec_del=sec_del)
+            # get the members list 
+            members = apiModels.SecDelMembers.objects.filter(sec_del=sec_del)
+            serializer = self.get_serializer(members, many=True)
+            return Response(serializer.data)
+        except apiModels.SecDelModel.DoesNotExist:
+            return Response({"message": "f-link not found."}, status=status.HTTP_404_NOT_FOUND)
+        except apiModels.SecDelMembers.DoesNotExist:
+            return Response({"message": "f-link members not found."}, status=status.HTTP_404_NOT_FOUND)

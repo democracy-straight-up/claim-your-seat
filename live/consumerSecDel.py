@@ -12,7 +12,7 @@ class SecDelConsumer(AsyncWebsocketConsumer):
         self.sec_del_name = self.scope['url_route']['kwargs']['sec_del_name']
         self.user_name = self.scope['url_route']['kwargs']['user_name']
         self.room_name =  self.sec_del_name
-        
+
         # Join room group
         await self.channel_layer.group_add(self.room_name, self.channel_name)
 
@@ -42,25 +42,57 @@ class SecDelConsumer(AsyncWebsocketConsumer):
         members = sec_del_ser.SecDelMembersSerializer(memberslist, many=True)
         return members.data
 
-    async def receive(self, text_data):
-        """ Check messages. If message is for voting in a candidate
-        then vote the candidate.
-        """
-        data = json.loads(text_data)
+    
+    @staticmethod
+    @database_sync_to_async
+    def voteIn(candidate):  
+        member = apiModels.SecDelMembers.objects.get(pk = candidate)
+        member.vote_in_count += 1
+        member.save()
+        return {"status":"success", "message":"voted in"}
+    
+    @staticmethod
+    @database_sync_to_async
+    def removeCandidate(candidate):  
+        apiModels.SecDelMembers.objects.get(pk = candidate).delete()
+        return {"status":"success", "message":"removed"}
 
+    async def receive(self, text_data):
+        """ Check messages. If message is for voting in a candidate then vote the candidate. """
+        data = json.loads(text_data)
+        print("data received: ", data)
         match data["action"]:
+            case 'remove_candidate':
+                candidate = data['candidate']
+                instance = await self.removeCandidate(candidate)
+                if instance['status'] == "success":
+                    await self.channel_layer.group_send(self.room_name, {
+                        'type': 'send_members',
+                        'members_list': {'status':"success", 'action':'member_listing', 'member_list': await self.get_members()} ,
+                        }
+                    )
+                return
+            case 'vote_in':
+                candidate = data['candidate']
+                instance = await self.voteIn(candidate)
+                if instance['status'] == "success":
+                    await self.channel_layer.group_send(self.room_name, {
+                        'type': 'send_members',
+                        'members_list': {'status':"success", 'action':'member_listing', 'member_list': await self.get_members()} ,
+                        }
+                    )
+                return
+            
             case "join":
-                """ the candidate has already joint and only needs to update the Circle list to members"""
                 await self.channel_layer.group_send(self.room_name, {
                     'type': 'send_members',
-                    'members_list':{'status':"success", 'member_list': await self.get_members()} ,
+                    'members_list':{'status':"success", 'action':'member_listing', 'member_list': await self.get_members()} ,
                     }
                 )
                 return
-
-            case _:
-                print("action not found:")
-                pass
+            case "dissolve":
+                """ the candidate has already joint and only needs to update the Circle list to members"""
+                """here do the deletion of the cirlce"""
 
 
         # if any of the functions returns error, the message being sent will be that error only to that user.
