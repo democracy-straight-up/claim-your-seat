@@ -14,3 +14,10 @@ class SecDelMembers_Admin(admin.ModelAdmin):
     list_display_links =['user','sec_del', 'is_member', 'is_delegate','joined_at']
     search_fields =['user','sec_del', 'is_member', 'is_delegate','joined_at']
 admin.site.register(apiModels.SecDelMembers, SecDelMembers_Admin)
+
+class DummyVoters_Admin(admin.ModelAdmin):
+    list_display =['voters','circle', 'district', 'f_link','created_at', 'text']
+    list_display_links =['voters','circle', 'district', 'f_link','created_at', 'text']
+    search_fields =[ 'district', 'created_at', 'text']
+
+admin.site.register(apiModels.DummyVoters, DummyVoters_Admin)

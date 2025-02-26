@@ -17,7 +17,6 @@ class Districts(models.Model):
     def __str__(self):
         return str(self.code)
 
-
 #  the django user model has the follow feilds and i only need to add to it.
 # firstName, lastName,userName, email, password, isActive,
 class Users(models.Model):
@@ -85,13 +84,7 @@ class GroupMember(models.Model):
             CircleMember_vote_in.objects.filter(recipient=self).delete()
 
             # create an instance of the contact info
-            ContactInfo.objects.create(
-                member=self,
-                address=self.user.users.address,
-                email=self.user.email
-            )
-         
-       
+            ContactInfo.objects.create(member=self,address=self.user.users.address,email=self.user.email)
 
     def check_for_removing(self):
         total_members = GroupMember.objects.filter(group=self.group).filter(is_member = True).count()
@@ -125,7 +118,6 @@ class GroupMember(models.Model):
     def count_put_forward(self):
         return CircleMember_put_forward.objects.filter(recipient=self).count()
 
-    
 class CircleBackNForth(models.Model):
     circle = models.ForeignKey(Group, on_delete=models.CASCADE)
     sender = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -184,7 +176,6 @@ class CircleStatus(models.Model):
 
     def __str__(self) -> str:
         return str(self.message)
-
 
 #stores required fields in the contacts table
 class ContactInfo(models.Model):
