@@ -49,7 +49,7 @@ from django.core.exceptions import ValidationError
 class MaxMembershipReached(ValidationError):
     def __init__(self, message="F-link has reached the max membership status. No longer accepting candidates."):
         super().__init__(message)
-
+        
 # the user can be changed to be Circle delegate only. but being a user is much better
 class SecDelMembers(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -162,7 +162,42 @@ def create_voters(voters, district_code):
         
     return users
 
+# below is some code to generaate voters, circles and f-links
+from vote.views import circle_code_generator, circle_invitation_generator
+import random
 
+def group_invite_key():
+    code = str(random.randint(0, 9999999999))
+    is_exist = vote_models.Group.objects.filter(invitation_code=code).exists()
+    if is_exist:
+        circle_invitation_generator()
+    return code
+
+def group_code():
+    code = str(random.randint(1, 99999))
+    is_exist = vote_models.Group.objects.filter(code=code).exists()
+    if is_exist:
+        circle_code_generator()
+    return code
+
+def create_voters(voters, district_code):
+    users = []
+    for i in range(voters):
+        # create a User 
+        instance = User.objects.create(username=entry_code_generator(), email=f'dummy_voter{i}@gmail.com', is_active=True, is_staff=True)
+        instance.set_password('A123123a@')
+        instance.save()
+        instance.users.userType = 0
+        instance.users.district = vote_models.Districts.objects.get(code=district_code)
+        instance.users.legalName = f"dummy Voter-{instance.username}"
+        instance.users.address = 'just an address in the middle of nowhere'
+        instance.users.is_reg = True
+        instance.users.save()
+        users.append(instance)
+        
+    return users
+  
+  
 def create_circle(circle, district_code, voters):
     groups =[]
     members =[]

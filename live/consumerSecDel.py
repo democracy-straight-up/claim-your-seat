@@ -105,6 +105,7 @@ class SecDelConsumer(AsyncWebsocketConsumer):
                         }
                     )
                 return
+
             case "join":
                 await self.channel_layer.group_send(self.room_name, {
                     'type': 'send_members',
@@ -115,7 +116,7 @@ class SecDelConsumer(AsyncWebsocketConsumer):
             case "dissolve":
                 """ the candidate has already joint and only needs to update the Circle list to members"""
                 """here do the deletion of the cirlce"""
-                
+
         # if any of the functions returns error, the message being sent will be that error only to that user.
         # otherwise, the circle members will be sent back to the room
 

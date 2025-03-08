@@ -9,6 +9,7 @@ class SecDelSerializer(serializers.ModelSerializer):
         model = apiModels.SecDelModel
         fields = "__all__"
 
+
 class SecDelMembersSerializer(serializers.ModelSerializer):
     user = UserSerializer()
     sec_del = SecDelSerializer()
