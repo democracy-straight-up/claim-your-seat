@@ -48,7 +48,6 @@ class SecDelViewSet(viewsets.ModelViewSet):
         try:
             instance = apiModels.SecDelMembers.objects.get(user__username = request.data['user'])
             serial = self.get_serializer(instance.sec_del)
-        
             return Response(serial.data)
         except apiModels.SecDelMembers.DoesNotExist:
             return Response({'message':"voter associated with f_link does not found"}, status==status.HTTP_404_NOT_FOUND)
@@ -71,3 +70,5 @@ class SecDelMembersViewSet(viewsets.ModelViewSet):
             return Response({"message": "f-link not found."}, status=status.HTTP_404_NOT_FOUND)
         except apiModels.SecDelMembers.DoesNotExist:
             return Response({"message": "f-link members not found."}, status=status.HTTP_404_NOT_FOUND)
+        except apiModels.MaxMembershipReached:
+            return Response({"message": "The F-Link has reached its maximum membership and does not accept new candidate!"}, status=status.HTTP_406_NOT_ACCEPTABLE)

@@ -43,6 +43,13 @@ class SecDelModel(models.Model):
             return True
         return False
 
+
+# for maximum f-link membership validation
+from django.core.exceptions import ValidationError
+class MaxMembershipReached(ValidationError):
+    def __init__(self, message="F-link has reached the max membership status. No longer accepting candidates."):
+        super().__init__(message)
+
 # the user can be changed to be Circle delegate only. but being a user is much better
 class SecDelMembers(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -66,8 +73,12 @@ class SecDelMembers(models.Model):
         super().delete(using, keep_parents)
     
     def save(self, *args, **kwargs):
+        # check for max membership 
+        if SecDelMembers.objects.filter(is_member=True).count() >=12:
+            raise MaxMembershipReached()  # Raise maxMember validation
+
         # Calculate if is_member should be true (calculating the majority of vote)
-        if self.vote_in_count >= (self.sec_del.secdelmembers_set.filter(is_member=True).count()/2):
+        if self.vote_in_count >= (self.sec_del.secdelmembers_set.filter(is_member=True).count()//2+1):
             print("this message is from saving the instance on the model, the User is a member now...")
             self.is_member = True
         else:
