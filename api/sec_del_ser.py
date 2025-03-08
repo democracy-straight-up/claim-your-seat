@@ -10,7 +10,6 @@ class SecDelSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-
 class SecDelMembersSerializer(serializers.ModelSerializer):
     user = UserSerializer()
     sec_del = SecDelSerializer()
