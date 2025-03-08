@@ -2,8 +2,7 @@ import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 
-# from django.contrib.auth.models import User
-
+from django.contrib.auth.models import User
 from api import models as apiModels
 from api import sec_del_ser
 
@@ -53,6 +52,16 @@ class SecDelConsumer(AsyncWebsocketConsumer):
     
     @staticmethod
     @database_sync_to_async
+    def voteOut(payload):  
+        SecDel_instance = apiModels.SecDelMembers.objects.get(pk = payload['member']) 
+        user_instance = User.objects.get(username = payload['voter'])
+        if SecDel_instance and user_instance:
+            apiModels.VoteOutSecDelMember.objects.create(voter = user_instance, candidate=SecDel_instance)
+            return {"status":"success", "message":"voted in"}
+        return {"status":"error", "message":"could not vote out"}
+    
+    @staticmethod
+    @database_sync_to_async
     def removeCandidate(candidate):  
         apiModels.SecDelMembers.objects.get(pk = candidate).delete()
         return {"status":"success", "message":"removed"}
@@ -83,6 +92,19 @@ class SecDelConsumer(AsyncWebsocketConsumer):
                     )
                 return
             
+            case 'putForward':
+                print("putting forward...")
+                return 
+            case 'vote_out':
+                payload = data['payload']
+                instance = await self.voteOut(payload)
+                if instance['status'] == "success":
+                    await self.channel_layer.group_send(self.room_name, {
+                        'type': 'send_members',
+                        'members_list': {'status':"success", 'action':'member_listing', 'member_list': await self.get_members()} ,
+                        }
+                    )
+                return
             case "join":
                 await self.channel_layer.group_send(self.room_name, {
                     'type': 'send_members',

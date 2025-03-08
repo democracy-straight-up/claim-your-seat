@@ -88,7 +88,33 @@ class SecDelMembers(models.Model):
 
         super().save(*args, **kwargs)
 
+    def count_vote_out(self):
+        return VoteOutSecDelMember.objects.filter(candidate=self).count()
+    
+    def check_for_removing(self):
+        total_members = SecDelMembers.objects.filter(sec_del=self.sec_del).filter(is_member = True).count()
+        majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
+        print("checking for major vote out..", majority_threshold, total_members, self.count_vote_out())
+        if self.count_vote_out() >= majority_threshold:
+            self.user.users.userType = 1
+            self.user.users.save()
+            self.delete()
+            print("deleted the member")
+            # set the deleted user.users userType to 1
 
+
+class VoteOutSecDelMember(models.Model):
+    voter = models.ForeignKey(User, on_delete=models.CASCADE)
+    candidate = models.ForeignKey(SecDelMembers, related_name='vote_outs', on_delete=models.CASCADE)
+    voted_at = models.DateTimeField(auto_now_add=True)
+
+    # do not edit the return def as it is used on the frontend
+    def __str__(self):
+        return f"Voter: {self.voter.username}, Candidate: {self.candidate.id}"
+    
+    def save(self, *args, **kwargs):
+        super(VoteOutSecDelMember, self).save(*args, **kwargs)
+        self.candidate.check_for_removing()
 
 # below is some code to generaate voters, circles and f-links
 from vote.views import circle_code_generator, circle_invitation_generator
