@@ -42,7 +42,16 @@ class SecDelViewSet(viewsets.ModelViewSet):
         except:
             messages = "Something Went Wrong."
             return Response({"message:": messages}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['POST'])
+    def get_f_link_by_user(self,request):
+        try:
+            instance = apiModels.SecDelMembers.objects.get(user__username = request.data['user'])
+            serial = self.get_serializer(instance.sec_del)
         
+            return Response(serial.data)
+        except apiModels.SecDelMembers.DoesNotExist:
+            return Response({'message':"voter associated with f_link does not found"}, status==status.HTTP_404_NOT_FOUND)
 
 class SecDelMembersViewSet(viewsets.ModelViewSet):
     queryset = apiModels.SecDelMembers.objects.all()
