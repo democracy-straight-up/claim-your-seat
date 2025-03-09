@@ -5,6 +5,7 @@ from channels.db import database_sync_to_async
 from django.contrib.auth.models import User
 from api import models as apiModels
 from api import sec_del_ser
+from api.models import generate_unique_invitation_key
 
 class SecDelConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -40,6 +41,57 @@ class SecDelConsumer(AsyncWebsocketConsumer):
         memberslist = apiModels.SecDelMembers.objects.filter(sec_del__code = self.sec_del_name)
         members = sec_del_ser.SecDelMembersSerializer(memberslist, many=True)
         return members.data
+    
+    @database_sync_to_async
+    def get_f_link(self):
+        f_link = apiModels.SecDelModel.objects.filter(code = self.sec_del_name).first()
+        obj = sec_del_ser.SecDelSerializer(f_link)
+        return obj.data
+    
+    @staticmethod
+    @database_sync_to_async
+    def voteIn(candidate):  
+        member = apiModels.SecDelMembers.objects.get(pk = candidate)
+        member.vote_in_count += 1
+        member.save()
+        return {"status":"success", "message":"voted in"}
+    
+    @staticmethod
+    @database_sync_to_async
+    def voteOut(payload):  
+        SecDel_instance = apiModels.SecDelMembers.objects.get(pk = payload['member']) 
+        user_instance = User.objects.get(username = payload['voter'])
+        if SecDel_instance and user_instance:
+            apiModels.VoteOutSecDelMember.objects.create(voter = user_instance, candidate=SecDel_instance)
+            return {"status":"success", "message":"voted in"}
+        return {"status":"error", "message":"could not vote out"}
+    
+    @staticmethod
+    @database_sync_to_async
+    def putFarward(payload):  
+        SecDel_instance = apiModels.SecDelMembers.objects.get(pk = payload['member']) 
+        user_instance = User.objects.get(username = payload['voter'])
+        if SecDel_instance and user_instance:
+            apiModels.PutFarwardSecDelMember.objects.create(voter = user_instance, candidate=SecDel_instance)
+            return {"status":"success", "message":"voted"}
+        return {"status":"error", "message":"could not vote"}
+    
+
+    @staticmethod
+    @database_sync_to_async
+    def removeCandidate(candidate):  
+        apiModels.SecDelMembers.objects.get(pk = candidate).delete()
+        return {"status":"success", "message":"removed"}
+    
+    @staticmethod
+    @database_sync_to_async
+    def changeInvitKey(payload):
+        instance = apiModels.SecDelModel.objects.get(code = payload['f_link'])
+        if instance:
+            instance.invitation_key = generate_unique_invitation_key()
+            instance.save()
+            return {"status":"success", "f_link": instance.invitation_key}
+        return {"status":"error"}
 
     
     @staticmethod
@@ -130,6 +182,17 @@ class SecDelConsumer(AsyncWebsocketConsumer):
                     }
                 )
                 return
+            
+            case "invitationKey":
+                obj = await self.changeInvitKey(data['payload'])
+                if obj['status'] == 'success':
+                    await self.channel_layer.group_send(self.room_name, {
+                        'type': 'send_members',
+                        'members_list': {'status':"success", 'action':'invite_key', 'f_link': await self.get_f_link()} ,
+                        }
+                    )
+                return
+           
             case "dissolve":
                 """ the candidate has already joint and only needs to update the Circle list to members"""
                 """here do the deletion of the cirlce"""

@@ -104,7 +104,7 @@ class SecDelMembers(models.Model):
 
     def count_vote_out(self):
         return VoteOutSecDelMember.objects.filter(candidate=self).count()
-
+      
     def count_put_forward(self):
         return PutFarwardSecDelMember.objects.filter(candidate=self).count()
 
@@ -194,7 +194,6 @@ def create_voters(voters, district_code):
         
     return users
 
-
 # below is some code to generaate voters, circles and f-links
 from vote.views import circle_code_generator, circle_invitation_generator
 import random
@@ -229,7 +228,7 @@ def create_voters(voters, district_code):
         users.append(instance)
         
     return users
-
+  
 def create_circle(circle, district_code, voters):
     groups =[]
     members =[]
@@ -291,8 +290,4 @@ class DummyVoters(models.Model):
             self.text = self.text + str(objects)
 
         super().save(*args, **kwargs)
-
-
-
-
         
