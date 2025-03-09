@@ -113,7 +113,6 @@ class SecDelConsumer(AsyncWebsocketConsumer):
                         }
                     )
                 return
-            
             case 'vote_out':
                 payload = data['payload']
                 instance = await self.voteOut(payload)
