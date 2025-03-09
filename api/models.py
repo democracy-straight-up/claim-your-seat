@@ -78,11 +78,13 @@ class SecDelMembers(models.Model):
             raise MaxMembershipReached()  # Raise maxMember validation
 
         # Calculate if is_member should be true (calculating the majority of vote)
-        if self.vote_in_count >= (self.sec_del.secdelmembers_set.filter(is_member=True).count()//2+1):
-            print("this message is from saving the instance on the model, the User is a member now...")
-            self.is_member = True
-        else:
-            self.is_member = False
+        if not self.is_member:
+            print("the members is a candidate...")
+            if self.vote_in_count >= (self.sec_del.secdelmembers_set.filter(is_member=True).count()//2+1):
+                print("this message is from saving the instance on the model, the User is a member now...")
+                self.is_member = True
+            else:
+                self.is_member = False
 
         # check the user type of the member. it has to be userType 1 
         # on save, update the userType to 2
@@ -101,18 +103,32 @@ class SecDelMembers(models.Model):
 
     def count_vote_out(self):
         return VoteOutSecDelMember.objects.filter(candidate=self).count()
+    def count_put_forward(self):
+        return PutFarwardSecDelMember.objects.filter(candidate=self).count()
     
     def check_for_removing(self):
         total_members = SecDelMembers.objects.filter(sec_del=self.sec_del).filter(is_member = True).count()
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
-        print("checking for major vote out..", majority_threshold, total_members, self.count_vote_out())
         if self.count_vote_out() >= majority_threshold:
             self.user.users.userType = 1
             self.user.users.save()
             self.delete()
-            print("deleted the member")
             # set the deleted user.users userType to 1
 
+    def check_put_farward(self):
+        total_members = SecDelMembers.objects.filter(sec_del=self.sec_del).filter(is_member = True).count()
+        majority_votes = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
+        if self.count_put_forward() >= majority_votes:
+            # find the current delegate and set is_delegate false.
+            current_delegate = SecDelMembers.objects.filter(sec_del=self.sec_del).filter(is_delegate = True).first()
+            current_delegate.is_delegate = False
+            current_delegate.save()
+
+            # set the current member to delegate and set is_delegate true.
+            self.is_delegate = True
+            self.save()
+            # # Delete related votes for this member instances
+            PutFarwardSecDelMember.objects.filter(candidate=self).delete()
 
 class VoteOutSecDelMember(models.Model):
     voter = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -126,6 +142,20 @@ class VoteOutSecDelMember(models.Model):
     def save(self, *args, **kwargs):
         super(VoteOutSecDelMember, self).save(*args, **kwargs)
         self.candidate.check_for_removing()
+
+class PutFarwardSecDelMember(models.Model):
+    voter = models.ForeignKey(User, on_delete=models.CASCADE)
+    candidate = models.ForeignKey(SecDelMembers, related_name='put_farward', on_delete=models.CASCADE)
+    voted_at = models.DateTimeField(auto_now_add=True)
+
+    # do not edit the return def as it is used on the frontend
+    def __str__(self):
+        return f"Voter: {self.voter.username}, Candidate: {self.candidate.id}"
+    
+    def save(self, *args, **kwargs):
+        super(PutFarwardSecDelMember, self).save(*args, **kwargs)
+        self.candidate.check_put_farward()
+
 
 # below is some code to generaate voters, circles and f-links
 from vote.views import circle_code_generator, circle_invitation_generator

@@ -21,6 +21,12 @@ class SecDelMembersVoteOut_Admin(admin.ModelAdmin):
     search_fields =['voted_at','candidate', 'voter']
 admin.site.register(apiModels.VoteOutSecDelMember, SecDelMembersVoteOut_Admin)
 
+class SecDelMembersPutFarward_Admin(admin.ModelAdmin):
+    list_display =[ 'voted_at','candidate', 'voter']
+    list_display_links =['voted_at','candidate', 'voter']
+    search_fields =['voted_at','candidate', 'voter']
+admin.site.register(apiModels.PutFarwardSecDelMember, SecDelMembersPutFarward_Admin)
+
 class DummyVoters_Admin(admin.ModelAdmin):
     list_display =['voters','circle', 'district', 'f_link','created_at', 'text']
     list_display_links =['voters','circle', 'district', 'f_link','created_at', 'text']

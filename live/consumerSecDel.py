@@ -62,6 +62,17 @@ class SecDelConsumer(AsyncWebsocketConsumer):
     
     @staticmethod
     @database_sync_to_async
+    def putFarward(payload):  
+        SecDel_instance = apiModels.SecDelMembers.objects.get(pk = payload['member']) 
+        user_instance = User.objects.get(username = payload['voter'])
+        if SecDel_instance and user_instance:
+            apiModels.PutFarwardSecDelMember.objects.create(voter = user_instance, candidate=SecDel_instance)
+            return {"status":"success", "message":"voted"}
+        return {"status":"error", "message":"could not vote"}
+    
+
+    @staticmethod
+    @database_sync_to_async
     def removeCandidate(candidate):  
         apiModels.SecDelMembers.objects.get(pk = candidate).delete()
         return {"status":"success", "message":"removed"}
@@ -93,8 +104,16 @@ class SecDelConsumer(AsyncWebsocketConsumer):
                 return
             
             case 'putForward':
-                print("putting forward...")
-                return 
+                payload = data['payload']
+                instance = await self.putFarward(payload)
+                if instance['status'] == "success":
+                    await self.channel_layer.group_send(self.room_name, {
+                        'type': 'send_members',
+                        'members_list': {'status':"success", 'action':'member_listing', 'member_list': await self.get_members()} ,
+                        }
+                    )
+                return
+            
             case 'vote_out':
                 payload = data['payload']
                 instance = await self.voteOut(payload)
