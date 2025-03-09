@@ -18,7 +18,6 @@ class SecDelMembersSerializer(serializers.ModelSerializer):
         model = apiModels.SecDelMembers
         fields = ["id","user","sec_del", "vote_outs","put_farward","is_delegate","is_member","joined_at","updated_at","vote_in_count","vote_out_count"]
 
-
 class VoteOutSecDelMemberSerializer(serializers.ModelSerializer):
     class Meta: 
         model= apiModels.VoteOutSecDelMember
