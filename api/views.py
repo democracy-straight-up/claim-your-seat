@@ -311,6 +311,7 @@ class UserView(APIView):
             return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
 
 
+
 class HouseKeeping(APIView):
     def post(self, request):
         try:
@@ -518,6 +519,21 @@ class CircleList(viewsets.ModelViewSet):
     queryset = voteModels.Group.objects.all()
     pagination_class = CustomPagination
     permission_classes = [AllowAny]
+
+from rest_framework.decorators import action
+
+class CircleViewSet(viewsets.ModelViewSet):
+    queryset = voteModels.Group.objects.all()
+    serializer_class = apiSerializers.CircleSerializer
+    
+    @action(detail=False, methods=['POST'])
+    def get_circle_by_user(self,request):
+        try:
+            membersInstance = voteModels.GroupMember.objects.get(user__username = request.data['user'])
+            groupIntance = self.get_serializer(membersInstance.group)
+            return Response(groupIntance.data)
+        except:
+            return Response({'message':"voter associated with Circle not found"}, status==status.HTTP_404_NOT_FOUND)
 
 
 class CircleStatus(generics.ListAPIView):
