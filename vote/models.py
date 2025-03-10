@@ -55,6 +55,10 @@ class Group(models.Model):
         if 6 <= self.groupmember_set.filter(is_member = True).count() <= 12:
             return True
         return False
+    
+    @property
+    def member_count(self):
+        return self.groupmember_set.filter(is_member = True).count()
 
 class GroupMember(models.Model):
     # user = models.IntegerField()

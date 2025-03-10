@@ -9,6 +9,7 @@ router.register('districts', apiViews.DistrictsViewSet)
 router.register('user', apiViews.UserPageView)
 router.register('voter-page', apiViews.VoterPageView)
 router.register('circle', apiViews.CircleList)
+router.register('get-circle', apiViews.CircleViewSet)
 router.register('contact-info', apiViews.ContactInfoViewSet)
 
 # second delegate routes:
