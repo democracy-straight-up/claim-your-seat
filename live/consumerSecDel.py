@@ -93,6 +93,42 @@ class SecDelConsumer(AsyncWebsocketConsumer):
             return {"status":"success", "f_link": instance.invitation_key}
         return {"status":"error"}
 
+    
+    @staticmethod
+    @database_sync_to_async
+    def voteIn(candidate):  
+        member = apiModels.SecDelMembers.objects.get(pk = candidate)
+        member.vote_in_count += 1
+        member.save()
+        return {"status":"success", "message":"voted in"}
+    
+    @staticmethod
+    @database_sync_to_async
+    def voteOut(payload):  
+        SecDel_instance = apiModels.SecDelMembers.objects.get(pk = payload['member']) 
+        user_instance = User.objects.get(username = payload['voter'])
+        if SecDel_instance and user_instance:
+            apiModels.VoteOutSecDelMember.objects.create(voter = user_instance, candidate=SecDel_instance)
+            return {"status":"success", "message":"voted in"}
+        return {"status":"error", "message":"could not vote out"}
+    
+    @staticmethod
+    @database_sync_to_async
+    def putFarward(payload):  
+        SecDel_instance = apiModels.SecDelMembers.objects.get(pk = payload['member']) 
+        user_instance = User.objects.get(username = payload['voter'])
+        if SecDel_instance and user_instance:
+            apiModels.PutFarwardSecDelMember.objects.create(voter = user_instance, candidate=SecDel_instance)
+            return {"status":"success", "message":"voted"}
+        return {"status":"error", "message":"could not vote"}
+    
+
+    @staticmethod
+    @database_sync_to_async
+    def removeCandidate(candidate):  
+        apiModels.SecDelMembers.objects.get(pk = candidate).delete()
+        return {"status":"success", "message":"removed"}
+
     async def receive(self, text_data):
         """ Check messages. If message is for voting in a candidate then vote the candidate. """
         data = json.loads(text_data)
@@ -129,7 +165,6 @@ class SecDelConsumer(AsyncWebsocketConsumer):
                         }
                     )
                 return
-            
             case 'vote_out':
                 payload = data['payload']
                 instance = await self.voteOut(payload)
