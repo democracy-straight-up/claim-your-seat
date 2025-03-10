@@ -4,7 +4,9 @@ from api.serializers import DistrictsSerializer, UserSerializer
 
 class SecDelSerializer(serializers.ModelSerializer):
     district = DistrictsSerializer()
-    is_active= serializers.ReadOnlyField()
+    is_active = serializers.ReadOnlyField()
+    member_count = serializers.ReadOnlyField()
+
     class Meta:
         model = apiModels.SecDelModel
         fields = "__all__"

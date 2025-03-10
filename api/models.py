@@ -42,6 +42,9 @@ class SecDelModel(models.Model):
         if 6 <= self.secdelmembers_set.filter(is_member = True).count() <= 12:
             return True
         return False
+    @property
+    def member_count(self):
+        return self.secdelmembers_set.filter(is_member = True).count()
 
 
 # for maximum f-link membership validation
