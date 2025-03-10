@@ -128,6 +128,15 @@ class SecDelConsumer(AsyncWebsocketConsumer):
     def removeCandidate(candidate):  
         apiModels.SecDelMembers.objects.get(pk = candidate).delete()
         return {"status":"success", "message":"removed"}
+    
+    @staticmethod
+    @database_sync_to_async
+    def DissolveSecDel(payload):  
+        instance = apiModels.SecDelMembers.objects.get(pk = payload['member'])
+        instance.sec_del.delete()
+        instance.user.users.userType = 1
+        instance.user.users.save()
+        return {"status":"success", "message":"removed"}
 
     async def receive(self, text_data):
         """ Check messages. If message is for voting in a candidate then vote the candidate. """
@@ -194,11 +203,16 @@ class SecDelConsumer(AsyncWebsocketConsumer):
                 return
            
             case "dissolve":
-                """ the candidate has already joint and only needs to update the Circle list to members"""
-                """here do the deletion of the cirlce"""
-                
-        # if any of the functions returns error, the message being sent will be that error only to that user.
-        # otherwise, the circle members will be sent back to the room
+                # get the memeber instance and remove the member.sec_del. 
+                # upon removing the sec_del, the member will be removed as well.
+                obj = await self.DissolveSecDel(data['payload'])
+                if obj['status'] == 'success':
+                    await self.channel_layer.group_send(self.room_name, {
+                        'type': 'send_members',
+                        'members_list': {'status':"success", 'action':'dissolve'}
+                        }
+                    )
+                return
 
     # Send to each member
     async def send_members(self, event):
