@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     # 'drf_spectacular',
     'live.apps.LiveConfig',
     'bills.apps.BillsConfig',
+    'moda.apps.ModaConfig',
     # 'django_extensions',
 
 ]
