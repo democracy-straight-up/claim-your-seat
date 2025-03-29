@@ -134,7 +134,7 @@ class SecDelConsumer(AsyncWebsocketConsumer):
     def DissolveSecDel(payload):  
         instance = apiModels.SecDelMembers.objects.get(pk = payload['member'])
         instance.sec_del.delete()
-        instance.user.users.userType = 1
+        instance.user.users.userType = 'U1D1'
         instance.user.users.save()
         return {"status":"success", "message":"removed"}
 

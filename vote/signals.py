@@ -21,5 +21,5 @@ def setUserType(sender, instance,*args, **kwargs):
     members = models.GroupMember.objects.filter(group = instance)
     for i in members:
         ut = i.user
-        ut.users.userType = 0
+        ut.users.userType = 'U0D0'
         ut.save()

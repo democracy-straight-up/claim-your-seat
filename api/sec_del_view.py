@@ -25,11 +25,11 @@ class SecDelViewSet(viewsets.ModelViewSet):
                 return Response({"message:": messages}, status=status.HTTP_400_BAD_REQUEST)
 
             # check if the userType is not 0 return
-            if user.users.userType != 1:
+            if user.users.userType != 'U2D1' or user.users.userType != 'U2D2':
                 messages = "Already belongs to a sec del."
                 return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
             
-            # create a circle
+            # create a sec_del object
             sec_del = apiModels.SecDelModel.objects.create( district=district  )
     
             # set the userType attribute of the creator to 1

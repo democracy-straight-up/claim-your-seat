@@ -71,7 +71,7 @@ class SecDelMembers(models.Model):
         return f"{self.user.username} - {self.sec_del.code}"
     
     def delete(self, using=None, keep_parents=False):
-        self.user.users.userType = 1
+        self.user.users.userType = 'U1D1'
         self.user.users.save()
         super().delete(using, keep_parents)
     
@@ -92,8 +92,8 @@ class SecDelMembers(models.Model):
 
         # check the user type of the member. it has to be userType 1 
         # on save, update the userType to 2
-        if self.user.users.userType >= 1:
-            self.user.users.userType = 2
+        if self.user.users.userType == 'U1D1':
+            self.user.users.userType = 'U2D1'
             self.user.users.save()
         else:
             return {"error": "User is not eligible for this operation."}
@@ -102,6 +102,7 @@ class SecDelMembers(models.Model):
         if not self.pk and not self.sec_del.secdelmembers_set.exists():
             self.is_delegate = True
             self.is_member = True
+            self.user.users.userType = 'U2D2'
 
         super().save(*args, **kwargs)
 
@@ -116,7 +117,7 @@ class SecDelMembers(models.Model):
         total_members = SecDelMembers.objects.filter(sec_del=self.sec_del).filter(is_member = True).count()
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_vote_out() >= majority_threshold:
-            self.user.users.userType = 1
+            self.user.users.userType = 'U1D1'
             self.user.users.save()
             self.delete()
             # set the deleted user.users userType to 1
@@ -184,12 +185,12 @@ def create_voters(voters, district_code):
     users = []
     for i in range(voters):
         # create a User 
-        instance = User.objects.create(username=entry_code_generator(), email=f'dummy_voter{i}@gmail.com', is_active=True, is_staff=True)
+        instance = User.objects.create(username=entry_code_generator(), email=f'test_voter{i}@gmail.com', is_active=True, is_staff=True)
         instance.set_password('A123123a@')
         instance.save()
-        instance.users.userType = 0
+        instance.users.userType = 'U0D0'
         instance.users.district = vote_models.Districts.objects.get(code=district_code)
-        instance.users.legalName = f"dummy Voter-{instance.username}"
+        instance.users.legalName = f"Test-Voter-{instance.username}"
         instance.users.address = 'just an address in the middle of nowhere'
         instance.users.is_reg = True
         instance.users.save()
@@ -219,12 +220,12 @@ def create_voters(voters, district_code):
     users = []
     for i in range(voters):
         # create a User 
-        instance = User.objects.create(username=entry_code_generator(), email=f'dummy_voter{i}@gmail.com', is_active=True, is_staff=True)
+        instance = User.objects.create(username=entry_code_generator(), email=f'test_voter{i}@gmail.com', is_active=True, is_staff=True)
         instance.set_password('A123123a@')
         instance.save()
-        instance.users.userType = 0
+        instance.users.userType = 'U0D0'
         instance.users.district = vote_models.Districts.objects.get(code=district_code)
-        instance.users.legalName = f"dummy Voter-{instance.username}"
+        instance.users.legalName = f"Test Voter-{instance.username}"
         instance.users.address = 'just an address in the middle of nowhere'
         instance.users.is_reg = True
         instance.users.save()
@@ -247,7 +248,7 @@ def create_circle(circle, district_code, voters):
                 instance.is_delegate = True
             instance.save()
             # update the userType
-            voter.users.userType = 1
+            voter.users.userType = 'U1D0'
             voter.users.save()
             members.append(instance)
 
