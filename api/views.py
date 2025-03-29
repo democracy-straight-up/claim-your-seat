@@ -217,7 +217,7 @@ class CreateCIRCLE(APIView):
                 return Response({"message:": messages}, status=status.HTTP_400_BAD_REQUEST)
 
             # check if the userType is not 0 return
-            if user.users.userType != 0:
+            if user.users.userType != 'U1D0' or user.users.userType != 'U1D1':
                 messages = "Already belongs to a circle."
                 return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
             
@@ -235,7 +235,7 @@ class CreateCIRCLE(APIView):
         
             circle.save()
             # set the userType attribute of the creator to 1
-            user.users.userType += 1
+            user.users.userType = 'U1D1'
             user.users.save()
 
             # add the user to circle member as delegate
@@ -296,7 +296,7 @@ class UserView(APIView):
                 circle = circle_members.group
 
                 # check if the user is a delegate
-                if user.users.userType == 1:
+                if user.users.userType == 'U1D1':
                     return JsonResponse({
                         "circle": apiSerializers.CircleSerializer(circle).data,
                         "user": apiSerializers.UserSerializer(user).data,
@@ -355,7 +355,7 @@ def circle_joining_validation(user, circle):
     if circlemembers.filter(user=user):
         result = False
 
-    if user.users.userType > 0:
+    if user.users.userType != 'U0D0':
         result = False
 
     if user.users.district != circle.district:
@@ -392,7 +392,7 @@ class JoinCIRCLE(APIView):
                     circleMember.save()
                     # set the userType of the member to 0
                     # when the user become the member via majority votes, then the userType is set to 1
-                    circleMember.user.users.userType = 1
+                    circleMember.user.users.userType = 'U1D0'
                     circleMember.user.users.save()
                     return JsonResponse(apiSerializers.CircleSerializer(group).data)
                 else:
@@ -438,7 +438,7 @@ class DesolveCircle(APIView):
                 # check if user can join the circle
                 if circle_desolve_check(user, circle):
                     circle.delete()
-                    user.users.userType = 0
+                    user.users.userType = 'U0D0'
                     user.users.save()
                     # the user automatically sets back to userType = 0
                     return JsonResponse({"status": "desolved"})

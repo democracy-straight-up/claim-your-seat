@@ -123,7 +123,7 @@ def switch(text_data_json):
                 candidate.save()
                 # set the member.user.users.userType to 1 as it becomes the member in a circle.
                 userType = candidate.user
-                userType.users.userType = 1
+                userType.users.userType = 'U1D0'
                 userType.save()
                 # remove all votes in for this members
                 votedIn = voteModels.CircleMember_vote_in.objects.filter(candidate = candidate).delete()
@@ -236,7 +236,7 @@ def switch(text_data_json):
                 member = circle.circlemember_set.all()[0]
                 if member.user == user and member.is_delegate:
                     circle.delete()
-                    user.users.userType = 0
+                    user.users.userType = 'U0D0'
                     user.save()
                     return {'type': text_data_json['type'],'done':True, 'data':"removed the circle"}
 
@@ -248,7 +248,7 @@ def switch(text_data_json):
             member = voteModels.GroupMember.objects.get(pk = text_data_json['member'])
             member.delete()
             # set the userType back to zero
-            member.user.users.userType = 0
+            member.user.users.userType = 'U0D0'
             member.user.users.save()
             data = {
                 "circle": apiSerializers.CircleSerializer(circle).data,

@@ -78,19 +78,27 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'dsu.wsgi.application'
-ASGI_APPLICATION = "dsu.asgi.application"
+# DATABASES = {
+#     'default': {
+#         'ENGINE': os.environ.get('DB_ENGINE'),
+#         'NAME':  os.environ.get('DB_NAME'),
+#         'USER': os.environ.get('DB_USER'),
+#         'PASSWORD': os.environ.get('DB_PASSWORD'),
+#         'HOST': os.environ.get('DB_HOST'),
+#         'PORT': os.environ.get('DB_PORT'),
+#         }
+#     }
 
+print("here at the DB....")
 DATABASES = {
     'default': {
-        'ENGINE': os.environ.get('DB_ENGINE'),
-        'NAME':  os.environ.get('DB_NAME'),
-        'USER': os.environ.get('DB_USER'),
-        'PASSWORD': os.environ.get('DB_PASSWORD'),
-        'HOST': os.environ.get('DB_HOST'),
-        'PORT': os.environ.get('DB_PORT'),
-        }
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
+}
+
+WSGI_APPLICATION = 'dsu.wsgi.application'
+ASGI_APPLICATION = "dsu.asgi.application"
 
 
 print("REDIS_URL: ",os.environ.get('REDIS_URL'))
