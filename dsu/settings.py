@@ -78,6 +78,7 @@ TEMPLATES = [
     },
 ]
 
+
 DATABASES = {
     'default': {
         'ENGINE': os.environ.get('DB_ENGINE'),
@@ -88,6 +89,10 @@ DATABASES = {
         'PORT': os.environ.get('DB_PORT'),
         }
     }
+
+
+WSGI_APPLICATION = 'dsu.wsgi.application'
+ASGI_APPLICATION = "dsu.asgi.application"
 
 
 
