@@ -217,7 +217,7 @@ class CreateCIRCLE(APIView):
                 return Response({"message:": messages}, status=status.HTTP_400_BAD_REQUEST)
 
             # check if the userType is not 0 return
-            if user.users.userType != 'U1D0' or user.users.userType != 'U1D1':
+            if user.users.userType == 'U1':
                 messages = "Already belongs to a circle."
                 return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
             

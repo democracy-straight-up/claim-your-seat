@@ -8,6 +8,9 @@ from rest_framework import status
 from django.http import JsonResponse
 from rest_framework.decorators import action
 
+from vote.models import GroupMember
+
+
 class SecDelViewSet(viewsets.ModelViewSet):
     queryset = apiModels.SecDelModel.objects.all()
     serializer_class = apiSerializer.SecDelSerializer
@@ -25,10 +28,9 @@ class SecDelViewSet(viewsets.ModelViewSet):
                 return Response({"message:": messages}, status=status.HTTP_400_BAD_REQUEST)
 
             # check if the userType is not 0 return
-            if user.users.userType != 'U2D1' or user.users.userType != 'U2D2':
+            if user.users.userType[:2] == 'U2':
                 messages = "Already belongs to a sec del."
                 return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
-            
             # create a sec_del object
             sec_del = apiModels.SecDelModel.objects.create( district=district  )
     
@@ -45,6 +47,7 @@ class SecDelViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['POST'])
     def get_f_link_by_user(self,request):
+        
         try:
             instance = apiModels.SecDelMembers.objects.get(user__username = request.data['user'])
             serial = self.get_serializer(instance.sec_del)
