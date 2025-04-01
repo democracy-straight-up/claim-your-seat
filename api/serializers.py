@@ -13,8 +13,6 @@ from vote import models as voteModels
 import os
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 
-from api import models as apiModels
-
 
 class DistrictsSerializer(serializers.ModelSerializer):
     class Meta:
@@ -300,8 +298,3 @@ class ContactInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = voteModels.ContactInfo
         fields = ['id', 'member', 'email', 'phone', 'address', 'contact_rules', 'contact', 'created_at']
-
-class StatusMessagesSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = apiModels.StatusMessages
-        fields = "__all__"
