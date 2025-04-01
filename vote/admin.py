@@ -13,9 +13,9 @@ class UsersAdmin(admin.ModelAdmin):
 admin.site.register(models.Users, UsersAdmin)
 
 class CircleAdmin(admin.ModelAdmin):
-    list_display = ['code', 'invitation_code', 'district']
+    list_display = ['code', 'invitation_code', 'district','is_active',]
     list_display_links = ["code", "invitation_code", "district"]
-    list_filter = ['district']
+    
 admin.site.register(models.Group, CircleAdmin)
 
 class CircleMemberAdmin(admin.ModelAdmin):

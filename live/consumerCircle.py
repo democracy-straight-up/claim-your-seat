@@ -70,6 +70,20 @@ class CircleConsumer(AsyncWebsocketConsumer):
         except:
             vote = serializers.UserSerializer(voter)
             return {"status": "error","action":"vote_out", "message": "Could not vote out.","user":vote.data}
+        
+    @database_sync_to_async
+    def undo_vote_out(self, data):
+        """removing the vote of the member (undoing the voting out)"""
+        try:
+            voter = User.objects.get(username = data['voter'])
+            member = voteModels.GroupMember.objects.get(pk = data['member'])
+            instance = voteModels.CircleMember_vote_out.objects.get(voter=voter, candidate=member)
+            instance.delete()
+            vote = serializers.UserSerializer(voter)
+            return {"status":"success","action":'undo_vote_out', "message":"vote removed successfully.", "user":vote.data}
+        except:
+            vote = serializers.UserSerializer(voter)
+            return {"status": "error","action":"undo_vote_out", "message": "Could not remove vote.","user":vote.data}
 
     @database_sync_to_async
     def remove_candidate(self, data):
@@ -185,6 +199,23 @@ class CircleConsumer(AsyncWebsocketConsumer):
             case "vote_out":
                  # vote in the candidate and return the circle members
                 res = await self.member_vote_out(data["payload"])
+                if res['status'] == 'error':
+                    await self.channel_layer.group_send(self.room_group_name, {
+                        'type': 'send_members',
+                        'members_list': res,
+                        }
+                    )
+                else:
+                    await self.channel_layer.group_send(self.room_group_name, {
+                        'type': 'send_members',
+                        'members_list':{'status':"success",'action': res ,'member_list': await self.get_members()} ,
+                        }
+                    )
+                return
+            
+            case "undo_vote_out":
+                 # vote in the candidate and return the circle members
+                res = await self.undo_vote_out(data["payload"])
                 if res['status'] == 'error':
                     await self.channel_layer.group_send(self.room_group_name, {
                         'type': 'send_members',

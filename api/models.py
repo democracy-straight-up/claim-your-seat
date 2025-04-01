@@ -298,10 +298,12 @@ class DummyVoters(models.Model):
 
 class StatusItems(models.Model):
     message = models.TextField(help_text="The message to be displayed.")
+    sort = models.PositiveSmallIntegerField(default=0, blank=True, null=True, help_text="The sort order of the message.")
     item_list   = models.TextField(null=True, blank=True, help_text="This field is for the list of items that the message is about.")
     created_at  = models.DateTimeField(auto_now_add=True)
     updated_at  = models.DateTimeField(auto_now=True)
-    is_active   = models.BooleanField(default=True, help_text="unchecking this deactives the message and will not show on the frontend.")
+    is_candidate_waiting = models.BooleanField(default=False, help_text="check this if the message is for the candidate waiting status.")
+    is_active   = models.BooleanField(default=True, help_text="check this if the message is active status for circle...")
     is_for_candidate = models.BooleanField(verbose_name="Candidates?", default=False, help_text="This message is for the candidate view.")
     is_for_member   = models.BooleanField(verbose_name="Members?", default=False, help_text="This message is for the member view.")
     is_for_delegate = models.BooleanField(verbose_name="Delegates?", default=False, help_text="This message is for the delegate view.")

@@ -84,6 +84,9 @@ class GroupMember(models.Model):
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_vote_in() >= majority_threshold:
             self.is_member = True
+            # set the user.users userType to U1D0
+            self.user.users.userType = 'U1D0'
+            self.user.users.save()
             self.save()
             # Delete related CircleMember_vote_in instances
             CircleMember_vote_in.objects.filter(recipient=self).delete()

@@ -1,7 +1,6 @@
 import json
 from django.core.mail import send_mail
 import os
-from rest_framework.permissions import AllowAny
 from django.template.loader import render_to_string
 from django.conf import settings
 from curses.ascii import NUL
@@ -245,7 +244,6 @@ class CreateCIRCLE(APIView):
                 is_delegate=True,
                 is_member=True
             )
-      
             circle_member_obj.save()
 
             # save delegate member contact info
@@ -255,11 +253,8 @@ class CreateCIRCLE(APIView):
                 email=circle_member_obj.user.email
             )
             contact_info.save()
-            print("circle member saved and so is contact info")
-
             obj = apiSerializers.CircleSerializer(circle)
         
-
             return JsonResponse(obj.data)
         except:
             messages = "Something Went Wrong."
@@ -378,7 +373,7 @@ class JoinCIRCLE(APIView):
                 return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
 
             # get the circle and add the user as the member or candidate
-            print("here: , ", group, user)
+            
             if group:
                 # check if user can join the circle
                 if circle_joining_validation(user, group):
@@ -392,8 +387,8 @@ class JoinCIRCLE(APIView):
                     circleMember.save()
                     # set the userType of the member to 0
                     # when the user become the member via majority votes, then the userType is set to 1
-                    circleMember.user.users.userType = 'U1D0'
-                    circleMember.user.users.save()
+                    # circleMember.user.users.userType = 'U1D0'
+                    # circleMember.user.users.save()
                     return JsonResponse(apiSerializers.CircleSerializer(group).data)
                 else:
                     # else of circle is active
