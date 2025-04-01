@@ -295,3 +295,21 @@ class DummyVoters(models.Model):
 
         super().save(*args, **kwargs)
         
+
+class StatusMessages(models.Model):
+    message = models.TextField()
+    item_list = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+    is_for_candidate = models.BooleanField(default=False)
+    is_for_members = models.BooleanField(default=False)
+    is_for_delegate = models.BooleanField(default=False)
+    is_for_circle = models.BooleanField(default=False)
+    is_for_sec_del = models.BooleanField(default=False)
+    is_for_moda = models.BooleanField(default=False)
+    is_for_co_rep = models.BooleanField(default=False)
+    is_for_house_rep = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.message
