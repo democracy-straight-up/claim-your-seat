@@ -300,3 +300,8 @@ class ContactInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = voteModels.ContactInfo
         fields = ['id', 'member', 'email', 'phone', 'address', 'contact_rules', 'contact', 'created_at']
+
+class StatusMessagesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = apiModels.StatusMessages
+        fields = "__all__"
