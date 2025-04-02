@@ -83,9 +83,7 @@ class SecDelMembers(models.Model):
         # Calculate if is_member should be true (calculating the majority of vote)
 
         if not self.is_member:
-            print("the members is a candidate...")
             if self.vote_in_count >= (self.sec_del.secdelmembers_set.filter(is_member=True).count()//2+1):
-                print("this message is from saving the instance on the model, the User is a member now...")
                 self.is_member = True
             else:
                 self.is_member = False
@@ -103,6 +101,7 @@ class SecDelMembers(models.Model):
             self.is_delegate = True
             self.is_member = True
             self.user.users.userType = 'U2D2'
+            self.user.users.save()
 
         super().save(*args, **kwargs)
 
