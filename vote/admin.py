@@ -13,9 +13,9 @@ class UsersAdmin(admin.ModelAdmin):
 admin.site.register(models.Users, UsersAdmin)
 
 class CircleAdmin(admin.ModelAdmin):
-    list_display = ['code', 'invitation_code', 'district']
+    list_display = ['code', 'invitation_code', 'district','is_active',]
     list_display_links = ["code", "invitation_code", "district"]
-    list_filter = ['district']
+    
 admin.site.register(models.Group, CircleAdmin)
 
 class CircleMemberAdmin(admin.ModelAdmin):
@@ -30,13 +30,13 @@ class CircleMember_vote_inAdmin(admin.ModelAdmin):
 admin.site.register(models.CircleMember_vote_in, CircleMember_vote_inAdmin)
 
 class CircleMember_vote_outAdmin(admin.ModelAdmin):
-    list_display = ['candidate', 'voter']
-    list_display_links = ["candidate", "voter"]
+    list_display = ['candidate', 'voter', "group"]
+    list_display_links = ["candidate", "voter", "group"]
 admin.site.register(models.CircleMember_vote_out, CircleMember_vote_outAdmin)
 
 class CircleMember_put_forwardAdmin(admin.ModelAdmin):
-    list_display = ['recipient', 'voter']
-    list_display_links = ["recipient", "voter"]
+    list_display = ['recipient', 'voter', "group"]
+    list_display_links = ["recipient", "voter", "group"]
 admin.site.register(models.CircleMember_put_forward, CircleMember_put_forwardAdmin)
 
 class CircleBackNForthAdmin(admin.ModelAdmin):

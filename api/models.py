@@ -295,3 +295,23 @@ class DummyVoters(models.Model):
 
         super().save(*args, **kwargs)
         
+
+class StatusItems(models.Model):
+    message = models.TextField(help_text="The message to be displayed.")
+    sort = models.PositiveSmallIntegerField(default=0, blank=True, null=True, help_text="The sort order of the message.")
+    item_list   = models.TextField(null=True, blank=True, help_text="This field is for the list of items that the message is about.")
+    created_at  = models.DateTimeField(auto_now_add=True)
+    updated_at  = models.DateTimeField(auto_now=True)
+    is_candidate_waiting = models.BooleanField(default=False, help_text="check this if the message is for the candidate waiting status.")
+    is_active   = models.BooleanField(default=True, help_text="check this if the message is active status for circle...")
+    is_for_candidate = models.BooleanField(verbose_name="Candidates?", default=False, help_text="This message is for the candidate view.")
+    is_for_member   = models.BooleanField(verbose_name="Members?", default=False, help_text="This message is for the member view.")
+    is_for_delegate = models.BooleanField(verbose_name="Delegates?", default=False, help_text="This message is for the delegate view.")
+    is_for_circle   = models.BooleanField(verbose_name="Circle?", default=False, help_text="Check this option if this message is associated with the circle.")
+    is_for_sec_del  = models.BooleanField(verbose_name="Second Delegate?", default=False, help_text="Check this option if this message is associated with the Second Delegate.")
+    is_for_moda     = models.BooleanField(verbose_name="District Assembly?",default=False, help_text="Check this option if this message is associated with the Member of District Assembly.")
+    is_for_co_rep   = models.BooleanField(verbose_name="Legislative Caucus?", default=False, help_text="Check this option if this message is associated with the Member of Legislative Caucus.")
+    is_for_house_rep= models.BooleanField(verbose_name="Head of Caucus?",default=False, help_text="Check this option if this message is associated with the Head of Legislative Caucus.")
+
+    def __str__(self):
+        return self.message

@@ -2,6 +2,7 @@ from rest_framework import routers
 from django.urls import path, include
 from api import views as apiViews
 from api import sec_del_view
+from api import status_messages
 
 # Routers provide an easy way of automatically determining the URL conf.
 router = routers.DefaultRouter()
@@ -39,4 +40,5 @@ urlpatterns = [
     path('circle-put-forward-list/',apiViews.CircleMemeber_putforward.as_view()),
     path('status/circle/',apiViews.CircleStatus.as_view()),
     path('get-username/', apiViews.UsernameRequestView.as_view(), name='get_username'),
+    path('get-status-messages/', status_messages.ItemsViewSet.as_view({'get': 'list'})),
 ]

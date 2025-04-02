@@ -84,6 +84,9 @@ class GroupMember(models.Model):
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_vote_in() >= majority_threshold:
             self.is_member = True
+            # set the user.users userType to U1D0
+            self.user.users.userType = 'U1D0'
+            self.user.users.save()
             self.save()
             # Delete related CircleMember_vote_in instances
             CircleMember_vote_in.objects.filter(recipient=self).delete()
@@ -95,7 +98,7 @@ class GroupMember(models.Model):
         total_members = GroupMember.objects.filter(group=self.group).filter(is_member = True).count()
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_vote_out() >= majority_threshold:
-            self.user.users.userType = 0
+            self.user.users.userType = 'U0D0'
             self.user.users.save()
             self.delete()
             # set the deleted user.users userType to 0
@@ -149,6 +152,7 @@ class CircleMember_vote_in(models.Model):
 class CircleMember_vote_out(models.Model):
     candidate   = models.ForeignKey(GroupMember, related_name='voteOuts', on_delete=models.CASCADE)
     voter       = models.ForeignKey(User, on_delete=models.CASCADE)
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, null=True, blank=True)
     created_at  = models.DateTimeField(auto_now_add=True)
     updated_at  = models.DateTimeField(auto_now=True)
 
@@ -162,12 +166,14 @@ class CircleMember_vote_out(models.Model):
 class CircleMember_put_forward(models.Model):
     recipient   = models.ForeignKey(GroupMember,related_name='putForward', on_delete=models.CASCADE, default=False) # recipient
     voter       = models.ForeignKey(User, on_delete=models.CASCADE)  #
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, null=True, blank=True)
     created_at  = models.DateTimeField(auto_now_add=True)
     updated_at  = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
         super(CircleMember_put_forward, self).save(*args, **kwargs)
-        self.recipient.check_put_forward()
+        
+        self.recipient.check_put_farward()
 
     def __str__(self):
         return str(self.voter) + '-'+str(self.recipient)

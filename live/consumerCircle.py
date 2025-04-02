@@ -15,7 +15,10 @@ class CircleConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
 
         # Fetch existing circle members using database_sync_to_async
-        members = {'status':"success",'message':'listed all members.', 'member_list': await self.get_members()}
+        members = {'status':"success",'message':'listed all', "action":"init",
+                   'member_list': await self.get_members(),
+                   'vote_outs': await self.get_vote_outs(),
+                   'put_forwards': await self.get_put_forwards()}
 
         # Accept the WebSocket connection
         await self.accept()
@@ -39,6 +42,18 @@ class CircleConsumer(AsyncWebsocketConsumer):
         MemberInstances = voteModels.GroupMember.objects.filter(group__code=self.circle_name)
         members = serializers.CircleMemberSerializer(MemberInstances, many=True)
         return members.data
+    
+    @database_sync_to_async
+    def get_vote_outs(self):
+        instances = voteModels.CircleMember_vote_out.objects.filter(group__code=self.circle_name)
+        serialize = serializers.CircleMember_VoteOutSer(instances, many=True)
+        return serialize.data
+    
+    @database_sync_to_async
+    def get_put_forwards(self):
+        instances = voteModels.CircleMember_put_forward.objects.filter(group__code=self.circle_name)
+        serialize = serializers.CircleMember_put_forwardSer(instances, many=True)
+        return serialize.data
 
     @database_sync_to_async
     def candidate_vote(self, data):
@@ -64,12 +79,30 @@ class CircleConsumer(AsyncWebsocketConsumer):
         try:
             voter = User.objects.get(username = data['voter'])
             member = voteModels.GroupMember.objects.get(pk = data['member'])
-            voteModels.CircleMember_vote_out.objects.update_or_create(voter=voter, candidate=member)
+            group = voteModels.Group.objects.get(code=self.circle_name)
+            voteModels.CircleMember_vote_out.objects.update_or_create(voter=voter, candidate=member, group=group)
+            instance = voteModels.CircleMember_vote_out.objects.get(voter=voter, candidate=member)
+            serialized = serializers.CircleMember_VoteOutSer(instance)
             vote = serializers.UserSerializer(voter)
-            return {"status":"success","action":'vote_out', "message":"voted out successfully.", "user":vote.data}
+            return {"status":"success","action":'vote_out', "message":"voted out successfully.", "user":vote.data, "instance":serialized.data}
         except:
             vote = serializers.UserSerializer(voter)
             return {"status": "error","action":"vote_out", "message": "Could not vote out.","user":vote.data}
+        
+    @database_sync_to_async
+    def undo_vote_out(self, data):
+        """removing the vote of the member (undoing the voting out)"""
+        try:
+            voter = User.objects.get(username = data['voter'])
+            member = voteModels.GroupMember.objects.get(pk = data['member'])
+            instance = voteModels.CircleMember_vote_out.objects.get(voter=voter, candidate=member)
+            instance.delete()
+            serialized = serializers.CircleMember_VoteOutSer(instance)
+            vote = serializers.UserSerializer(voter)
+            return {"status":"success","action":'undo_vote_out', "message":"vote removed successfully.", "user":vote.data, "instance":serialized.data}
+        except:
+            vote = serializers.UserSerializer(voter)
+            return {"status": "error","action":"undo_vote_out", "message": "Could not remove vote.","user":vote.data}
 
     @database_sync_to_async
     def remove_candidate(self, data):
@@ -91,17 +124,36 @@ class CircleConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def put_forward(self, data):
-        """ change the circle gelegation.
-        """
+        """ change the circle gelegation."""
         try:
             voter = User.objects.get(username = data['voter'])
             member = voteModels.GroupMember.objects.get(pk = data['member'])
-            voteModels.CircleMember_put_forward.objects.update_or_create(voter=voter, recipient=member)
+            group = voteModels.Group.objects.get(code=self.circle_name)
+            voteModels.CircleMember_put_forward.objects.update_or_create(voter=voter, recipient=member, group=group)
+
+            # get the instance from DB. 
+            instance  = voteModels.CircleMember_put_forward.objects.get(voter=voter, recipient=member)
+            serialized = serializers.CircleMember_put_forwardSer(instance)
             vote = serializers.UserSerializer(voter)
-            return {"status":"success","action":'put_forward', "message":"voted for gelegation.", "user":vote.data}
+            return {"status":"success","action":'put_forward', "message":"voted for delegate.", "user":vote.data, "instance":serialized.data}
         except:
             vote = serializers.UserSerializer(voter)
-            return {"status": "error","action":"vote_out", "message": "Could not vote for gelegation.","user":vote.data}
+            return {"status": "error","action":"put_forward", "message": "Could not vote for delegate.","user":vote.data}
+        
+    @database_sync_to_async
+    def undo_put_forward(self, data):
+        """ undo the circle delegate vote."""
+        try:
+            voter = User.objects.get(username = data['voter'])
+            member = voteModels.GroupMember.objects.get(pk = data['member'])
+            instance = voteModels.CircleMember_put_forward.objects.get(voter= voter, recipient=member)
+            instance.delete()
+            serialized = serializers.CircleMember_put_forwardSer(instance)
+            vote = serializers.UserSerializer(voter)
+            return {"status":"success","action":'undo_put_forward', "message":"removed vote for delegate.", "user":vote.data, "instance":serialized.data}
+        except:
+            vote = serializers.UserSerializer(voter)
+            return {"status": "error","action":"undo_put_forward", "message": "Could not remove vote for delegate.","user":vote.data}
 
     @database_sync_to_async
     def dissolveCircle(self, data):
@@ -198,6 +250,23 @@ class CircleConsumer(AsyncWebsocketConsumer):
                         }
                     )
                 return
+            
+            case "undo_vote_out":
+                 # vote in the candidate and return the circle members
+                res = await self.undo_vote_out(data["payload"])
+                if res['status'] == 'error':
+                    await self.channel_layer.group_send(self.room_group_name, {
+                        'type': 'send_members',
+                        'members_list': res,
+                        }
+                    )
+                else:
+                    await self.channel_layer.group_send(self.room_group_name, {
+                        'type': 'send_members',
+                        'members_list':{'status':"success",'action': res ,'member_list': await self.get_members()} ,
+                        }
+                    )
+                return
 
             case "invitationKey":
                 circle = await self.invitation_key()
@@ -210,6 +279,22 @@ class CircleConsumer(AsyncWebsocketConsumer):
 
             case "putForward":
                 res = await self.put_forward(data["payload"])
+                if res['status'] == 'error':
+                    await self.channel_layer.group_send(self.room_group_name, {
+                        'type': 'send_members',
+                        'members_list': res,
+                        }
+                    )
+                else:
+                    await self.channel_layer.group_send(self.room_group_name, {
+                        'type': 'send_members',
+                        'members_list':{'status':"success",'action': res ,'member_list': await self.get_members()} ,
+                        }
+                    )
+                return
+            
+            case "undo_putForward":
+                res = await self.undo_put_forward(data["payload"])
                 if res['status'] == 'error':
                     await self.channel_layer.group_send(self.room_group_name, {
                         'type': 'send_members',
