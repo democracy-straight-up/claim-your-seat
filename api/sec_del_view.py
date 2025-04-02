@@ -8,9 +8,6 @@ from rest_framework import status
 from django.http import JsonResponse
 from rest_framework.decorators import action
 
-from vote.models import GroupMember
-
-
 class SecDelViewSet(viewsets.ModelViewSet):
     queryset = apiModels.SecDelModel.objects.all()
     serializer_class = apiSerializer.SecDelSerializer

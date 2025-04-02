@@ -139,6 +139,7 @@ class SecDelMembers(models.Model):
 class VoteOutSecDelMember(models.Model):
     voter = models.ForeignKey(User, on_delete=models.CASCADE)
     candidate = models.ForeignKey(SecDelMembers, related_name='vote_outs', on_delete=models.CASCADE)
+    sec_del = models.ForeignKey(SecDelModel, on_delete=models.CASCADE, null=True, blank=True)
     voted_at = models.DateTimeField(auto_now_add=True)
 
     # do not edit the return def as it is used on the frontend
@@ -153,6 +154,7 @@ class VoteOutSecDelMember(models.Model):
 class VoteInSecDelMember(models.Model):
     voter = models.ForeignKey(User, on_delete=models.CASCADE)
     candidate = models.ForeignKey(SecDelMembers, related_name='vote_ins', on_delete=models.CASCADE)
+    sec_del = models.ForeignKey(SecDelModel, on_delete=models.CASCADE, null=True, blank=True)
     voted_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -165,6 +167,7 @@ class VoteInSecDelMember(models.Model):
 class PutFarwardSecDelMember(models.Model):
     voter = models.ForeignKey(User, on_delete=models.CASCADE)
     candidate = models.ForeignKey(SecDelMembers, related_name='put_farward', on_delete=models.CASCADE)
+    sec_del = models.ForeignKey(SecDelModel, on_delete=models.CASCADE, null=True, blank=True)
     voted_at = models.DateTimeField(auto_now_add=True)
 
     # do not edit the return def as it is used on the frontend
