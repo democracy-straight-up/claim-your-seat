@@ -149,6 +149,19 @@ class VoteOutSecDelMember(models.Model):
         super(VoteOutSecDelMember, self).save(*args, **kwargs)
         self.candidate.check_for_removing()
 
+
+class VoteInSecDelMember(models.Model):
+    voter = models.ForeignKey(User, on_delete=models.CASCADE)
+    candidate = models.ForeignKey(SecDelMembers, related_name='vote_ins', on_delete=models.CASCADE)
+    voted_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Voter: {self.voter.username}, Candidate: {self.candidate.id}"
+    
+    def save(self, *args, **kwargs):
+        super(VoteInSecDelMember, self).save(*args, **kwargs)
+        self.candidate.check_for_removing()
+
 class PutFarwardSecDelMember(models.Model):
     voter = models.ForeignKey(User, on_delete=models.CASCADE)
     candidate = models.ForeignKey(SecDelMembers, related_name='put_farward', on_delete=models.CASCADE)

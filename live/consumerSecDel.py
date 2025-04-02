@@ -98,6 +98,7 @@ class SecDelConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def voteIn(candidate):  
         member = apiModels.SecDelMembers.objects.get(pk = candidate)
+        # vote in the 
         member.vote_in_count += 1
         member.save()
         return {"status":"success", "message":"voted in"}
