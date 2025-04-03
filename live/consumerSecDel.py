@@ -17,9 +17,12 @@ class SecDelConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_add(self.room_name, self.channel_name)
 
         # Fetch existing circle members using database_sync_to_async
-        members = {'status':"success",  "action":"init",
+        members = {'status':"success",'message':'listed all', "action":"init",
                    'member_list': await self.get_members(),
-                   'vote_ins': await self.get_vote_ins(),}
+                   'vote_outs': await self.get_vote_outs(),
+                   'vote_ins': await self.get_vote_ins(),
+                   'put_forwards': await self.get_put_forwards()}
+        
 
         # Accept the WebSocket connection
         await self.accept()
@@ -49,7 +52,19 @@ class SecDelConsumer(AsyncWebsocketConsumer):
         instances = apiModels.VoteInSecDelMember.objects.filter(sec_del__code=self.sec_del_name)
         serialize = sec_del_ser.VoteInSecDelMemberSerializer(instances, many=True)
         return serialize.data
-        
+    
+    @database_sync_to_async
+    def get_vote_outs(self):
+        instances = apiModels.VoteOutSecDelMember.objects.filter(sec_del__code=self.sec_del_name)
+        serialize = sec_del_ser.VoteInSecDelMemberSerializer(instances, many=True)
+        return serialize.data
+    
+    @database_sync_to_async
+    def get_put_forwards(self):
+        instances = apiModels.PutFarwardSecDelMember.objects.filter(sec_del__code=self.sec_del_name)
+        serialize = sec_del_ser.PutFarwardSecDelMemberSerializer(instances, many=True)
+        return serialize.data
+    
     @database_sync_to_async
     def get_f_link(self):
         f_link = apiModels.SecDelModel.objects.filter(code = self.sec_del_name).first()
@@ -57,43 +72,83 @@ class SecDelConsumer(AsyncWebsocketConsumer):
         return obj.data
     
     
-    @staticmethod
     @database_sync_to_async
-    def voteOut(payload):  
-        SecDel_instance = apiModels.SecDelMembers.objects.get(pk = payload['member']) 
-        user_instance = User.objects.get(username = payload['voter'])
-        if SecDel_instance and user_instance:
-            apiModels.VoteOutSecDelMember.objects.create(voter = user_instance, candidate=SecDel_instance)
-            return {"status":"success", "message":"voted in"}
-        return {"status":"error", "message":"could not vote out"}
-    
-    @staticmethod
+    def member_vote_out(self, data):
+        """ Vote for member out. If the majority of the members agree on removing this member,
+        she/he shall be removed.
+        """
+        try:
+            voter = User.objects.get(username = data['voter'])
+            member =  apiModels.SecDelMembers.objects.get(pk = data['member'])
+            sec_del = apiModels.SecDelModel.objects.get(code=self.sec_del_name)
+            instance = apiModels.VoteOutSecDelMember.objects.update_or_create(voter=voter, candidate=member, sec_del=sec_del)
+            serialized = sec_del_ser.VoteOutSecDelMemberSerializer(instance[0])
+            vote = serializers.UserSerializer(voter)
+            print("done voting out..")
+            return {"status":"success","action":'vote_out', "message":"voted out successfully.", "user":vote.data, "instance":serialized.data}
+        except:
+            vote = serializers.UserSerializer(voter)
+            return {"status": "error","action":"vote_out", "message": "Could not vote out.","user":vote.data}
+        
     @database_sync_to_async
-    def putFarward(payload):  
-        SecDel_instance = apiModels.SecDelMembers.objects.get(pk = payload['member']) 
-        user_instance = User.objects.get(username = payload['voter'])
-        if SecDel_instance and user_instance:
-            apiModels.PutFarwardSecDelMember.objects.create(voter = user_instance, candidate=SecDel_instance)
-            return {"status":"success", "message":"voted"}
-        return {"status":"error", "message":"could not vote"}
-    
+    def undo_vote_out(self, data):
+        """removing the vote of the member (undoing the voting out)"""
+        try:
+            voter = User.objects.get(username = data['voter'])
+            member = apiModels.SecDelMembers.objects.get(pk = data['member'])
+            instance = apiModels.VoteOutSecDelMember.objects.get(voter=voter, candidate=member)
+            instance.delete()
+            serialized = sec_del_ser.VoteOutSecDelMemberSerializer(instance)
+            vote = serializers.UserSerializer(voter)
+            return {"status":"success","action":'undo_vote_out', "message":"vote removed successfully.", "user":vote.data, "instance":serialized.data}
+        except:
+            vote = serializers.UserSerializer(voter)
+            return {"status": "error","action":"undo_vote_out", "message": "Could not remove vote.","user":vote.data}
 
-    @staticmethod
     @database_sync_to_async
-    def removeCandidate(candidate):  
-        apiModels.SecDelMembers.objects.get(pk = candidate).delete()
-        return {"status":"success", "message":"removed"}
-    
-    @staticmethod
+    def put_forward(self, data):
+        """ change the circle gelegation."""
+        try:
+            voter = User.objects.get(username = data['voter'])
+            member = apiModels.SecDelMembers.objects.get(pk = data['member'])
+            sec_del = apiModels.SecDelModel.objects.get(code=self.sec_del_name)
+            instance = apiModels.PutFarwardSecDelMember.objects.update_or_create(voter = voter,candidate = member, sec_del = sec_del)
+            serialized = sec_del_ser.PutFarwardSecDelMemberSerializer(instance[0])
+            vote = serializers.UserSerializer(voter)
+            print("done with putting...")
+            return {"status":"success","action":'put_forward', "message":"voted for delegate.", "user":vote.data, "instance":serialized.data}
+        except:
+            print("somehting went wrong on puting...")
+            vote = serializers.UserSerializer(voter)
+            return {"status": "error","action":"put_forward", "message": "Could not vote for delegate.","user":vote.data}
+        
     @database_sync_to_async
-    def changeInvitKey(payload):
-        instance = apiModels.SecDelModel.objects.get(code = payload['f_link'])
-        if instance:
-            instance.invitation_key = generate_unique_invitation_key()
-            instance.save()
-            return {"status":"success", "f_link": instance.invitation_key}
-        return {"status":"error"}
+    def undo_put_forward(self, data):
+        """ undo the circle delegate vote."""
+        try:
+            voter = User.objects.get(username = data['voter'])
+            member = apiModels.SecDelMembers.objects.get(pk = data['member'])
+            instance = apiModels.PutFarwardSecDelMember.objects.get(voter = voter,candidate = member)
+            serialized = sec_del_ser.PutFarwardSecDelMemberSerializer(instance)
+            vote = serializers.UserSerializer(voter)
+            instance.delete()
+            return {"status":"success","action":'undo_put_forward', "message":"removed vote for delegate.", "user":vote.data, "instance":serialized.data}
+        except:
+            print("something went wrong on undoing the put...")
+            vote = serializers.UserSerializer(voter)
+            return {"status": "error","action":"undo_put_forward", "message": "Could not remove vote for delegate.","user":vote.data}
 
+
+    @database_sync_to_async
+    def invitation_key(self):
+        try:
+            sec_del = apiModels.SecDelModel.objects.get(code=self.sec_del_name)
+            sec_del.invitation_key = apiModels.generate_unique_invitation_key()
+            sec_del.save()
+            serialized = sec_del_ser.SecDelSerializer(sec_del)
+            return {"status":"success","action":'invitation_key', "message":"invitation key generated successfully.", "sec_del":serialized.data}
+        except:
+            return {"status": "error","action":"invitation_key", "message": "Could note generate invitation key."}
     
     @database_sync_to_async
     def voteIn(self,data):  
@@ -110,33 +165,26 @@ class SecDelConsumer(AsyncWebsocketConsumer):
             vote = serializers.UserSerializer(voter)
             return {"status": "error","action":"vote_in", "message": "Could not vote.","user":vote.data}
     
-    @staticmethod
-    @database_sync_to_async
-    def voteOut(payload):  
-        SecDel_instance = apiModels.SecDelMembers.objects.get(pk = payload['member']) 
-        user_instance = User.objects.get(username = payload['voter'])
-        if SecDel_instance and user_instance:
-            apiModels.VoteOutSecDelMember.objects.create(voter = user_instance, candidate=SecDel_instance)
-            return {"status":"success", "message":"voted in"}
-        return {"status":"error", "message":"could not vote out"}
-    
-    @staticmethod
-    @database_sync_to_async
-    def putFarward(payload):  
-        SecDel_instance = apiModels.SecDelMembers.objects.get(pk = payload['member']) 
-        user_instance = User.objects.get(username = payload['voter'])
-        if SecDel_instance and user_instance:
-            apiModels.PutFarwardSecDelMember.objects.create(voter = user_instance, candidate=SecDel_instance)
-            return {"status":"success", "message":"voted"}
-        return {"status":"error", "message":"could not vote"}
     
 
-    @staticmethod
     @database_sync_to_async
-    def removeCandidate(candidate):  
-        apiModels.SecDelMembers.objects.get(pk = candidate).delete()
-        return {"status":"success", "message":"removed"}
-    
+    def remove_candidate(self, data):
+        """ remove the candidate or members from this circle
+        """
+        try:
+            remover = User.objects.get(username = data['remover'])
+            member = apiModels.SecDelMembers.objects.get(pk = data['candidate'])
+            # set back the userType to 0 while removing.
+            member.user.users.userType = 'U1D1'
+            member.user.users.save()
+            member.delete()
+            # remove the circlemember
+            vote = serializers.UserSerializer(remover)
+            return {"status":"success","action":'remove_candidate', "message":"removed successfully.", "user":vote.data}
+        except:
+            vote = serializers.UserSerializer(remover)
+            return {"status": "error","action":"remove_candidate", "message": "Could note remove candidate.","user":vote.data}
+
     @staticmethod
     @database_sync_to_async
     def DissolveSecDel(payload):  
@@ -152,12 +200,18 @@ class SecDelConsumer(AsyncWebsocketConsumer):
 
         match data["action"]:
             case 'remove_candidate':
-                candidate = data['candidate']
-                instance = await self.removeCandidate(candidate)
-                if instance['status'] == "success":
+                # remove the candidate or member and return the circle members
+                res = await self.remove_candidate(data["payload"])
+                if res['status'] == 'error':
                     await self.channel_layer.group_send(self.room_name, {
                         'type': 'send_members',
-                        'members_list': {'status':"success", 'action':'member_listing', 'member_list': await self.get_members()} ,
+                        'members_list': res,
+                        }
+                    )
+                else:
+                    await self.channel_layer.group_send(self.room_name, {
+                        'type': 'send_members',
+                        'members_list':{'status':"success",'action': res ,'member_list': await self.get_members()} ,
                         }
                     )
                 return
@@ -179,26 +233,72 @@ class SecDelConsumer(AsyncWebsocketConsumer):
                     )
                 return
             
-            case 'putForward':
-                payload = data['payload']
-                instance = await self.putFarward(payload)
-                if instance['status'] == "success":
+            case "putForward":
+                res = await self.put_forward(data["payload"])
+                if res['status'] == 'error':
                     await self.channel_layer.group_send(self.room_name, {
                         'type': 'send_members',
-                        'members_list': {'status':"success", 'action':'member_listing', 'member_list': await self.get_members()} ,
+                        'members_list': res,
+                        }
+                    )
+                else:
+                    await self.channel_layer.group_send(self.room_name, {
+                        'type': 'send_members',
+                        'members_list':{'status':"success",'action': res ,'member_list': await self.get_members()} ,
                         }
                     )
                 return
-            case 'vote_out':
-                payload = data['payload']
-                instance = await self.voteOut(payload)
-                if instance['status'] == "success":
+            
+            case "undo_putForward":
+                res = await self.undo_put_forward(data["payload"])
+                if res['status'] == 'error':
                     await self.channel_layer.group_send(self.room_name, {
                         'type': 'send_members',
-                        'members_list': {'status':"success", 'action':'member_listing', 'member_list': await self.get_members()} ,
+                        'members_list': res,
+                        }
+                    )
+                else:
+                    await self.channel_layer.group_send(self.room_name, {
+                        'type': 'send_members',
+                        'members_list':{'status':"success",'action': res ,'member_list': await self.get_members()} ,
                         }
                     )
                 return
+            
+            case "vote_out":
+                 # vote in the candidate and return the circle members
+                res = await self.member_vote_out(data["payload"])
+                if res['status'] == 'error':
+                    await self.channel_layer.group_send(self.room_name, {
+                        'type': 'send_members',
+                        'members_list': res,
+                        }
+                    )
+                else:
+                    await self.channel_layer.group_send(self.room_name, {
+                        'type': 'send_members',
+                        'members_list':{'status':"success",'action': res ,'member_list': await self.get_members()} ,
+                        }
+                    )
+                return
+            
+            case "undo_vote_out":
+                 # vote in the candidate and return the circle members
+                res = await self.undo_vote_out(data["payload"])
+                if res['status'] == 'error':
+                    await self.channel_layer.group_send(self.room_name, {
+                        'type': 'send_members',
+                        'members_list': res,
+                        }
+                    )
+                else:
+                    await self.channel_layer.group_send(self.room_name, {
+                        'type': 'send_members',
+                        'members_list':{'status':"success",'action': res ,'member_list': await self.get_members()} ,
+                        }
+                    )
+                return
+
             case "join":
                 await self.channel_layer.group_send(self.room_name, {
                     'type': 'send_members',
@@ -208,11 +308,10 @@ class SecDelConsumer(AsyncWebsocketConsumer):
                 return
             
             case "invitationKey":
-                obj = await self.changeInvitKey(data['payload'])
-                if obj['status'] == 'success':
-                    await self.channel_layer.group_send(self.room_name, {
+                sd = await self.invitation_key()
+                await self.channel_layer.group_send(self.room_name, {
                         'type': 'send_members',
-                        'members_list': {'status':"success", 'action':'invite_key', 'f_link': await self.get_f_link()} ,
+                        'members_list': {"status": "success","action":'invitationKey', "sec_del":sd['sec_del'], 'member_list': await self.get_members()}
                         }
                     )
                 return

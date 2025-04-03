@@ -124,7 +124,6 @@ class SecDelMembers(models.Model):
             current_delegate = SecDelMembers.objects.filter(sec_del=self.sec_del).filter(is_delegate = True).first()
             current_delegate.is_delegate = False
             current_delegate.save()
-
             # set the current member to delegate and set is_delegate true.
             self.is_delegate = True
             self.save()

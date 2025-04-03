@@ -34,3 +34,8 @@ class VoteInSecDelMemberSerializer(serializers.ModelSerializer):
     class Meta: 
         model = apiModels.VoteInSecDelMember
         fields = "__all__"
+
+class PutFarwardSecDelMemberSerializer(serializers.ModelSerializer):
+    class Meta: 
+        model = apiModels.PutFarwardSecDelMember
+        fields = "__all__"
