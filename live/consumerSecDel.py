@@ -1,11 +1,11 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
-
 from django.contrib.auth.models import User
 from api import models as apiModels
-from api import sec_del_ser
+from api import sec_del_ser, serializers
 from api.models import generate_unique_invitation_key
+
 
 class SecDelConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -17,7 +17,9 @@ class SecDelConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_add(self.room_name, self.channel_name)
 
         # Fetch existing circle members using database_sync_to_async
-        members = {'status':"success",'action':'member_listing', 'member_list': await self.get_members()}
+        members = {'status':"success",  "action":"init",
+                   'member_list': await self.get_members(),
+                   'vote_ins': await self.get_vote_ins(),}
 
         # Accept the WebSocket connection
         await self.accept()
@@ -41,20 +43,19 @@ class SecDelConsumer(AsyncWebsocketConsumer):
         memberslist = apiModels.SecDelMembers.objects.filter(sec_del__code = self.sec_del_name)
         members = sec_del_ser.SecDelMembersSerializer(memberslist, many=True)
         return members.data
-    
+
+    @database_sync_to_async
+    def get_vote_ins(self):
+        instances = apiModels.VoteInSecDelMember.objects.filter(sec_del__code=self.sec_del_name)
+        serialize = sec_del_ser.VoteInSecDelMemberSerializer(instances, many=True)
+        return serialize.data
+        
     @database_sync_to_async
     def get_f_link(self):
         f_link = apiModels.SecDelModel.objects.filter(code = self.sec_del_name).first()
         obj = sec_del_ser.SecDelSerializer(f_link)
         return obj.data
     
-    @staticmethod
-    @database_sync_to_async
-    def voteIn(candidate):  
-        member = apiModels.SecDelMembers.objects.get(pk = candidate)
-        member.vote_in_count += 1
-        member.save()
-        return {"status":"success", "message":"voted in"}
     
     @staticmethod
     @database_sync_to_async
@@ -94,14 +95,20 @@ class SecDelConsumer(AsyncWebsocketConsumer):
         return {"status":"error"}
 
     
-    @staticmethod
     @database_sync_to_async
-    def voteIn(candidate):  
-        member = apiModels.SecDelMembers.objects.get(pk = candidate)
-        # vote in the 
-        member.vote_in_count += 1
-        member.save()
-        return {"status":"success", "message":"voted in"}
+    def voteIn(self,data):  
+        try:
+            voter = User.objects.get(username = data['voter'])
+            candidate = apiModels.SecDelMembers.objects.get(pk = data['candidate'])
+            sec_del = apiModels.SecDelModel.objects.get(code = self.sec_del_name)
+            instance_tuple =  apiModels.VoteInSecDelMember.objects.update_or_create(voter=voter,sec_del=sec_del, candidate=candidate)
+            serialized = sec_del_ser.VoteInSecDelMemberSerializer(instance_tuple[0])
+            instance_tuple[0].candidate.save()
+            vote = serializers.UserSerializer(voter)
+            return {"status":"success","action":'vote_in', "message":"voted successfully.", "user":vote.data, "instance":serialized.data}
+        except:
+            vote = serializers.UserSerializer(voter)
+            return {"status": "error","action":"vote_in", "message": "Could not vote.","user":vote.data}
     
     @staticmethod
     @database_sync_to_async
@@ -142,7 +149,7 @@ class SecDelConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         """ Check messages. If message is for voting in a candidate then vote the candidate. """
         data = json.loads(text_data)
-        print("data received: ", data)
+
         match data["action"]:
             case 'remove_candidate':
                 candidate = data['candidate']
@@ -155,12 +162,19 @@ class SecDelConsumer(AsyncWebsocketConsumer):
                     )
                 return
             case 'vote_in':
-                candidate = data['candidate']
-                instance = await self.voteIn(candidate)
-                if instance['status'] == "success":
+                # vote in the candidate and return the circle members
+
+                res = await self.voteIn(data["payload"])
+                if res['status'] == 'error':
                     await self.channel_layer.group_send(self.room_name, {
                         'type': 'send_members',
-                        'members_list': {'status':"success", 'action':'member_listing', 'member_list': await self.get_members()} ,
+                        'members_list': res,
+                        }
+                    )
+                else:
+                    await self.channel_layer.group_send(self.room_name, {
+                        'type': 'send_members',
+                        'members_list':{'status':"success",'action': res ,'member_list': await self.get_members()} ,
                         }
                     )
                 return

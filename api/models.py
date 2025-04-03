@@ -61,8 +61,6 @@ class SecDelMembers(models.Model):
     is_member = models.BooleanField(default=False)
     joined_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    vote_in_count = models.PositiveSmallIntegerField(default=0)
-    vote_out_count = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
         ordering = ['-is_delegate', 'joined_at']
@@ -79,22 +77,6 @@ class SecDelMembers(models.Model):
         # check for max membership 
         if SecDelMembers.objects.filter(is_member=True).count() >=12:
             raise MaxMembershipReached()  # Raise maxMember validation
-
-        # Calculate if is_member should be true (calculating the majority of vote)
-
-        if not self.is_member:
-            if self.vote_in_count >= (self.sec_del.secdelmembers_set.filter(is_member=True).count()//2+1):
-                self.is_member = True
-            else:
-                self.is_member = False
-
-        # check the user type of the member. it has to be userType 1 
-        # on save, update the userType to 2
-        if self.user.users.userType == 'U1D1':
-            self.user.users.userType = 'U2D1'
-            self.user.users.save()
-        else:
-            return {"error": "User is not eligible for this operation."}
         
         # on each first member, make the member the delegate member by default.
         if not self.pk and not self.sec_del.secdelmembers_set.exists():
@@ -102,15 +84,29 @@ class SecDelMembers(models.Model):
             self.is_member = True
             self.user.users.userType = 'U2D2'
             self.user.users.save()
-
-        super().save(*args, **kwargs)
+        
+        super(SecDelMembers, self).save(*args, **kwargs)
 
     def count_vote_out(self):
         return VoteOutSecDelMember.objects.filter(candidate=self).count()
+
+    def count_vote_in(self):
+        return VoteInSecDelMember.objects.filter(candidate=self).count()
       
     def count_put_forward(self):
         return PutFarwardSecDelMember.objects.filter(candidate=self).count()
-
+    
+    def check_for_majority(self): 
+        total_members = SecDelMembers.objects.filter(sec_del=self.sec_del).filter(is_member = True).count()
+        majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
+        if self.count_vote_in() >= majority_threshold:
+            self.is_member = True
+            # set the user.users userType to U1D0
+            self.save()
+            self.user.users.userType = 'U2D1'
+            self.user.users.save()
+            # ContactInfo.objects.create(member=self,address=self.user.users.address,email=self.user.email)
+        return self
     
     def check_for_removing(self):
         total_members = SecDelMembers.objects.filter(sec_del=self.sec_del).filter(is_member = True).count()
@@ -119,7 +115,6 @@ class SecDelMembers(models.Model):
             self.user.users.userType = 'U1D1'
             self.user.users.save()
             self.delete()
-            # set the deleted user.users userType to 1
 
     def check_put_farward(self):
         total_members = SecDelMembers.objects.filter(sec_del=self.sec_del).filter(is_member = True).count()
@@ -134,7 +129,8 @@ class SecDelMembers(models.Model):
             self.is_delegate = True
             self.save()
             # # Delete related votes for this member instances
-            PutFarwardSecDelMember.objects.filter(candidate=self).delete()
+            # PutFarwardSecDelMember.objects.filter(candidate=self).delete()
+
 
 class VoteOutSecDelMember(models.Model):
     voter = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -162,7 +158,11 @@ class VoteInSecDelMember(models.Model):
     
     def save(self, *args, **kwargs):
         super(VoteInSecDelMember, self).save(*args, **kwargs)
-        self.candidate.check_for_removing()
+        self.candidate.check_for_majority()
+
+        # self.candidate.save()
+        return self 
+
 
 class PutFarwardSecDelMember(models.Model):
     voter = models.ForeignKey(User, on_delete=models.CASCADE)
