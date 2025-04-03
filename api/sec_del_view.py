@@ -65,7 +65,6 @@ class SecDelMembersViewSet(viewsets.ModelViewSet):
             sec_del = apiModels.SecDelModel.objects.get(invitation_key=request.data['inviteKey'])
             user = User.objects.get(username=request.data['user'])
             apiModels.SecDelMembers.objects.create(user=user, sec_del=sec_del)
-            # get the members list 
             members = apiModels.SecDelMembers.objects.filter(sec_del=sec_del)
             serializer = self.get_serializer(members, many=True)
             return Response(serializer.data)

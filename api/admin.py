@@ -10,21 +10,27 @@ admin.site.register(apiModels.SecDelModel, SecDel_Admin)
 
 
 class SecDelMembers_Admin(admin.ModelAdmin):
-    list_display =['user','sec_del', 'vote_in_count','vote_out_count', 'is_member', 'is_delegate','joined_at']
+    list_display =['user','sec_del', 'is_member', 'is_delegate','joined_at']
     list_display_links =['user','sec_del', 'is_member', 'is_delegate','joined_at']
     search_fields =['user','sec_del', 'is_member', 'is_delegate','joined_at']
 admin.site.register(apiModels.SecDelMembers, SecDelMembers_Admin)
 
 class SecDelMembersVoteOut_Admin(admin.ModelAdmin):
-    list_display =[ 'voted_at','candidate', 'voter']
-    list_display_links =['voted_at','candidate', 'voter']
-    search_fields =['voted_at','candidate', 'voter']
+    list_display =[ 'voted_at','candidate','sec_del', 'voter']
+    list_display_links =['voted_at','candidate','sec_del', 'voter']
+    search_fields =['voted_at','candidate','sec_del', 'voter']
 admin.site.register(apiModels.VoteOutSecDelMember, SecDelMembersVoteOut_Admin)
 
+class SecDelMembersVoteIn_Admin(admin.ModelAdmin):
+    list_display =[ 'voted_at','candidate','sec_del', 'voter']
+    list_display_links =['voted_at','candidate','sec_del', 'voter']
+    search_fields =['voted_at','candidate','sec_del', 'voter']
+admin.site.register(apiModels.VoteInSecDelMember, SecDelMembersVoteIn_Admin)
+
 class SecDelMembersPutFarward_Admin(admin.ModelAdmin):
-    list_display =[ 'voted_at','candidate', 'voter']
-    list_display_links =['voted_at','candidate', 'voter']
-    search_fields =['voted_at','candidate', 'voter']
+    list_display =[ 'voted_at','candidate', 'sec_del', 'voter']
+    list_display_links =['voted_at','candidate', 'sec_del', 'voter']
+    search_fields =['voted_at','candidate', 'sec_del', 'voter']
 admin.site.register(apiModels.PutFarwardSecDelMember, SecDelMembersPutFarward_Admin)
 
 class DummyVoters_Admin(admin.ModelAdmin):
