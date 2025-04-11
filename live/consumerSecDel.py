@@ -84,7 +84,6 @@ class SecDelConsumer(AsyncWebsocketConsumer):
             instance = apiModels.VoteOutSecDelMember.objects.update_or_create(voter=voter, candidate=member, sec_del=sec_del)
             serialized = sec_del_ser.VoteOutSecDelMemberSerializer(instance[0])
             vote = serializers.UserSerializer(voter)
-            print("done voting out..")
             return {"status":"success","action":'vote_out', "message":"voted out successfully.", "user":vote.data, "instance":serialized.data}
         except:
             vote = serializers.UserSerializer(voter)
@@ -115,7 +114,6 @@ class SecDelConsumer(AsyncWebsocketConsumer):
             instance = apiModels.PutFarwardSecDelMember.objects.update_or_create(voter = voter,candidate = member, sec_del = sec_del)
             serialized = sec_del_ser.PutFarwardSecDelMemberSerializer(instance[0])
             vote = serializers.UserSerializer(voter)
-            print("done with putting...")
             return {"status":"success","action":'put_forward', "message":"voted for delegate.", "user":vote.data, "instance":serialized.data}
         except:
             print("somehting went wrong on puting...")

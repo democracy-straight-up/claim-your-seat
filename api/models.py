@@ -75,7 +75,7 @@ class SecDelMembers(models.Model):
     
     def save(self, *args, **kwargs):
         # check for max membership 
-        if SecDelMembers.objects.filter(is_member=True).count() >=12:
+        if SecDelMembers.objects.filter(is_member=True).count() >12:
             raise MaxMembershipReached()  # Raise maxMember validation
         
         # on each first member, make the member the delegate member by default.
@@ -124,8 +124,16 @@ class SecDelMembers(models.Model):
             current_delegate = SecDelMembers.objects.filter(sec_del=self.sec_del).filter(is_delegate = True).first()
             current_delegate.is_delegate = False
             current_delegate.save()
+            # set the user.users userType to U1D1
+            current_delegate.user.users.userType = 'U2D1'
+            current_delegate.user.users.save()
             # set the current member to delegate and set is_delegate true.
             self.is_delegate = True
+
+            # set the self instance user.users userType to U2D2
+            self.user.users.userType = 'U2D2'
+            self.user.users.save()
+            # save the current member instance
             self.save()
             # # Delete related votes for this member instances
             # PutFarwardSecDelMember.objects.filter(candidate=self).delete()
