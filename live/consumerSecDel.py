@@ -182,8 +182,8 @@ class SecDelConsumer(AsyncWebsocketConsumer):
             vote = serializers.UserSerializer(remover)
             return {"status":"success","action":'remove_candidate', "message":"removed successfully.", "user":vote.data}
         except:
-            vote = serializers.UserSerializer(remover)
-            return {"status": "error","action":"remove_candidate", "message": "Could note remove candidate.","user":vote.data}
+            # vote = serializers.UserSerializer(remover)
+            return {"status": "error","action":"remove_candidate", "message": "Could note remove candidate.","user":""}
 
     @staticmethod
     @database_sync_to_async
@@ -201,7 +201,8 @@ class SecDelConsumer(AsyncWebsocketConsumer):
         match data["action"]:
             case 'remove_candidate':
                 # remove the candidate or member and return the circle members
-                res = await self.remove_candidate(data["payload"])
+                print("removing candidate...", data)
+                res = await self.remove_candidate(data)
                 if res['status'] == 'error':
                     await self.channel_layer.group_send(self.room_name, {
                         'type': 'send_members',
