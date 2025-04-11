@@ -7,8 +7,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.http import JsonResponse
 from rest_framework.decorators import action
-
-from vote.models import GroupMember
+from django.shortcuts import get_object_or_404
 
 
 class SecDelViewSet(viewsets.ModelViewSet):
@@ -47,14 +46,18 @@ class SecDelViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['POST'])
     def get_f_link_by_user(self,request):
-        
         try:
-            instance = apiModels.SecDelMembers.objects.get(user__username = request.data['user'])
-            serial = self.get_serializer(instance.sec_del)
-            return Response(serial.data)
-        except apiModels.SecDelMembers.DoesNotExist:
-            return Response({'message':"voter associated with f_link does not found"}, status==status.HTTP_404_NOT_FOUND)
-
+            username = request.data['user']
+        except KeyError:
+            return Response({'message': "Missing 'user' field in request data."},
+                status=status.HTTP_400_BAD_REQUEST)
+        # get_object_or_404 handles the try/except DoesNotExist for you
+        # It raises Http404 if the object is not found
+        instance = get_object_or_404(apiModels.SecDelMembers, user__username=username)
+        # If the object is found, execution continues here
+        serial = self.get_serializer(instance.sec_del)
+        return Response(serial.data)
+    
 class SecDelMembersViewSet(viewsets.ModelViewSet):
     queryset = apiModels.SecDelMembers.objects.all()
     serializer_class = apiSerializer.SecDelMembersSerializer
