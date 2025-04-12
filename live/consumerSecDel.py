@@ -156,7 +156,6 @@ class SecDelConsumer(AsyncWebsocketConsumer):
             sec_del = apiModels.SecDelModel.objects.get(code = self.sec_del_name)
             instance_tuple =  apiModels.VoteInSecDelMember.objects.update_or_create(voter=voter,sec_del=sec_del, candidate=candidate)
             serialized = sec_del_ser.VoteInSecDelMemberSerializer(instance_tuple[0])
-            instance_tuple[0].candidate.save()
             vote = serializers.UserSerializer(voter)
             return {"status":"success","action":'vote_in', "message":"voted successfully.", "user":vote.data, "instance":serialized.data}
         except:
@@ -216,7 +215,6 @@ class SecDelConsumer(AsyncWebsocketConsumer):
                 return
             case 'vote_in':
                 # vote in the candidate and return the circle members
-
                 res = await self.voteIn(data["payload"])
                 if res['status'] == 'error':
                     await self.channel_layer.group_send(self.room_name, {

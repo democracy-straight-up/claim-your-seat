@@ -105,6 +105,7 @@ class SecDelMembers(models.Model):
             self.save()
             self.user.users.userType = 'U2D1'
             self.user.users.save()
+            return self
             # ContactInfo.objects.create(member=self,address=self.user.users.address,email=self.user.email)
         return self
     
@@ -166,7 +167,6 @@ class VoteInSecDelMember(models.Model):
     def save(self, *args, **kwargs):
         super(VoteInSecDelMember, self).save(*args, **kwargs)
         self.candidate.check_for_majority()
-
         # self.candidate.save()
         return self 
 
