@@ -136,16 +136,14 @@ class LoginPageView(APIView):
         # username is the entry-code
         authedUser = authenticate(
             request, username=post_data['username'], password=post_data['password'])
-
         if authedUser is not None:
             # authenticate if has the same district code
-            dist = voteModels.Districts.objects.get(
-                code=post_data['district'].upper())
+            dist = voteModels.Districts.objects.get(code=post_data['district'].upper())
             if authedUser.users.district != dist:
                 messages = 'Invalid Credential. Check if you have entered the right district code'
                 return Response({"status": messages}, status=status.HTTP_400_BAD_REQUEST)
-
             # login(request,authedUser)
+
             data = {
                 'legalName': authedUser.users.legalName,
                 'username': authedUser.username,
@@ -344,7 +342,7 @@ def circle_joining_validation(user, circle):
     #     result = False
 
     circlemembers = circle.groupmember_set.all()
-    if circlemembers.count() >= 12:
+    if circlemembers.count() > 12:
         result = False
 
     if circlemembers.filter(user=user):
@@ -353,7 +351,9 @@ def circle_joining_validation(user, circle):
     if user.users.userType != 'U0D0':
         result = False
 
+    print("user.users.district: ", user.users.district, circle.district)
     if user.users.district != circle.district:
+        print("user.users.district != circle.district")
         result = False
 
     return result
@@ -377,6 +377,7 @@ class JoinCIRCLE(APIView):
             if group:
                 # check if user can join the circle
                 if circle_joining_validation(user, group):
+                    print("heree...")
                     circleMember = voteModels.GroupMember.objects.create(
                         user=user,
                         group=group,
@@ -384,6 +385,7 @@ class JoinCIRCLE(APIView):
                         is_delegate=False,
                         member_number=group.groupmember_set.count()+1
                     )
+                    print("circleMember: ", circleMember)
                     circleMember.save()
                     # set the userType of the member to 0
                     # when the user become the member via majority votes, then the userType is set to 1

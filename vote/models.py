@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 class Districts(models.Model):
     name = models.CharField(max_length=60, null=True, blank=True)
     # code is the 5-digit entry code for the district
-    code = models.CharField(max_length=4, null=True, blank=True)
+    code = models.CharField(max_length=4, null=True, blank=True, unique=True)
 
     # to loaddata into district tables, run the loaddata command for fixture
     # python loaddata <path>fileName.json

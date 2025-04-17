@@ -4,6 +4,7 @@ from vote import models
 class DistrictAdmin(admin.ModelAdmin):
     list_display = ['name','code']
     list_display_links = ["name", "code"]
+    search_fields =['name','code']
 admin.site.register(models.Districts, DistrictAdmin)
 
 class UsersAdmin(admin.ModelAdmin):
