@@ -79,11 +79,19 @@ class CircleConsumer(AsyncWebsocketConsumer):
         try:
             voter = User.objects.get(username = data['voter'])
             member = voteModels.GroupMember.objects.get(pk = data['member'])
+            print("voter:", voter, "  member:", member)
             group = voteModels.Group.objects.get(code=self.circle_name)
-            voteModels.CircleMember_vote_out.objects.update_or_create(voter=voter, candidate=member, group=group)
-            instance = voteModels.CircleMember_vote_out.objects.get(voter=voter, candidate=member)
-            serialized = serializers.CircleMember_VoteOutSer(instance)
+            print("group:", group)
+            # voteModels.CircleMember_vote_out.objects.update_or_create(voter=voter, candidate=member, group=group)
+            # print("voteed: ")
+            # instance = voteModels.CircleMember_vote_out.objects.get(voter=voter, candidate=member)
+            # serialized = serializers.CircleMember_VoteOutSer(instance)
+            instance =  voteModels.CircleMember_vote_out.objects.update_or_create(voter=voter, candidate=member, group=group)
+            print("instance: ", instance[0])
+            # apiModels.VoteOutSecDelMember.objects.update_or_create(voter=voter, candidate=member, sec_del=sec_del)
+            serialized = serializers.CircleMember_VoteOutSer(instance[0])
             vote = serializers.UserSerializer(voter)
+            print("serialized: ", serialized.data)
             return {"status":"success","action":'vote_out', "message":"voted out successfully.", "user":vote.data, "instance":serialized.data}
         except:
             vote = serializers.UserSerializer(voter)

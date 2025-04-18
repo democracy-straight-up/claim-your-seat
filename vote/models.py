@@ -96,11 +96,17 @@ class GroupMember(models.Model):
 
     def check_for_removing(self):
         total_members = GroupMember.objects.filter(group=self.group).filter(is_member = True).count()
+        print("total members: ", total_members)
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
+        print("majority threshold: ", majority_threshold)
+        print("count vote out: ", self.count_vote_out())
         if self.count_vote_out() >= majority_threshold:
+            print("removing the members...")
             self.user.users.userType = 'U0D0'
             self.user.users.save()
+            print("user type is changed: ", self.user.users.userType)
             self.delete()
+            print("deleted the member")
             # set the deleted user.users userType to 0
 
     def check_put_farward(self):
