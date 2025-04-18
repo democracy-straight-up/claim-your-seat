@@ -249,11 +249,17 @@ class User_Serializer(serializers.ModelSerializer):
 # this serializer is being used in Circle consumer file for circle members
 class CircleMemberSerializer(serializers.ModelSerializer):
     user = User_Serializer()
-
+    group = CircleSerializer()
+    voteIns = serializers.StringRelatedField(many=True)
+    voteOuts = serializers.StringRelatedField(many=True)
+    putForward = serializers.StringRelatedField(many=True)
+    count_vote_in = serializers.StringRelatedField()
+    count_vote_out = serializers.StringRelatedField()
+    count_put_forward = serializers.StringRelatedField()
 
     class Meta:
         model = voteModels.GroupMember
-        fields = ['id', 'is_member', 'is_delegate', 
+        fields = ['id', 'is_member', 'is_delegate', 'voteIns', 'voteOuts', 'putForward',
                   'date_joined', 'date_updated', 'group', 'user', 'count_vote_in',
                   'count_vote_out', 'count_put_forward']
 

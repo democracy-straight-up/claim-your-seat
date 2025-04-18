@@ -145,6 +145,7 @@ class CircleBackNForth(models.Model):
 class CircleMember_vote_in(models.Model):
     recipient   = models.ForeignKey(GroupMember,related_name='voteIns', on_delete=models.CASCADE, default=False)
     voter       = models.ForeignKey(User, on_delete=models.CASCADE)
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, null=True, blank=True)
     created_at  = models.DateTimeField(auto_now_add=True)
     updated_at  = models.DateTimeField(auto_now=True)
 

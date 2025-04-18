@@ -26,8 +26,8 @@ class CircleMemberAdmin(admin.ModelAdmin):
 admin.site.register(models.GroupMember, CircleMemberAdmin)
 
 class CircleMember_vote_inAdmin(admin.ModelAdmin):
-    list_display = ['recipient', 'voter']
-    list_display_links = ["recipient", "voter"]
+    list_display = ['recipient', 'voter', 'group']
+    list_display_links = ["recipient", "voter",'group']
 admin.site.register(models.CircleMember_vote_in, CircleMember_vote_inAdmin)
 
 class CircleMember_vote_outAdmin(admin.ModelAdmin):

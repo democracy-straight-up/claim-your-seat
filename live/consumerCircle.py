@@ -17,6 +17,7 @@ class CircleConsumer(AsyncWebsocketConsumer):
         # Fetch existing circle members using database_sync_to_async
         members = {'status':"success",'message':'listed all', "action":"init",
                    'member_list': await self.get_members(),
+                   'vote_ins': await self.get_vote_ins(),
                    'vote_outs': await self.get_vote_outs(),
                    'put_forwards': await self.get_put_forwards()}
 
@@ -50,6 +51,12 @@ class CircleConsumer(AsyncWebsocketConsumer):
         return serialize.data
     
     @database_sync_to_async
+    def get_vote_ins(self):
+        instances = voteModels.CircleMember_vote_in.objects.filter(group__code=self.circle_name)
+        serialize = serializers.CircleMember_VoteInSer(instances, many=True)
+        return serialize.data
+    
+    @database_sync_to_async
     def get_put_forwards(self):
         instances = voteModels.CircleMember_put_forward.objects.filter(group__code=self.circle_name)
         serialize = serializers.CircleMember_put_forwardSer(instances, many=True)
@@ -64,9 +71,11 @@ class CircleConsumer(AsyncWebsocketConsumer):
         try:
             voter = User.objects.get(username = data['voter'])
             candidate = voteModels.GroupMember.objects.get(pk = data['candidate'])
-            voteModels.CircleMember_vote_in.objects.update_or_create(voter=voter, recipient=candidate)
+            group = voteModels.Group.objects.get(code = self.circle_name)
+            isinstance_tuple = voteModels.CircleMember_vote_in.objects.update_or_create(voter=voter, group=group, recipient=candidate)
+            serialized = serializers.CircleMember_VoteInSer(isinstance_tuple[0])
             vote = serializers.UserSerializer(voter)
-            return {"status":"success","action":'vote_in', "message":"voted successfully.", "user":vote.data}
+            return {"status":"success","action":'vote_in', "message":"voted successfully.", "user":vote.data, "instance":serialized.data}
         except:
             vote = serializers.UserSerializer(voter)
             return {"status": "error","action":"vote_in", "message": "Could not vote","user":vote.data}
