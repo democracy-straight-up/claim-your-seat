@@ -138,11 +138,8 @@ class CircleConsumer(AsyncWebsocketConsumer):
             voter = User.objects.get(username = data['voter'])
             member = voteModels.GroupMember.objects.get(pk = data['member'])
             group = voteModels.Group.objects.get(code=self.circle_name)
-            voteModels.CircleMember_put_forward.objects.update_or_create(voter=voter, recipient=member, group=group)
-
-            # get the instance from DB. 
-            instance  = voteModels.CircleMember_put_forward.objects.get(voter=voter, recipient=member)
-            serialized = serializers.CircleMember_put_forwardSer(instance)
+            instance_tuple = voteModels.CircleMember_put_forward.objects.update_or_create(voter=voter, recipient=member, group=group)
+            serialized = serializers.CircleMember_put_forwardSer(instance_tuple[0])
             vote = serializers.UserSerializer(voter)
             return {"status":"success","action":'put_forward', "message":"voted for delegate.", "user":vote.data, "instance":serialized.data}
         except:
@@ -333,8 +330,6 @@ class CircleConsumer(AsyncWebsocketConsumer):
 
         # if any of the functions returns error, the message being sent will be that error only to that user.
         # otherwise, the circle members will be sent back to the room
-
-
 
     # Send to each member
     async def send_members(self, event):

@@ -113,15 +113,19 @@ class GroupMember(models.Model):
         total_members = GroupMember.objects.filter(group=self.group).filter(is_member = True).count()
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_put_forward() >= majority_threshold:
+
             # find the current delegate and set is_delegate false.
             current_delegate = GroupMember.objects.filter(group=self.group).filter(is_delegate = True).first()
             current_delegate.is_delegate = False
             current_delegate.save()
-
+            # set the current delegate user.users userType to U1D0
+            current_delegate.user.users.userType = 'U1D0'
+            current_delegate.user.users.save()
             # set the current member to delegate and set is_delegate true.
             self.is_delegate = True
+            self.user.users.userType = 'U1D1'
+            self.user.users.save()
             self.save()
-
             # Delete related CircleMember_put_forward instances
             CircleMember_put_forward.objects.filter(recipient=self).delete()
 
@@ -179,7 +183,7 @@ class CircleMember_put_forward(models.Model):
 
     def save(self, *args, **kwargs):
         super(CircleMember_put_forward, self).save(*args, **kwargs)
-        
+        print("from the model save method, checking for the majoriyt of gele:... ")
         self.recipient.check_put_farward()
 
     def __str__(self):
