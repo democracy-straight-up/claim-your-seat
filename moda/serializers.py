@@ -14,12 +14,13 @@ class ModaSerializer(serializers.ModelSerializer):
 class ModaMembersSerializer(serializers.ModelSerializer):
     user = UserSerializer()
     moda = ModaSerializer()
-    # vote_ins = serializers.StringRelatedField(many=True)
-    # vote_outs = serializers.StringRelatedField(many=True)
-    # put_farward = serializers.StringRelatedField(many=True)
-    # count_vote_in = serializers.StringRelatedField()
-    # count_vote_out = serializers.StringRelatedField()
-    # count_put_forward = serializers.StringRelatedField()
+    vote_ins = serializers.StringRelatedField(many=True)
+    vote_outs = serializers.StringRelatedField(many=True)
+    put_farward = serializers.StringRelatedField(many=True)
+    count_vote_in = serializers.StringRelatedField()
+    count_vote_out = serializers.StringRelatedField()
+    count_put_forward = serializers.StringRelatedField()
     class Meta:
         model = modaModels.ModaMembers
-        fields = ["id","user","moda","is_delegate","is_member", "joined_at","updated_at"]
+        fields = ["id","user","moda","is_delegate","is_member", "joined_at","updated_at",
+                  "vote_outs","vote_ins", "put_farward","count_put_forward", "count_vote_out", "count_vote_in"]
