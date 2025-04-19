@@ -26,12 +26,7 @@ from django.urls import path, include
 urlpatterns = [
     path('',include('vote.urls')),
     path('api/',include('api.urls')),
-    # path('api/schema/', SpectacularAPIView.as_view(), name='api-schema'),
-    # path(
-    #     'api/docs/',
-    #     SpectacularSwaggerView.as_view(url_name='api-schema'),
-    #     name='api-docs',
-    # ),
+    path('api/moda/',include('moda.urls')),
     path('admin/', admin.site.urls),
     path('bill/', include("bills.urls")),
 ]
