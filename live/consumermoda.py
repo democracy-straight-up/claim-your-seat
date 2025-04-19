@@ -55,7 +55,7 @@ class ModaConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_vote_outs(self):
         instances = models.VoteOutModaMember.objects.filter(moda__code=self.moda_name)
-        serialize = serializers.VoteInModaMemberSerializer(instances, many=True)
+        serialize = serializers.VoteOutModaMemberSerializer(instances, many=True)
         return serialize.data
     
     @database_sync_to_async
@@ -132,10 +132,10 @@ class ModaConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def invitation_key(self):
         try:
-            sec_del = models.ModaModel.objects.get(code=self.moda_name)
-            sec_del.invitation_key = models.generate_unique_invitation_key()
-            sec_del.save()
-            serialized = serializers.ModaSerializer(sec_del)
+            moda = models.ModaModel.objects.get(code=self.moda_name)
+            moda.invitation_key = models.generate_unique_invitation_key()
+            moda.save()
+            serialized = serializers.ModaSerializer(moda)
             return {"status":"success","action":'invitation_key', "message":"invitation key generated successfully.", "moda":serialized.data}
         except:
             return {"status": "error","action":"invitation_key", "message": "Could note generate invitation key."}
@@ -298,14 +298,14 @@ class ModaConsumer(AsyncWebsocketConsumer):
                 sd = await self.invitation_key()
                 await self.channel_layer.group_send(self.room_name, {
                         'type': 'send_members',
-                        'members_list': {"status": "success","action":'invitationKey', "sec_del":sd['sec_del'], 'member_list': await self.get_members()}
+                        'members_list': {"status": "success","action":'invitationKey', "moda":sd['moda'], 'member_list': await self.get_members()}
                         }
                     )
                 return
            
             case "dissolve":
-                # get the memeber instance and remove the member.sec_del. 
-                # upon removing the sec_del, the member will be removed as well.
+                # get the memeber instance and remove the member.moda. 
+                # upon removing the moda, the member will be removed as well.
                 obj = await self.DissolveSecDel(data['payload'])
                 if obj['status'] == 'success':
                     await self.channel_layer.group_send(self.room_name, {
