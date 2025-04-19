@@ -2,7 +2,7 @@ from rest_framework import serializers
 from moda import models as modaModels
 from api.serializers import DistrictsSerializer, UserSerializer
 
-class SecDelSerializer(serializers.ModelSerializer):
+class ModaSerializer(serializers.ModelSerializer):
     district = DistrictsSerializer()
     is_active = serializers.ReadOnlyField()
     member_count = serializers.ReadOnlyField()
@@ -11,9 +11,9 @@ class SecDelSerializer(serializers.ModelSerializer):
         model = modaModels.ModaModel
         fields = "__all__"
 
-class SecDelMembersSerializer(serializers.ModelSerializer):
+class ModaMembersSerializer(serializers.ModelSerializer):
     user = UserSerializer()
-    sec_del = SecDelSerializer()
+    moda = ModaSerializer()
     # vote_ins = serializers.StringRelatedField(many=True)
     # vote_outs = serializers.StringRelatedField(many=True)
     # put_farward = serializers.StringRelatedField(many=True)
