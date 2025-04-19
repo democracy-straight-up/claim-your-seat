@@ -6,7 +6,7 @@ from moda import models
 from moda import serializers
 
 
-class SecDelConsumer(AsyncWebsocketConsumer):
+class ModaConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.moda_name = self.scope['url_route']['kwargs']['moda_name']
         self.user_name = self.scope['url_route']['kwargs']['user_name']
