@@ -169,7 +169,7 @@ class VoteInModaMember(models.Model):
 class PutFarwardModaMember(models.Model):
     voter = models.ForeignKey(User, on_delete=models.CASCADE)
     candidate = models.ForeignKey(ModaMembers, related_name='put_farward', on_delete=models.CASCADE)
-    sec_del = models.ForeignKey(ModaMembers, on_delete=models.CASCADE, null=True, blank=True)
+    moda = models.ForeignKey(ModaMembers, on_delete=models.CASCADE, null=True, blank=True)
     voted_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
