@@ -22,7 +22,6 @@ class ModaConsumer(AsyncWebsocketConsumer):
                    'vote_ins': await self.get_vote_ins(),
                    'put_forwards': await self.get_put_forwards()}
         
-
         # Accept the WebSocket connection
         await self.accept()
 
@@ -108,7 +107,6 @@ class ModaConsumer(AsyncWebsocketConsumer):
             vote = serializers.UserSerializer(voter)
             return {"status":"success","action":'put_forward', "message":"voted for delegate.", "user":vote.data, "instance":serialized.data}
         except:
-            print("somehting went wrong on puting...")
             vote = serializers.UserSerializer(voter)
             return {"status": "error","action":"put_forward", "message": "Could not vote for delegate.","user":vote.data}
         
@@ -124,7 +122,6 @@ class ModaConsumer(AsyncWebsocketConsumer):
             instance.delete()
             return {"status":"success","action":'undo_put_forward', "message":"removed vote for delegate.", "user":vote.data, "instance":serialized.data}
         except:
-            print("something went wrong on undoing the put...")
             vote = serializers.UserSerializer(voter)
             return {"status": "error","action":"undo_put_forward", "message": "Could not remove vote for delegate.","user":vote.data}
 
@@ -146,8 +143,8 @@ class ModaConsumer(AsyncWebsocketConsumer):
             voter = User.objects.get(username = data['voter'])
             candidate = models.ModaMembers.objects.get(pk = data['candidate'])
             moda = models.ModaModel.objects.get(code = self.moda_name)
-            instance_tuple =  models.ModaMembers.objects.update_or_create(voter=voter,moda=moda, candidate=candidate)
-            serialized = serializers.ModaMembersSerializer(instance_tuple[0])
+            instance_tuple =  models.VoteInModaMember.objects.update_or_create(voter=voter,moda=moda, candidate=candidate)
+            serialized = serializers.VoteInModaMemberSerializer(instance_tuple[0])
             vote = serializers.UserSerializer(voter)
             return {"status":"success","action":'vote_in', "message":"voted successfully.", "user":vote.data, "instance":serialized.data}
         except:
@@ -163,7 +160,6 @@ class ModaConsumer(AsyncWebsocketConsumer):
         try:
             remover = User.objects.get(username = data['remover'])
             member = models.ModaMembers.objects.get(pk = data['candidate'])
-            # set back the userType 
             member.user.users.userType = 'U2D2'
             member.user.users.save()
             member.delete()
