@@ -86,6 +86,7 @@ class GroupMember(models.Model):
             self.is_member = True
             # set the user.users userType to U1D0
             self.user.users.userType = 'U1D0'
+            self.user.users.verificationScore = 2
             self.user.users.save()
             self.save()
             # Delete related CircleMember_vote_in instances
@@ -103,6 +104,7 @@ class GroupMember(models.Model):
         if self.count_vote_out() >= majority_threshold:
             print("removing the members...")
             self.user.users.userType = 'U0D0'
+            self.user.users.verificationScore = 1
             self.user.users.save()
             print("user type is changed: ", self.user.users.userType)
             self.delete()
