@@ -27,7 +27,7 @@ class Users(models.Model):
     # i am registered to vote in this district
     is_reg      = models.BooleanField(default=False)
     # this is for if the user is registered with conditional.
-    verificationScore = models.SmallIntegerField(default=0,null=True, blank=True)
+    verificationScore = models.SmallIntegerField(default=1,null=True, blank=True)
     address     = models.CharField(max_length=150, null=True, blank=True)
     # userType is the from 0 to 5.
     # userType    = models.PositiveSmallIntegerField(default=0)
@@ -86,6 +86,7 @@ class GroupMember(models.Model):
             self.is_member = True
             # set the user.users userType to U1D0
             self.user.users.userType = 'U1D0'
+            self.user.users.verificationScore = 2
             self.user.users.save()
             self.save()
             # Delete related CircleMember_vote_in instances
@@ -103,6 +104,7 @@ class GroupMember(models.Model):
         if self.count_vote_out() >= majority_threshold:
             print("removing the members...")
             self.user.users.userType = 'U0D0'
+            self.user.users.verificationScore = 1
             self.user.users.save()
             print("user type is changed: ", self.user.users.userType)
             self.delete()
