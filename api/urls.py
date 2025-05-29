@@ -41,4 +41,5 @@ urlpatterns = [
     path('status/circle/',apiViews.CircleStatus.as_view()),
     path('get-username/', apiViews.UsernameRequestView.as_view(), name='get_username'),
     path('get-status-messages/', status_messages.ItemsViewSet.as_view({'get': 'list'})),
+    path('chain-of-delegation/', apiViews.ChainOfDelegation.as_view())
 ]

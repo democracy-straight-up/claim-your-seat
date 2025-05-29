@@ -14,7 +14,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import generics
 from rest_framework.pagination import PageNumberPagination
-
+from django.shortcuts import get_object_or_404
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from vote.token import account_activation_token
@@ -26,6 +26,7 @@ from django.template.loader import render_to_string
 
 
 from api import models as apiModels
+from moda import models as modaModels
 
 class CustomPagination(PageNumberPagination):
     """
@@ -578,3 +579,50 @@ class ContactInfoViewSet(viewsets.ModelViewSet):
     #             status = status.HTTP_403_FORBIDDEN
     #         )
     #     return super().update(request, *args, **kwargs)
+
+
+class ChainOfDelegation(APIView):
+    permission_classes = (AllowAny,)
+    def get(self, request):
+        u = request.query_params.get('user', None)
+        if u:
+            voter = User.objects.get(username = u)
+            
+            obj = {
+                "f_del":"TBD",
+                "sec_del":"TBD",
+                "moda":"TBD",
+                "holc":"TBD",
+                "house_rep":"TBD"
+            }
+            
+            if(voter.users.userType == 'U0D0'):
+                return Response({obj}, status=status.HTTP_200_OK)
+            else:
+                # get the f-Del
+                group_member_instance = voteModels.GroupMember.objects.filter(user=voter).first()
+                f_del_instance = voteModels.GroupMember.objects.filter(group = group_member_instance.group).filter(is_delegate=True).first()
+                obj['f_del'] = f_del_instance.user.users.legalName
+
+                # now check if the fDel.user is a member of secDel
+                secDelMember_instance = apiModels.SecDelMembers.objects.filter(user = f_del_instance.user).first()
+                if not secDelMember_instance:
+                    return Response(obj, status=status.HTTP_200_OK)
+                
+                if secDelMember_instance:
+                    secDelMember_instance = apiModels.SecDelMembers.objects.filter(sec_del = secDelMember_instance.sec_del).filter(is_delegate = True).first()
+                    obj['sec_del'] = secDelMember_instance.user.users.legalName
+
+                # check if sec_del_instance is in Moda!
+                moda_instance = modaModels.ModaMembers.objects.filter(user = secDelMember_instance.user).first()
+                if not moda_instance:
+                    return Response(obj, status=status.HTTP_200_OK)
+                
+                if moda_instance:
+                    moda_instance = modaModels.ModaMembers.objects.filter(moda = moda_instance.moda).filter(is_delegate = True).first()
+                    obj['moda'] = moda_instance.user.users.legalName
+
+                # check for HoLC and House-rep once they are done.
+
+            return Response(obj, status=status.HTTP_200_OK)
+        return Response({"message": "User parameter is missing."}, status=status.HTTP_400_BAD_REQUEST)
