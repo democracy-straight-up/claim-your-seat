@@ -76,6 +76,7 @@ class FDelAdvisement(models.Model):
     bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name='f_del_advisements')
     fdel = models.ForeignKey(User, on_delete=models.CASCADE, related_name='fdel_advisements')
     advisement = models.TextField()
+    vote = models.CharField(max_length=10,null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
