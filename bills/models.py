@@ -70,3 +70,17 @@ class BillVote(models.Model):
     your_vote = models.CharField(max_length=2, choices=VOTE_CHOICES, default='Px')
     vote_date = models.DateTimeField(auto_now_add=True)
     last_update = models.DateTimeField(auto_now=True)
+
+
+class FDelAdvisement(models.Model):
+    bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name='f_del_advisements')
+    fdel = models.ForeignKey(User, on_delete=models.CASCADE, related_name='fdel_advisements')
+    advisement = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('bill', 'fdel')
+        ordering = ('-created_at',)
+
+    def __str__(self):
+        return f"F-Del advisement by {self.fdel.username} on {self.bill.number}"
