@@ -13,7 +13,7 @@ class Bill(models.Model):
     origin_chamber_code = models.CharField(max_length=3)
     title = models.CharField(max_length=200)
     bill_type = models.CharField(max_length=10)
-    url = models.URLField()
+    congress_url = models.URLField()
     latest_action_date = models.DateField(null=True)
     latest_action_text = models.TextField()
     voting_start = models.DateField(blank=True, null=True)
