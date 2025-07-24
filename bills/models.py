@@ -13,12 +13,17 @@ class Bill(models.Model):
     origin_chamber_code = models.CharField(max_length=3)
     title = models.CharField(max_length=200)
     bill_type = models.CharField(max_length=10)
-    url = models.URLField()
+    congress_url = models.URLField()
+    introduced_date = models.DateField(null=True, blank=True)
+    sponsors = models.TextField(blank=True, null=True)
+    committees = models.TextField(blank=True, null=True)
+    committee_meeting = models.DateTimeField(null=True, blank=True)
     latest_action_date = models.DateField(null=True)
     latest_action_text = models.TextField()
     voting_start = models.DateField(blank=True, null=True)
     voting_close = models.DateField(blank=True, null=True)
     schedule_date = models.DateField(blank=True, null=True)
+    summary = models.TextField(blank=True, null=True)
     text = models.TextField()
     # advice = models.TextField()
 
@@ -76,6 +81,7 @@ class FDelAdvisement(models.Model):
     bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name='f_del_advisements')
     fdel = models.ForeignKey(User, on_delete=models.CASCADE, related_name='fdel_advisements')
     advisement = models.TextField()
+    vote = models.CharField(max_length=10,null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
