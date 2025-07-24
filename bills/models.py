@@ -23,6 +23,7 @@ class Bill(models.Model):
     voting_start = models.DateField(blank=True, null=True)
     voting_close = models.DateField(blank=True, null=True)
     schedule_date = models.DateField(blank=True, null=True)
+    summary = models.TextField(blank=True, null=True)
     text = models.TextField()
     # advice = models.TextField()
 
