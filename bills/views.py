@@ -2,7 +2,7 @@ from bills import models as billModels
 from bills import serializers as billSerializers
 from rest_framework import viewsets
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 
 
 class CustomPagination(PageNumberPagination):
@@ -67,6 +67,16 @@ class BillUserNotesViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        """Filter notes to show only the current user's notes"""
-        """Filter notes to show only the current user's notes"""
-        return billModels.BillUserNotes.objects.filter(user=self.request.user)
+        """Filter notes to show only the current user's notes for a specific bill"""
+        queryset = billModels.BillUserNotes.objects.filter(user=self.request.user)
+        
+        # Filter by bill if bill_id is provided in query params
+        bill_id = self.request.query_params.get('bill_id', None)
+        if bill_id is not None:
+            queryset = queryset.filter(bill_id=bill_id)
+            
+        return queryset
+
+    def perform_create(self, serializer):
+        """Automatically set the user when creating a note"""
+        serializer.save(user=self.request.user)
