@@ -90,3 +90,20 @@ class FDelAdvisement(models.Model):
 
     def __str__(self):
         return f"F-Del advisement by {self.fdel.username} on {self.bill.number}"
+
+
+class BillUserNotes(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bill_notes')
+    bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name='user_notes')
+    note = models.TextField()
+
+    class Meta:
+        ordering = ('-created_at',)
+
+    def __str__(self):
+        return f"Note by {self.user.username} on {self.bill.number}"
+
+
+
