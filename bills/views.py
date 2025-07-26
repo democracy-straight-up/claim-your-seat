@@ -80,3 +80,4 @@ class BillUserNotesViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Automatically set the user when creating a note"""
         serializer.save(user=self.request.user)
+
