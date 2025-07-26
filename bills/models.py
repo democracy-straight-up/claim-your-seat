@@ -101,7 +101,6 @@ class BillUserNotes(models.Model):
 
     class Meta:
         ordering = ('-created_at',)
-        unique_together = ('user', 'bill')
 
     def __str__(self):
         return f"Note by {self.user.username} on {self.bill.number}"
