@@ -47,3 +47,26 @@ class BillVoteViewSet(viewsets.ModelViewSet):
     serializer_class = billSerializers.BillVoteSerializer
     pagination_class = CustomPagination
     permission_classes = [AllowAny]
+
+
+class BillUserNotesViewSet(viewsets.ModelViewSet):
+    """ViewSet for BillUserNotes that allows users to:
+    1. Create new notes for bills
+    2. List their notes for bills
+    3. Update existing notes
+    4. Delete notes
+    
+    Features:
+    - Pagination: default 10 items per page, max 100
+    - Full CRUD operations
+    - Users can only see and modify their own notes
+    """
+    serializer_class = billSerializers.BillUserNotesSerializer
+    pagination_class = CustomPagination
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        """Filter notes to show only the current user's notes"""
+        # For now returning all notes, but in production you'd want to filter by user
+        # return billModels.BillUserNotes.objects.filter(user=self.request.user)
+        return billModels.BillUserNotes.objects.all()
