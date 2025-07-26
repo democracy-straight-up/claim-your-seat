@@ -64,10 +64,9 @@ class BillUserNotesViewSet(viewsets.ModelViewSet):
     queryset = billModels.BillUserNotes.objects.all()
     serializer_class = billSerializers.BillUserNotesSerializer
     pagination_class = CustomPagination
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         """Filter notes to show only the current user's notes"""
-        # For now returning all notes, but in production you'd want to filter by user
-        # return billModels.BillUserNotes.objects.filter(user=self.request.user)
-        return billModels.BillUserNotes.objects.all()
+        """Filter notes to show only the current user's notes"""
+        return billModels.BillUserNotes.objects.filter(user=self.request.user)
