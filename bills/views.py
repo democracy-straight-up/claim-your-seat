@@ -61,6 +61,7 @@ class BillUserNotesViewSet(viewsets.ModelViewSet):
     - Full CRUD operations
     - Users can only see and modify their own notes
     """
+    queryset = billModels.BillUserNotes.objects.all()
     serializer_class = billSerializers.BillUserNotesSerializer
     pagination_class = CustomPagination
     permission_classes = [AllowAny]
