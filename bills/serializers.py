@@ -67,16 +67,13 @@ class BillUserNotesSerializer(serializers.ModelSerializer):
     bill = CustomBillSerializer(read_only=True)
     user = CustomVoterSerializer(read_only=True)
     bill_id = serializers.IntegerField(write_only=True)
-    user_id = serializers.IntegerField(write_only=True)
-
+    
     class Meta:
         model = billModels.BillUserNotes
-        fields = ['id', 'created_at', 'updated_at', 'user', 'bill', 'note', 'user_id', 'bill_id']
-        read_only_fields = ['created_at', 'updated_at']
+        fields = ['id', 'created_at', 'updated_at', 'user', 'bill', 'note', 'bill_id']
+        read_only_fields = ['created_at', 'updated_at', 'user']
 
     def create(self, validated_data):
-        user_id = validated_data.pop('user_id')
         bill_id = validated_data.pop('bill_id')
-        validated_data['user_id'] = user_id
         validated_data['bill_id'] = bill_id
         return super().create(validated_data)
