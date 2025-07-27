@@ -7,7 +7,7 @@ from curses.ascii import NUL
 from rest_framework import viewsets
 from vote import models as voteModels
 from api import serializers as apiSerializers
-from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny, IsAuthenticated
 from django.contrib.auth.models import User
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -582,47 +582,57 @@ class ContactInfoViewSet(viewsets.ModelViewSet):
 
 
 class ChainOfDelegation(APIView):
-    permission_classes = (AllowAny,)
+    permission_classes = [IsAuthenticated]
+    
     def get(self, request):
-        u = request.query_params.get('user', None)
-        if u:
-            voter = User.objects.get(username = u)
-            
-            obj = {
-                "f_del":"TBD",
-                "sec_del":"TBD",
-                "moda":"TBD",
-                "holc":"TBD",
-                "house_rep":"TBD"
-            }
-            
-            if(voter.users.userType == 'U0D0'):
-                return Response({obj}, status=status.HTTP_200_OK)
-            else:
+        # Use authenticated user instead of query parameter
+        voter = request.user
+        
+        obj = {
+            "f_del": None,
+            "sec_del": None,
+            "moda": None,
+            "holc": None,
+            "house_rep": None
+        }
+        
+        if voter.users.userType == 'U0D0':
+            return Response(obj, status=status.HTTP_200_OK)
+        else:
+            try:
                 # get the f-Del
                 group_member_instance = voteModels.GroupMember.objects.filter(user=voter).first()
-                f_del_instance = voteModels.GroupMember.objects.filter(group = group_member_instance.group).filter(is_delegate=True).first()
-                obj['f_del'] = f_del_instance.user.users.legalName
+                if group_member_instance:
+                    f_del_instance = voteModels.GroupMember.objects.filter(
+                        group=group_member_instance.group
+                    ).filter(is_delegate=True).first()
+                    
+                    if f_del_instance:
+                        obj['f_del'] = apiSerializers.UserSerializer(f_del_instance.user, context={'request': request}).data
 
-                # now check if the fDel.user is a member of secDel
-                secDelMember_instance = apiModels.SecDelMembers.objects.filter(user = f_del_instance.user).first()
-                if not secDelMember_instance:
-                    return Response(obj, status=status.HTTP_200_OK)
-                
-                if secDelMember_instance:
-                    secDelMember_instance = apiModels.SecDelMembers.objects.filter(sec_del = secDelMember_instance.sec_del).filter(is_delegate = True).first()
-                    obj['sec_del'] = secDelMember_instance.user.users.legalName
+                        # now check if the fDel.user is a member of secDel
+                        secDelMember_instance = apiModels.SecDelMembers.objects.filter(user=f_del_instance.user).first()
+                        if secDelMember_instance:
+                            secDel_delegate_instance = apiModels.SecDelMembers.objects.filter(
+                                sec_del=secDelMember_instance.sec_del
+                            ).filter(is_delegate=True).first()
+                            
+                            if secDel_delegate_instance:
+                                obj['sec_del'] = apiSerializers.UserSerializer(secDel_delegate_instance.user, context={'request': request}).data
 
-                # check if sec_del_instance is in Moda!
-                moda_instance = modaModels.ModaMembers.objects.filter(user = secDelMember_instance.user).first()
-                if not moda_instance:
-                    return Response(obj, status=status.HTTP_200_OK)
-                
-                if moda_instance:
-                    moda_instance = modaModels.ModaMembers.objects.filter(moda = moda_instance.moda).filter(is_delegate = True).first()
-                    obj['moda'] = moda_instance.user.users.legalName
+                                # check if sec_del_instance is in Moda!
+                                moda_instance = modaModels.ModaMembers.objects.filter(user=secDel_delegate_instance.user).first()
+                                if moda_instance:
+                                    moda_delegate_instance = modaModels.ModaMembers.objects.filter(
+                                        moda=moda_instance.moda
+                                    ).filter(is_delegate=True).first()
+                                    
+                                    if moda_delegate_instance:
+                                        obj['moda'] = apiSerializers.UserSerializer(moda_delegate_instance.user, context={'request': request}).data
 
-                # check for HoLC and House-rep once they are done.
+                                # check for HoLC and House-rep once they are done.
 
-            return Response(obj, status=status.HTTP_200_OK)
-        return Response({"message": "User parameter is missing."}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                return Response({"error": "Failed to retrieve chain of delegation"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response(obj, status=status.HTTP_200_OK)

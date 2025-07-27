@@ -77,3 +77,34 @@ class BillUserNotesSerializer(serializers.ModelSerializer):
         bill_id = validated_data.pop('bill_id')
         validated_data['bill_id'] = bill_id
         return super().create(validated_data)
+
+
+class BillFirstDelNotesSerializer(serializers.ModelSerializer):
+    bill = CustomBillSerializer(read_only=True)
+    user = CustomVoterSerializer(read_only=True)
+    bill_id = serializers.IntegerField(write_only=True)
+
+    class Meta:
+        model = billModels.BillFirstDelNotes
+        fields = ['id', 'created_at', 'updated_at', 'user', 'bill', 'note', 'bill_id']
+        read_only_fields = ['created_at', 'updated_at', 'user']
+
+    def create(self, validated_data):
+        bill_id = validated_data.pop('bill_id')
+        validated_data['bill_id'] = bill_id
+        return super().create(validated_data)
+
+    def validate(self, data):
+        """Validate that the user is a first delegate"""
+        from vote.models import GroupMember
+        user = self.context['request'].user
+        
+        # Check if the user is actually a first delegate by looking at GroupMember records
+        is_first_delegate = GroupMember.objects.filter(
+            user=user,
+            is_delegate=True
+        ).exists()
+        
+        if not is_first_delegate:
+            raise serializers.ValidationError("Only first delegates can create first delegate notes")
+        return data

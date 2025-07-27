@@ -106,4 +106,19 @@ class BillUserNotes(models.Model):
         return f"Note by {self.user.username} on {self.bill.number}"
 
 
+class BillFirstDelNotes(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bill_first_del_notes')
+    bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name='first_del_notes')
+    note = models.TextField()
+
+    class Meta:
+        ordering = ('-created_at',)
+        # Removed unique_together to allow multiple notes per first delegate per bill
+
+    def __str__(self):
+        return f"First Delegate note by {self.user.username} on {self.bill.number}"
+
+
 
