@@ -6,6 +6,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 
 
+
 class CustomPagination(PageNumberPagination):
     """
     We are creating a custome pagination for Bill and BillVote Model
@@ -81,7 +82,6 @@ class BillUserNotesViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Automatically set the user when creating a note"""
         serializer.save(user=self.request.user)
-
 
 class BillFirstDelNotesViewSet(viewsets.ModelViewSet):
     """ViewSet for BillFirstDelNotes that allows first delegates to:
