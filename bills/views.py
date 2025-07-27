@@ -102,15 +102,52 @@ class BillFirstDelNotesViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        """Filter notes for a specific bill"""
-        queryset = billModels.BillFirstDelNotes.objects.all()
+        """Filter notes based on user role and chain of delegation"""
+        user = self.request.user
         
         # Filter by bill if bill_id is provided in query params
         bill_id = self.request.query_params.get('bill_id', None)
+        
+        # Check if user is a first delegate
+        from vote.models import GroupMember
+        is_first_delegate = GroupMember.objects.filter(
+            user=user,
+            is_delegate=True
+        ).exists()
+        
+        # Build the queryset based on user role
+        user_ids_to_show = []
+        
+        # Always include notes created by the current user
+        user_ids_to_show.append(user.id)
+        
+        if not is_first_delegate:
+            # If user is a regular member, find their first delegate from chain
+            try:
+                # Get the user's group membership
+                group_member_instance = GroupMember.objects.filter(user=user).first()
+                if group_member_instance:
+                    # Find the first delegate in their group
+                    f_del_instance = GroupMember.objects.filter(
+                        group=group_member_instance.group,
+                        is_delegate=True
+                    ).first()
+                    
+                    if f_del_instance and f_del_instance.user.id not in user_ids_to_show:
+                        # Add their first delegate's notes
+                        user_ids_to_show.append(f_del_instance.user.id)
+            except Exception as e:
+                # If anything fails, just show user's own notes
+                pass
+        
+        # Create the queryset
+        queryset = billModels.BillFirstDelNotes.objects.filter(user_id__in=user_ids_to_show)
+        
+        # Filter by bill if bill_id is provided
         if bill_id is not None:
             queryset = queryset.filter(bill_id=bill_id)
             
-        return queryset
+        return queryset.order_by('-created_at')
 
     def perform_create(self, serializer):
         """Automatically set the user when creating a note and validate first delegate status"""
