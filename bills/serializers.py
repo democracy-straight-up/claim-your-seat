@@ -67,7 +67,7 @@ class BillUserNotesSerializer(serializers.ModelSerializer):
     bill = CustomBillSerializer(read_only=True)
     user = CustomVoterSerializer(read_only=True)
     bill_id = serializers.IntegerField(write_only=True)
-
+    
     class Meta:
         model = billModels.BillUserNotes
         fields = ['id', 'created_at', 'updated_at', 'user', 'bill', 'note', 'bill_id']
