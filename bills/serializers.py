@@ -108,3 +108,33 @@ class BillFirstDelNotesSerializer(serializers.ModelSerializer):
         if not is_first_delegate:
             raise serializers.ValidationError("Only first delegates can create first delegate notes")
         return data
+
+class BillSecondDelNotesSerializer(serializers.ModelSerializer):
+    bill = CustomBillSerializer(read_only=True)
+    user = CustomVoterSerializer(read_only=True)
+    bill_id = serializers.IntegerField(write_only=True)
+
+    class Meta:
+        model = billModels.BillSecondDelNotes
+        fields = ['id', 'created_at', 'updated_at', 'user', 'bill', 'note', 'bill_id']
+        read_only_fields = ['created_at', 'updated_at', 'user']
+
+    def create(self, validated_data):
+        bill_id = validated_data.pop('bill_id')
+        validated_data['bill_id'] = bill_id
+        return super().create(validated_data)
+
+    def validate(self, data):
+        """Validate that the user is a second delegate"""
+        from api.models import SecDelMembers
+        user = self.context['request'].user
+        
+        # Check if the user is actually a second delegate by looking at SecDelMembers records
+        is_second_delegate = SecDelMembers.objects.filter(
+            user=user,
+            is_delegate=True
+        ).exists()
+        
+        if not is_second_delegate:
+            raise serializers.ValidationError("Only second delegates can create second delegate notes")
+        return data

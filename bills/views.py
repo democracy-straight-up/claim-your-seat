@@ -204,3 +204,125 @@ class BillFirstDelNotesViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Only first delegates can delete first delegate notes")
         
         instance.delete()
+
+class BillSecondDelNotesViewSet(viewsets.ModelViewSet):
+    """ViewSet for BillSecondDelNotes that allows second delegates to:
+    1. Create new notes for bills
+    2. List second delegate notes for bills
+    3. Update existing notes
+    4. Delete notes
+    
+    Features:
+    - Pagination: default 10 items per page, max 100
+    - Full CRUD operations
+    - Only second delegates can create/modify notes
+    - All authenticated users can view second delegate notes
+    """
+    queryset = billModels.BillSecondDelNotes.objects.all()
+    serializer_class = billSerializers.BillSecondDelNotesSerializer
+    pagination_class = CustomPagination
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Filter notes based on user role and chain of delegation"""
+        user = self.request.user
+        
+        # Filter by bill if bill_id is provided in query params
+        bill_id = self.request.query_params.get('bill_id', None)
+        
+        # Check if user is a second delegate
+        from api.models import SecDelMembers
+        is_second_delegate = SecDelMembers.objects.filter(
+            user=user,
+            is_delegate=True
+        ).exists()
+        
+        # Build the queryset based on user role
+        user_ids_to_show = []
+        
+        # Always include notes created by the current user
+        user_ids_to_show.append(user.id)
+        
+        if not is_second_delegate:
+            # If user is a regular member, find their second delegate from chain
+            try:
+                # Get the user's second delegate membership
+                sec_del_member_instance = SecDelMembers.objects.filter(user=user).first()
+                if sec_del_member_instance:
+                    # Find the second delegate in their group
+                    sec_del_delegate_instance = SecDelMembers.objects.filter(
+                        sec_del=sec_del_member_instance.sec_del,
+                        is_delegate=True
+                    ).first()
+                    
+                    if sec_del_delegate_instance and sec_del_delegate_instance.user.id not in user_ids_to_show:
+                        # Add their second delegate's notes
+                        user_ids_to_show.append(sec_del_delegate_instance.user.id)
+            except Exception as e:
+                # If anything fails, just show user's own notes
+                pass
+        
+        # Create the queryset
+        queryset = billModels.BillSecondDelNotes.objects.filter(user_id__in=user_ids_to_show)
+        
+        # Filter by bill if bill_id is provided
+        if bill_id is not None:
+            queryset = queryset.filter(bill_id=bill_id)
+            
+        return queryset.order_by('-created_at')
+
+    def perform_create(self, serializer):
+        """Automatically set the user when creating a note and validate second delegate status"""
+        user = self.request.user
+        
+        # Check if the user is actually a second delegate by looking at SecDelMembers records
+        from api.models import SecDelMembers
+        is_second_delegate = SecDelMembers.objects.filter(
+            user=user,
+            is_delegate=True
+        ).exists()
+        
+        if not is_second_delegate:
+            raise PermissionDenied("Only second delegates can create second delegate notes")
+        serializer.save(user=user)
+
+    def perform_update(self, serializer):
+        """Only allow the creator of the note to update it"""
+        user = self.request.user
+        note_instance = self.get_object()
+        
+        # Check if the current user is the creator of the note
+        if note_instance.user != user:
+            raise PermissionDenied("You can only update notes that you created")
+        
+        # Also check if the user is still a second delegate
+        from api.models import SecDelMembers
+        is_second_delegate = SecDelMembers.objects.filter(
+            user=user,
+            is_delegate=True
+        ).exists()
+        
+        if not is_second_delegate:
+            raise PermissionDenied("Only second delegates can update second delegate notes")
+        
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        """Only allow the creator of the note to delete it"""
+        user = self.request.user
+        
+        # Check if the current user is the creator of the note
+        if instance.user != user:
+            raise PermissionDenied("You can only delete notes that you created")
+        
+        # Also check if the user is still a second delegate
+        from api.models import SecDelMembers
+        is_second_delegate = SecDelMembers.objects.filter(
+            user=user,
+            is_delegate=True
+        ).exists()
+        
+        if not is_second_delegate:
+            raise PermissionDenied("Only second delegates can delete second delegate notes")
+        
+        instance.delete()
