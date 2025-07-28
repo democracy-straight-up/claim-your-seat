@@ -134,5 +134,3 @@ class BillSecondDelNotes(models.Model):
     def __str__(self):
         return f"Second Delegate note by {self.user.username} on {self.bill.number}"
 
-
-

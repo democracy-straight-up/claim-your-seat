@@ -205,7 +205,6 @@ class BillFirstDelNotesViewSet(viewsets.ModelViewSet):
         
         instance.delete()
 
-
 class BillSecondDelNotesViewSet(viewsets.ModelViewSet):
     """ViewSet for BillSecondDelNotes that allows second delegates to:
     1. Create new notes for bills
