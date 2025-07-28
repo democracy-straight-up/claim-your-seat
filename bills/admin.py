@@ -42,3 +42,12 @@ class BillSecondDelNotesAdmin(admin.ModelAdmin):
     readonly_fields = ['created_at', 'updated_at']
 
 admin.site.register(models.BillSecondDelNotes, BillSecondDelNotesAdmin)
+
+class BillModaNotesAdmin(admin.ModelAdmin):
+    list_display = ['bill', 'user', 'created_at', 'updated_at']
+    list_filter = ['created_at', 'updated_at']
+    list_display_links = ['bill', 'user']
+    search_fields = ['bill__number', 'user__username', 'note']
+    readonly_fields = ['created_at', 'updated_at']
+
+admin.site.register(models.BillModaNotes, BillModaNotesAdmin)
