@@ -139,7 +139,6 @@ class BillSecondDelNotesSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Only second delegates can create second delegate notes")
         return data
 
-
 class BillModaNotesSerializer(serializers.ModelSerializer):
     bill = CustomBillSerializer(read_only=True)
     user = CustomVoterSerializer(read_only=True)

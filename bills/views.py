@@ -327,7 +327,6 @@ class BillSecondDelNotesViewSet(viewsets.ModelViewSet):
         
         instance.delete()
 
-
 class BillModaNotesViewSet(viewsets.ModelViewSet):
     """ViewSet for BillModaNotes that allows MoDa to:
     1. Create new notes for bills
@@ -449,3 +448,4 @@ class BillModaNotesViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Only MoDa can delete MoDa notes")
         
         instance.delete()
+
