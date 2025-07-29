@@ -134,7 +134,6 @@ class BillSecondDelNotes(models.Model):
     def __str__(self):
         return f"Second Delegate note by {self.user.username} on {self.bill.number}"
 
-
 class BillModaNotes(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -147,6 +146,4 @@ class BillModaNotes(models.Model):
 
     def __str__(self):
         return f"MoDa note by {self.user.username} on {self.bill.number}"
-
-
 
