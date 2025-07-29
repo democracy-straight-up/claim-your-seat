@@ -155,8 +155,7 @@ class HolcConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def remove_candidate(self, data):
-        """ remove the candidate or members from this holc
-        """
+        """ remove the candidate or members from this holc """
         try:
             remover = User.objects.get(username = data['remover'])
             member = models.HolcMembers.objects.get(pk = data['candidate'])

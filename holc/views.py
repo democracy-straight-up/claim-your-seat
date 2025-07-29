@@ -44,6 +44,7 @@ class HolcViewSet(viewsets.ModelViewSet):
             messages = "Something Went Wrong."
             return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
 
+
     @action(detail=False, methods=['POST'])
     def get_holc_by_user(self,request):
         try:
