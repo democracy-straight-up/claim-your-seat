@@ -6,16 +6,16 @@ from django.contrib.auth.models import User
 def generate_unique_code():
     while True:
         code = random.randint(10, 99)
-        if not HalcModel.objects.filter(code=code).exists():
+        if not HolcModel.objects.filter(code=code).exists():
             return code
 
 def generate_unique_invitation_key():
     while True:
         invitation_key = random.randint(1000000000, 9999999999)
-        if not HalcModel.objects.filter(invitation_key=invitation_key).exists():
+        if not HolcModel.objects.filter(invitation_key=invitation_key).exists():
             return invitation_key
 
-class HalcModel(models.Model):
+class HolcModel(models.Model):
     code = models.PositiveIntegerField(unique=True, default=generate_unique_code)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -35,24 +35,24 @@ class HalcModel(models.Model):
     @property
     def is_active(self):
         # check if the member <= 12 and return true
-        if 6 <= self.halcmembers_set.filter(is_member = True).count() <= 12:
+        if 6 <= self.holcmembers_set.filter(is_member = True).count() <= 12:
             return True
         return False
     @property
     def member_count(self):
-        return self.halcmembers_set.filter(is_member = True).count()
+        return self.holcmembers_set.filter(is_member = True).count()
 
 
 # for maximum f-link membership validation
 from django.core.exceptions import ValidationError
 class MaxMembershipReached(ValidationError):
-    def __init__(self, message="Halc-Link has reached the max membership status. No longer accepting candidates."):
+    def __init__(self, message="Holc-Link has reached the max membership status. No longer accepting candidates."):
         super().__init__(message)
 
 # the user can be changed to be Circle delegate only. but being a user is much better
-class HalcMembers(models.Model):
+class HolcMembers(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    halc = models.ForeignKey(HalcModel, on_delete=models.CASCADE)
+    holc = models.ForeignKey(HolcModel, on_delete=models.CASCADE)
     is_delegate = models.BooleanField(default=False)
     is_member = models.BooleanField(default=False)
     joined_at = models.DateTimeField(auto_now_add=True)
@@ -62,7 +62,7 @@ class HalcMembers(models.Model):
         ordering = ['-is_delegate', 'joined_at']
     
     def __str__(self):
-        return f"{self.user.username} - {self.halc.code}"
+        return f"{self.user.username} - {self.holc.code}"
     
     def delete(self, using=None, keep_parents=False):
         # check if the user type is correct.
@@ -72,29 +72,29 @@ class HalcMembers(models.Model):
     
     def save(self, *args, **kwargs):
         # check for max membership 
-        if HalcMembers.objects.filter(is_member=True).count() > 12:
+        if HolcMembers.objects.filter(is_member=True).count() > 12:
             raise MaxMembershipReached()  # Raise maxMember validation
         
         # on each first member, make the member the delegate member by default.
-        if not self.pk and not self.halc.halcmembers_set.exists():
+        if not self.pk and not self.holc.holcmembers_set.exists():
             self.is_delegate = True
             self.is_member = True
             self.user.users.userType = 'U4D4'
             self.user.users.save()
         
-        super(HalcMembers, self).save(*args, **kwargs)
+        super(HolcMembers, self).save(*args, **kwargs)
     
     def count_vote_out(self):
-        return VoteOutHalcMember.objects.filter(candidate=self).count()
+        return VoteOutHolcMember.objects.filter(candidate=self).count()
 
     def count_vote_in(self):
-        return VoteInHalcMember.objects.filter(candidate=self).count()
+        return VoteInHolcMember.objects.filter(candidate=self).count()
       
     def count_put_forward(self):
-        return PutFarwardHalcMember.objects.filter(candidate=self).count()
+        return PutFarwardHolcMember.objects.filter(candidate=self).count()
 
     def check_for_majority(self): 
-        total_members = HalcMembers.objects.filter(halc=self.halc).filter(is_member = True).count()
+        total_members = HolcMembers.objects.filter(holc=self.holc).filter(is_member = True).count()
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_vote_in() >= majority_threshold:
             self.is_member = True
@@ -107,7 +107,7 @@ class HalcMembers(models.Model):
         return self
 
     def check_for_removing(self):
-        total_members = HalcMembers.objects.filter(halc=self.halc).filter(is_member = True).count()
+        total_members = HolcMembers.objects.filter(holc=self.holc).filter(is_member = True).count()
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_vote_out() >= majority_threshold:
             self.user.users.userType = 'U3D2'
@@ -115,11 +115,11 @@ class HalcMembers(models.Model):
             self.delete()
 
     def check_put_farward(self):
-        total_members = HalcMembers.objects.filter(halc=self.halc).filter(is_member = True).count()
+        total_members = HolcMembers.objects.filter(holc=self.holc).filter(is_member = True).count()
         majority_votes = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_put_forward() >= majority_votes:
             # find the current delegate and set is_delegate false.
-            current_delegate = HalcMembers.objects.filter(halc=self.halc).filter(is_delegate = True).first()
+            current_delegate = HolcMembers.objects.filter(holc=self.holc).filter(is_delegate = True).first()
             current_delegate.is_delegate = False
             current_delegate.save()
             # set the user.users userType to U1D1
@@ -134,34 +134,34 @@ class HalcMembers(models.Model):
             self.save()
 
 
-class VoteOutHalcMember(models.Model):
+class VoteOutHolcMember(models.Model):
     voter = models.ForeignKey(User, on_delete=models.CASCADE)
-    candidate = models.ForeignKey(HalcMembers, related_name='vote_outs', on_delete=models.CASCADE)
-    halc = models.ForeignKey(HalcModel, on_delete=models.CASCADE, null=True, blank=True)
+    candidate = models.ForeignKey(HolcMembers, related_name='vote_outs', on_delete=models.CASCADE)
+    holc = models.ForeignKey(HolcModel, on_delete=models.CASCADE, null=True, blank=True)
     voted_at = models.DateTimeField(auto_now_add=True)
     def save(self, *args, **kwargs):
-        super(VoteOutHalcMember, self).save(*args, **kwargs)
+        super(VoteOutHolcMember, self).save(*args, **kwargs)
         self.candidate.check_for_removing()
 
 
-class VoteInHalcMember(models.Model):
+class VoteInHolcMember(models.Model):
     voter = models.ForeignKey(User, on_delete=models.CASCADE)
-    candidate = models.ForeignKey(HalcMembers, related_name='vote_ins', on_delete=models.CASCADE)
-    halc = models.ForeignKey(HalcModel, on_delete=models.CASCADE, null=True, blank=True)
+    candidate = models.ForeignKey(HolcMembers, related_name='vote_ins', on_delete=models.CASCADE)
+    holc = models.ForeignKey(HolcModel, on_delete=models.CASCADE, null=True, blank=True)
     voted_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
-        super(VoteInHalcMember, self).save(*args, **kwargs)
+        super(VoteInHolcMember, self).save(*args, **kwargs)
         self.candidate.check_for_majority()
         return self 
 
 
-class PutFarwardHalcMember(models.Model):
+class PutFarwardHolcMember(models.Model):
     voter = models.ForeignKey(User, on_delete=models.CASCADE)
-    candidate = models.ForeignKey(HalcMembers, related_name='put_farward', on_delete=models.CASCADE)
-    halc = models.ForeignKey(HalcModel, on_delete=models.CASCADE, null=True, blank=True)
+    candidate = models.ForeignKey(HolcMembers, related_name='put_farward', on_delete=models.CASCADE)
+    holc = models.ForeignKey(HolcModel, on_delete=models.CASCADE, null=True, blank=True)
     voted_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
-        super(PutFarwardHalcMember, self).save(*args, **kwargs)
+        super(PutFarwardHolcMember, self).save(*args, **kwargs)
         self.candidate.check_put_farward()
