@@ -159,6 +159,7 @@ class VoteInHolcMember(models.Model):
 class PutForwardHolcMember(models.Model):
     voter = models.ForeignKey(User, on_delete=models.CASCADE)
     candidate = models.ForeignKey(HolcMembers, related_name='put_forward', on_delete=models.CASCADE)
+    candidate = models.ForeignKey(HolcMembers, related_name='put_forward', on_delete=models.CASCADE)
     holc = models.ForeignKey(HolcModel, on_delete=models.CASCADE, null=True, blank=True)
     voted_at = models.DateTimeField(auto_now_add=True)
 
