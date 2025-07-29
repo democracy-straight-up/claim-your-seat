@@ -1,8 +1,7 @@
 from django.urls import re_path
 from live import consumers
-from live import consumerCircle
-from live import consumerSecDel
-from live import consumermoda
+from live import consumermoda, consumerHolc, consumerCircle, consumerSecDel
+
 
 websocket_urlpatterns = [
     re_path(r'ws/circle/(?P<circle_name>\w+)/(?P<user_name>\w+)/$',consumers.HouseKeepingConsumer.as_asgi()),
@@ -10,4 +9,5 @@ websocket_urlpatterns = [
     re_path(r'ws/(?P<circleName>\w+)/(?P<userName>\w+)',consumers.CircleBackNForth.as_asgi()),
     re_path(r'sec-del/(?P<sec_del_name>\w+)/(?P<user_name>\w+)',consumerSecDel.SecDelConsumer.as_asgi()),
     re_path(r'moda/(?P<moda_name>\w+)/(?P<user_name>\w+)',consumermoda.ModaConsumer.as_asgi()),
+    re_path(r'holc/(?P<holc_name>\w+)/(?P<user_name>\w+)',consumerHolc.HolcConsumer.as_asgi()),
 ]
