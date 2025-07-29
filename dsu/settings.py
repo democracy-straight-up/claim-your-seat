@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'live.apps.LiveConfig',
     'bills.apps.BillsConfig',
     'moda.apps.ModaConfig',
+    'holc.apps.HolcConfig',
     # 'django_extensions',
 
 ]
