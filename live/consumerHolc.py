@@ -97,7 +97,7 @@ class HolcConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def put_forward(self, data):
-        """ change the circle gelegation."""
+        """ change the circle delegation."""
         try:
             voter = User.objects.get(username = data['voter'])
             member = models.HolcMembers.objects.get(pk = data['member'])
@@ -167,7 +167,7 @@ class HolcConsumer(AsyncWebsocketConsumer):
             return {"status":"success","action":'remove_candidate', "message":"removed successfully.", "user":vote.data}
         except:
             # vote = serializers.UserSerializer(remover)
-            return {"status": "error","action":"remove_candidate", "message": "Could note remove candidate.","user":""}
+            return {"status": "error","action":"remove_candidate", "message": "Could not remove candidate.","user":""}
 
     @staticmethod
     @database_sync_to_async

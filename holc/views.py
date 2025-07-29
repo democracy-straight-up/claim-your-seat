@@ -76,4 +76,4 @@ class HolcMembersViewSet(viewsets.ModelViewSet):
         except models.HolcMembers.DoesNotExist:
             return Response({"message": "Holc members not found."}, status=status.HTTP_404_NOT_FOUND)
         except models.MaxMembershipReached:
-            return Response({"message": "Thi Holc has reached its maximum membership and does not accept new candidate!"}, status=status.HTTP_406_NOT_ACCEPTABLE)
+            return Response({"message": "This Holc has reached its maximum membership and does not accept new candidate!"}, status=status.HTTP_406_NOT_ACCEPTABLE)
