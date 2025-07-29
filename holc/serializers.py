@@ -16,14 +16,14 @@ class HolcMembersSerializer(serializers.ModelSerializer):
     holc = HolcSerializer()
     vote_ins = serializers.StringRelatedField(many=True)
     vote_outs = serializers.StringRelatedField(many=True)
-    put_farward = serializers.StringRelatedField(many=True)
+    put_forward = serializers.StringRelatedField(many=True)
     count_vote_in = serializers.StringRelatedField()
     count_vote_out = serializers.StringRelatedField()
     count_put_forward = serializers.StringRelatedField()
     class Meta:
         model = holcModels.HolcMembers
         fields = ["id","user","holc","is_delegate","is_member", "joined_at","updated_at",
-                  "vote_outs","vote_ins", "put_farward","count_put_forward", "count_vote_out", "count_vote_in"]
+                  "vote_outs","vote_ins", "put_forward","count_put_forward", "count_vote_out", "count_vote_in"]
 
 
 class VoteOutHolcMemberSerializer(serializers.ModelSerializer):
@@ -36,7 +36,7 @@ class VoteInHolcMemberSerializer(serializers.ModelSerializer):
         model = holcModels.VoteInHolcMember
         fields = "__all__"
 
-class PutFarwardHolcMemberSerializer(serializers.ModelSerializer):
+class PutForwardHolcMemberSerializer(serializers.ModelSerializer):
     class Meta: 
-        model = holcModels.PutFarwardHolcMember
+        model = holcModels.PutForwardHolcMember
         fields = "__all__"

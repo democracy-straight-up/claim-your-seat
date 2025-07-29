@@ -59,8 +59,8 @@ class HolcConsumer(AsyncWebsocketConsumer):
     
     @database_sync_to_async
     def get_put_forwards(self):
-        instances = models.PutFarwardHolcMember.objects.filter(holc__code=self.holc_name)
-        serialize = serializers.PutFarwardHolcMemberSerializer(instances, many=True)
+        instances = models.PutForwardHolcMember.objects.filter(holc__code=self.holc_name)
+        serialize = serializers.PutForwardHolcMemberSerializer(instances, many=True)
         return serialize.data
     
     @database_sync_to_async
@@ -102,8 +102,8 @@ class HolcConsumer(AsyncWebsocketConsumer):
             voter = User.objects.get(username = data['voter'])
             member = models.HolcMembers.objects.get(pk = data['member'])
             holc = models.HolcModel.objects.get(code=self.holc_name)
-            instance = models.PutFarwardHolcMember.objects.update_or_create(voter = voter,candidate = member, holc = holc)
-            serialized = serializers.PutFarwardHolcMemberSerializer(instance[0])
+            instance = models.PutForwardHolcMember.objects.update_or_create(voter = voter,candidate = member, holc = holc)
+            serialized = serializers.PutForwardHolcMemberSerializer(instance[0])
             vote = serializers.UserSerializer(voter)
             return {"status":"success","action":'put_forward', "message":"voted for delegate.", "user":vote.data, "instance":serialized.data}
         except:
@@ -116,8 +116,8 @@ class HolcConsumer(AsyncWebsocketConsumer):
         try:
             voter = User.objects.get(username = data['voter'])
             member = models.HolcMembers.objects.get(pk = data['member'])
-            instance = models.PutFarwardHolcMember.objects.get(voter = voter,candidate = member)
-            serialized = serializers.PutFarwardHolcMemberSerializer(instance)
+            instance = models.PutForwardHolcMember.objects.get(voter = voter,candidate = member)
+            serialized = serializers.PutForwardHolcMemberSerializer(instance)
             vote = serializers.UserSerializer(voter)
             instance.delete()
             return {"status":"success","action":'undo_put_forward', "message":"removed vote for delegate.", "user":vote.data, "instance":serialized.data}

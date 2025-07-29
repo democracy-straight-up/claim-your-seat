@@ -91,7 +91,7 @@ class HolcMembers(models.Model):
         return VoteInHolcMember.objects.filter(candidate=self).count()
       
     def count_put_forward(self):
-        return PutFarwardHolcMember.objects.filter(candidate=self).count()
+        return PutForwardHolcMember.objects.filter(candidate=self).count()
 
     def check_for_majority(self): 
         total_members = HolcMembers.objects.filter(holc=self.holc).filter(is_member = True).count()
@@ -114,7 +114,7 @@ class HolcMembers(models.Model):
             self.user.users.save()
             self.delete()
 
-    def check_put_farward(self):
+    def check_put_forward(self):
         total_members = HolcMembers.objects.filter(holc=self.holc).filter(is_member = True).count()
         majority_votes = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_put_forward() >= majority_votes:
@@ -156,12 +156,12 @@ class VoteInHolcMember(models.Model):
         return self 
 
 
-class PutFarwardHolcMember(models.Model):
+class PutForwardHolcMember(models.Model):
     voter = models.ForeignKey(User, on_delete=models.CASCADE)
-    candidate = models.ForeignKey(HolcMembers, related_name='put_farward', on_delete=models.CASCADE)
+    candidate = models.ForeignKey(HolcMembers, related_name='put_forward', on_delete=models.CASCADE)
     holc = models.ForeignKey(HolcModel, on_delete=models.CASCADE, null=True, blank=True)
     voted_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
-        super(PutFarwardHolcMember, self).save(*args, **kwargs)
-        self.candidate.check_put_farward()
+        super(PutForwardHolcMember, self).save(*args, **kwargs)
+        self.candidate.check_put_forward()
