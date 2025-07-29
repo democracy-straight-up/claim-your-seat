@@ -35,7 +35,7 @@ class HolcModel(models.Model):
     @property
     def is_active(self):
         # check if the member <= 12 and return true
-        if 6 <= self.holcmembers_set.filter(is_member = True).count() <= 12:
+        if 4 <= self.holcmembers_set.filter(is_member = True).count() <= 12:
             return True
         return False
     @property
@@ -112,7 +112,8 @@ class HolcMembers(models.Model):
         if self.count_vote_out() >= majority_threshold:
             self.user.users.userType = 'U3D2'
             self.user.users.save()
-            self.delete()
+            self.user.save()
+            super(HolcMembers, self).delete()
 
     def check_put_forward(self):
         total_members = HolcMembers.objects.filter(holc=self.holc).filter(is_member = True).count()
