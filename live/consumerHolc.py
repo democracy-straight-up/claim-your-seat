@@ -15,7 +15,7 @@ class HolcConsumer(AsyncWebsocketConsumer):
         # Join room group
         await self.channel_layer.group_add(self.room_name, self.channel_name)
 
-        # Fetch existing circle members using database_sync_to_async
+        # Fetch existing holc members using database_sync_to_async
         members = {'status':"success",'message':'listed all', "action":"init",
                    'member_list': await self.get_members(),
                    'vote_outs': await self.get_vote_outs(),
@@ -25,7 +25,7 @@ class HolcConsumer(AsyncWebsocketConsumer):
         # Accept the WebSocket connection
         await self.accept()
 
-        # Send initial Circle members to the connected client
+        # Send initial holc members to the connected client
         await self.send(text_data=json.dumps(members))
 
     # when a member of the room leaves the room
@@ -97,7 +97,7 @@ class HolcConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def put_forward(self, data):
-        """ change the circle delegation."""
+        """ change the holc delegation."""
         try:
             voter = User.objects.get(username = data['voter'])
             member = models.HolcMembers.objects.get(pk = data['member'])
@@ -112,7 +112,7 @@ class HolcConsumer(AsyncWebsocketConsumer):
         
     @database_sync_to_async
     def undo_put_forward(self, data):
-        """ undo the circle delegate vote."""
+        """ undo the holc delegate vote."""
         try:
             voter = User.objects.get(username = data['voter'])
             member = models.HolcMembers.objects.get(pk = data['member'])
@@ -135,7 +135,7 @@ class HolcConsumer(AsyncWebsocketConsumer):
             serialized = serializers.HolcSerializer(holc)
             return {"status":"success","action":'invitation_key', "message":"invitation key generated successfully.", "holc":serialized.data}
         except:
-            return {"status": "error","action":"invitation_key", "message": "Could note generate invitation key."}
+            return {"status": "error","action":"invitation_key", "message": "Could not generate invitation key."}
     
     @database_sync_to_async
     def voteIn(self,data):  
@@ -155,8 +155,7 @@ class HolcConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def remove_candidate(self, data):
-        """ remove the candidate or members from this circle
-        """
+        """ remove the candidate or members from this holc """
         try:
             remover = User.objects.get(username = data['remover'])
             member = models.HolcMembers.objects.get(pk = data['candidate'])
@@ -184,7 +183,7 @@ class HolcConsumer(AsyncWebsocketConsumer):
 
         match data["action"]:
             case 'remove_candidate':
-                # remove the candidate or member and return the circle members
+                # remove the candidate or member and return the holc members
                 res = await self.remove_candidate(data)
                 if res['status'] == 'error':
                     await self.channel_layer.group_send(self.room_name, {
@@ -200,7 +199,7 @@ class HolcConsumer(AsyncWebsocketConsumer):
                     )
                 return
             case 'vote_in':
-                # vote in the candidate and return the circle members
+                # vote in the candidate and return the holc members
                 res = await self.voteIn(data["payload"])
                 if res['status'] == 'error':
                     await self.channel_layer.group_send(self.room_name, {
@@ -249,7 +248,7 @@ class HolcConsumer(AsyncWebsocketConsumer):
                 return
             
             case "vote_out":
-                 # vote in the candidate and return the circle members
+                 # vote in the candidate and return the holc members
                 res = await self.member_vote_out(data["payload"])
                 if res['status'] == 'error':
                     await self.channel_layer.group_send(self.room_name, {
@@ -266,7 +265,7 @@ class HolcConsumer(AsyncWebsocketConsumer):
                 return
             
             case "undo_vote_out":
-                 # vote in the candidate and return the circle members
+                 # vote in the candidate and return the holc members
                 res = await self.undo_vote_out(data["payload"])
                 if res['status'] == 'error':
                     await self.channel_layer.group_send(self.room_name, {

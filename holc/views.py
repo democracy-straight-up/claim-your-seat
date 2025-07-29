@@ -16,7 +16,7 @@ class HolcViewSet(viewsets.ModelViewSet):
     
     def create(self, request, *args, **kwargs):
         try:
-            user=None, 
+            user=None 
             district =None
             if 'user' in request.data and 'district' in request.data:
                 user = User.objects.get(username=request.data['user'])
@@ -24,7 +24,7 @@ class HolcViewSet(viewsets.ModelViewSet):
                     code=request.data['district'])
             else:
                 messages = "District is required."
-                return Response({"message:": messages}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
 
             # check if the userType is not 0 return
             if user.users.userType[:2] == 'U4':
@@ -42,7 +42,8 @@ class HolcViewSet(viewsets.ModelViewSet):
             return JsonResponse(obj.data)
         except:
             messages = "Something Went Wrong."
-            return Response({"message:": messages}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
+
 
     @action(detail=False, methods=['POST'])
     def get_holc_by_user(self,request):
