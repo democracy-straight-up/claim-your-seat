@@ -174,3 +174,4 @@ class BillHouseRepNotes(models.Model):
     def __str__(self):
         return f"HouseRep note by {self.user.username} on {self.bill.number}"
 
+

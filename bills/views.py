@@ -694,4 +694,3 @@ class BillHouseRepNotesViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Only House Rep can delete House Rep notes")
         
         instance.delete()
-
