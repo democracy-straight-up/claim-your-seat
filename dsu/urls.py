@@ -28,6 +28,7 @@ urlpatterns = [
     path('api/',include('api.urls')),
     path('api/moda/',include('moda.urls')),
     path('api/holc/',include('holc.urls')),
+    path('api/rep/',include('rep.urls')),
     path('admin/', admin.site.urls),
     path('bill/', include("bills.urls")),
 ]
