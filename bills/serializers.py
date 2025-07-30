@@ -168,3 +168,33 @@ class BillModaNotesSerializer(serializers.ModelSerializer):
         if not is_moda:
             raise serializers.ValidationError("Only MoDa can create MoDa notes")
         return data
+
+class BillHolcNotesSerializer(serializers.ModelSerializer):
+    bill = CustomBillSerializer(read_only=True)
+    user = CustomVoterSerializer(read_only=True)
+    bill_id = serializers.IntegerField(write_only=True)
+
+    class Meta:
+        model = billModels.BillHolcNotes
+        fields = ['id', 'created_at', 'updated_at', 'user', 'bill', 'note', 'bill_id']
+        read_only_fields = ['created_at', 'updated_at', 'user']
+
+    def create(self, validated_data):
+        bill_id = validated_data.pop('bill_id')
+        validated_data['bill_id'] = bill_id
+        return super().create(validated_data)
+
+    def validate(self, data):
+        """Validate that the user is a Holc"""
+        from holc.models import HolcMembers
+        user = self.context['request'].user
+        
+        # Check if the user is actually a MoDa by looking at ModaMembers records
+        is_holc = HolcMembers.objects.filter(
+            user=user,
+            is_delegate=True
+        ).exists()
+        
+        if not is_holc:
+            raise serializers.ValidationError("Only Holc can create Holc notes")
+        return data

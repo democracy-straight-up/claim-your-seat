@@ -146,4 +146,18 @@ class BillModaNotes(models.Model):
 
     def __str__(self):
         return f"MoDa note by {self.user.username} on {self.bill.number}"
+    
+
+class BillHolcNotes(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bill_holc_notes')
+    bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name='holc_notes')
+    note = models.TextField()
+
+    class Meta:
+        ordering = ('-created_at',)
+
+    def __str__(self):
+        return f"Holc note by {self.user.username} on {self.bill.number}"
 

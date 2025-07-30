@@ -28,7 +28,7 @@ from django.template.loader import render_to_string
 from api import models as apiModels
 from moda import models as modaModels
 from holc import models as holcModels
-
+from rep import models as house_repModels
 
 
 class CustomPagination(PageNumberPagination):
@@ -639,6 +639,13 @@ class ChainOfDelegation(APIView):
                                             holc_delegate_instance = holcModels.HolcMembers.objects.filter(holc = holc_instance.holc).filter(is_delegate=True).first()
                                             if holc_delegate_instance:
                                                 obj['holc'] = apiSerializers.UserSerializer(holc_delegate_instance.user, context={'request':request}).data
+
+                                                house_rep  = house_repModels.DistrictCouncilMembers.objects.filter(user = holc_delegate_instance.user).first()
+                                                if house_rep:
+                                                    house_rep_del = house_repModels.DistrictCouncilMembers.objects.filter(district_council = house_rep.district_council).filter(is_delegate = True).first()
+                                                    if house_rep_del:
+                                                        obj['house_rep'] = apiSerializers.UserSerializer(house_rep_del.user, context={"request":request}).data
+
 
             except Exception as e:
                 return Response({"error": "Failed to retrieve chain of delegation"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -449,3 +449,126 @@ class BillModaNotesViewSet(viewsets.ModelViewSet):
         
         instance.delete()
 
+
+class BillHolcNotesViewSet(viewsets.ModelViewSet):
+    """ViewSet for BillHolcNotes that allows Holc to:
+    1. Create new notes for bills
+    2. List Holc notes for bills
+    3. Update existing notes
+    4. Delete notes
+    
+    Features:
+    - Pagination: default 10 items per page, max 100
+    - Full CRUD operations
+    - Only Holc can create/modify notes
+    - All authenticated users can view Holc notes
+    """
+    queryset = billModels.BillHolcNotes.objects.all()
+    serializer_class = billSerializers.BillHolcNotesSerializer
+    pagination_class = CustomPagination
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Filter notes based on user role and chain of delegation"""
+        user = self.request.user
+        
+        # Filter by bill if bill_id is provided in query params
+        bill_id = self.request.query_params.get('bill_id', None)
+        
+        # Check if user is a Holc
+        from holc.models import HolcMembers
+        is_holc = HolcMembers.objects.filter(
+            user=user,
+            is_delegate=True
+        ).exists()
+        
+        # Build the queryset based on user role
+        user_ids_to_show = []
+        
+        # Always include notes created by the current user
+        user_ids_to_show.append(user.id)
+        
+        if not is_holc:
+            # If user is a regular member, find their holc from chain
+            try:
+                # Get the user's Holc membership
+                holc_member_instance = HolcMembers.objects.filter(user=user).first()
+                if holc_member_instance:
+                    # Find the Holc in their group
+                    holc_delegate_instance = HolcMembers.objects.filter(
+                        holc=holc_member_instance.holc,
+                        is_delegate=True
+                    ).first()
+                    
+                    if holc_delegate_instance and holc_delegate_instance.user.id not in user_ids_to_show:
+                        # Add their Holc's notes
+                        user_ids_to_show.append(holc_delegate_instance.user.id)
+            except Exception as e:
+                # If anything fails, just show user's own notes
+                pass
+        
+        # Create the queryset
+        queryset = billModels.BillHolcNotes.objects.filter(user_id__in=user_ids_to_show)
+        
+        # Filter by bill if bill_id is provided
+        if bill_id is not None:
+            queryset = queryset.filter(bill_id=bill_id)
+            
+        return queryset.order_by('-created_at')
+
+    def perform_create(self, serializer):
+        """Automatically set the user when creating a note and validate Holc status"""
+        user = self.request.user
+        
+        # Check if the user is actually a Holc by looking at HolcMembers records
+        from holc.models import HolcMembers
+        is_holc = HolcMembers.objects.filter(
+            user=user,
+            is_delegate=True
+        ).exists()
+        
+        if not is_holc:
+            raise PermissionDenied("Only Holc can create Holc notes")
+        serializer.save(user=user)
+
+    def perform_update(self, serializer):
+        """Only allow the creator of the note to update it"""
+        user = self.request.user
+        note_instance = self.get_object()
+        
+        # Check if the current user is the creator of the note
+        if note_instance.user != user:
+            raise PermissionDenied("You can only update notes that you created")
+        
+        # Also check if the user is still a Holc
+        from holc.models import HolcMembers
+        is_holc = HolcMembers.objects.filter(
+            user=user,
+            is_delegate=True
+        ).exists()
+        
+        if not is_holc:
+            raise PermissionDenied("Only Holc can update Holc notes")
+        
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        """Only allow the creator of the note to delete it"""
+        user = self.request.user
+        
+        # Check if the current user is the creator of the note
+        if instance.user != user:
+            raise PermissionDenied("You can only delete notes that you created")
+        
+        # Also check if the user is still a MoDa
+        from holc.models import HolcMembers
+        is_holc = HolcMembers.objects.filter(
+            user=user,
+            is_delegate=True
+        ).exists()
+        
+        if not is_holc:
+            raise PermissionDenied("Only Holc can delete Holc notes")
+        
+        instance.delete()
+
