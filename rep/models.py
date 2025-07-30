@@ -82,7 +82,7 @@ class DistrictCouncilMembers(models.Model):
         if not self.pk and not self.district_council.districtcouncilmembers_set.exists():
             self.is_delegate = True
             self.is_member = True
-            self.user.users.userType = 'U3D3'
+            self.user.users.userType = 'U5D5'
             self.user.users.save()
         
         super(DistrictCouncilMembers, self).save(*args, **kwargs)
@@ -101,9 +101,9 @@ class DistrictCouncilMembers(models.Model):
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_vote_in() >= majority_threshold:
             self.is_member = True
-            # set the user.users userType to U1D0
+            # set the user.users userType 
             self.save()
-            self.user.users.userType = 'U3D2'
+            self.user.users.userType = 'U5D4'
             self.user.users.save()
             return self
         
@@ -115,7 +115,8 @@ class DistrictCouncilMembers(models.Model):
         if self.count_vote_out() >= majority_threshold:
             self.user.users.userType = 'U4D3'
             self.user.users.save()
-            self.delete()
+            super(DistrictCouncilMembers,self).delete()
+        
 
     def check_put_forward(self):
         total_members = DistrictCouncilMembers.objects.filter(district_council=self.district_council).filter(is_member = True).count()
@@ -126,12 +127,12 @@ class DistrictCouncilMembers(models.Model):
             current_delegate.is_delegate = False
             current_delegate.save()
             # set the user.users userType to U1D1
-            current_delegate.user.users.userType = 'U4D3'
+            current_delegate.user.users.userType = 'U5D4'
             current_delegate.user.users.save()
             # set the current member to delegate and set is_delegate true.
             self.is_delegate = True
             # set the self instance user.users userType to U2D2
-            self.user.users.userType = 'U3D3'
+            self.user.users.userType = 'U5D5'
             self.user.users.save()
             # save the current member instance
             self.save()

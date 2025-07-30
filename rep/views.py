@@ -27,12 +27,12 @@ class DistrictCouncilViewSet(viewsets.ModelViewSet):
                 return Response({"message:": messages}, status=status.HTTP_400_BAD_REQUEST)
 
             # check if the userType is not 0 return
-            if user.users.userType[:2] == 'U4':
+            if user.users.userType[:2] == 'U5':
                 messages = "Already belongs to another District Council."
                 return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
             # create a sec_del object
             rep =  models.DistrictCouncil.objects.create(district=district)
-    
+
             # set the userType attribute of the creator to 1
             # add the user to circle member as delegate. it does not require to save. create automatically saves as well
             models.DistrictCouncilMembers.objects.create(user=user, district_council=rep, is_member=True)
@@ -41,6 +41,7 @@ class DistrictCouncilViewSet(viewsets.ModelViewSet):
     
             return JsonResponse(obj.data)
         except:
+            print("something went wrong")
             messages = "Something Went Wrong."
             return Response({"message:": messages}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -69,6 +70,7 @@ class DistrictCouncilMembersViewSet(viewsets.ModelViewSet):
             user = User.objects.get(username=request.data['user'])
             models.DistrictCouncilMembers.objects.create(user=user, district_council=rep)
             members = models.DistrictCouncilMembers.objects.filter(district_council=rep)
+     
             serializer = self.get_serializer(members, many=True)
             return Response(serializer.data)
         except models.DistrictCouncil.DoesNotExist:
