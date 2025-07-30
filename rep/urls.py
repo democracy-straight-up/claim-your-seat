@@ -5,8 +5,8 @@ from rep import views
 
 # Routers provide an easy way of automatically determining the URL conf.
 router = routers.DefaultRouter()
-# router.register('moda', views.ModaViewSet)
-# router.register('moda-members', views.ModaMembersViewSet)
+router.register('district-council', views.DistrictCouncilViewSet)
+router.register('district-council-members', views.DistrictCouncilMembersViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
