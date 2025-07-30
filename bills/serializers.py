@@ -175,7 +175,7 @@ class BillHolcNotesSerializer(serializers.ModelSerializer):
     bill_id = serializers.IntegerField(write_only=True)
 
     class Meta:
-        model = billModels.BillModaNotes
+        model = billModels.BillHolcNotes
         fields = ['id', 'created_at', 'updated_at', 'user', 'bill', 'note', 'bill_id']
         read_only_fields = ['created_at', 'updated_at', 'user']
 

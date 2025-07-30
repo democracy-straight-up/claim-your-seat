@@ -494,14 +494,14 @@ class BillHolcNotesViewSet(viewsets.ModelViewSet):
                 # Get the user's Holc membership
                 holc_member_instance = HolcMembers.objects.filter(user=user).first()
                 if holc_member_instance:
-                    # Find the MoDa in their group
+                    # Find the Holc in their group
                     holc_delegate_instance = HolcMembers.objects.filter(
                         holc=holc_member_instance.holc,
                         is_delegate=True
                     ).first()
                     
                     if holc_delegate_instance and holc_delegate_instance.user.id not in user_ids_to_show:
-                        # Add their MoDa's notes
+                        # Add their Holc's notes
                         user_ids_to_show.append(holc_delegate_instance.user.id)
             except Exception as e:
                 # If anything fails, just show user's own notes
@@ -520,7 +520,7 @@ class BillHolcNotesViewSet(viewsets.ModelViewSet):
         """Automatically set the user when creating a note and validate Holc status"""
         user = self.request.user
         
-        # Check if the user is actually a MoDa by looking at ModaMembers records
+        # Check if the user is actually a Holc by looking at HolcMembers records
         from holc.models import HolcMembers
         is_holc = HolcMembers.objects.filter(
             user=user,
@@ -540,7 +540,7 @@ class BillHolcNotesViewSet(viewsets.ModelViewSet):
         if note_instance.user != user:
             raise PermissionDenied("You can only update notes that you created")
         
-        # Also check if the user is still a MoDa
+        # Also check if the user is still a Holc
         from holc.models import HolcMembers
         is_holc = HolcMembers.objects.filter(
             user=user,
