@@ -590,6 +590,7 @@ class BillHouseRepNotesViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Filter notes based on user role and chain of delegation"""
         user = self.request.user
+
         # Filter by bill if bill_id is provided in query params
         bill_id = self.request.query_params.get('bill_id', None)
         
@@ -618,6 +619,7 @@ class BillHouseRepNotesViewSet(viewsets.ModelViewSet):
         
         # Create the queryset
         queryset = billModels.BillHouseRepNotes.objects.filter(user_id__in=user_ids_to_show)
+
         # Filter by bill if bill_id is provided
         if bill_id is not None:
             queryset = queryset.filter(bill_id=bill_id)
@@ -880,4 +882,3 @@ class BillAdvisementViewSet(viewsets.ModelViewSet):
                 raise PermissionDenied("Only House Rep can delete HR advisements")
         
         instance.delete()
-
