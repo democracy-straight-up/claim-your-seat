@@ -48,34 +48,44 @@ class Bill(models.Model):
     def count_proxy_votes(self):
         return BillVote.objects.filter(bill=self, your_vote='Px').count()
 
-    def count_district_yea_votes(self,district_code):
-        return BillVote.objects.filter(bill=self, voter__users__district=district_code,your_vote='Y').count()
+    def count_district_yea_votes(self, district_code):
+        return BillVote.objects.filter(bill=self, voter__users__district__code=district_code, your_vote='Y').count()
 
-    def count_district_nay_votes(self,district_code):
-        return BillVote.objects.filter(bill=self, voter__users__district=district_code,your_vote='N').count()
+    def count_district_nay_votes(self, district_code):
+        return BillVote.objects.filter(bill=self, voter__users__district__code=district_code, your_vote='N').count()
 
-    def count_district_present_votes(self,district_code):
-        return BillVote.objects.filter(bill=self, voter__users__district=district_code,your_vote='Pr').count()
+    def count_district_present_votes(self, district_code):
+        return BillVote.objects.filter(bill=self, voter__users__district__code=district_code, your_vote='Pr').count()
 
-    def count_district_proxy_votes(self,district_code):
-        return BillVote.objects.filter(bill=self, voter__users__district=district_code,your_vote='Px').count()
+    def count_district_proxy_votes(self, district_code):
+        return BillVote.objects.filter(bill=self, voter__users__district__code=district_code, your_vote='Px').count()
+
+    def get_user_vote(self, user):
+        """Get the current user's vote for this bill"""
+        try:
+            vote = BillVote.objects.get(bill=self, voter=user)
+            return vote.your_vote
+        except BillVote.DoesNotExist:
+            return None
 
 class BillVote(models.Model):
-
     VOTE_CHOICES = [
         ('Y', 'Yea'),
         ('N', 'Nay'),
         ('Pr', 'Present'),
         ('Px', 'Proxy'),
     ]
-
-    bill = models.ForeignKey(Bill, on_delete=models.CASCADE)
-    voter = models.ForeignKey(User, on_delete=models.CASCADE)
-    voted_by_fDel = models.BooleanField(default=False)
+    bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name="bill_votes")
+    voter = models.ForeignKey(User, on_delete=models.CASCADE, related_name="user_votes")
     your_vote = models.CharField(max_length=2, choices=VOTE_CHOICES, default='Px')
     vote_date = models.DateTimeField(auto_now_add=True)
     last_update = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        unique_together = ('bill', 'voter')
+
+    def __str__(self):
+        return f"{self.voter.username} voted {self.get_your_vote_display()} on {self.bill.number}"
 
 # type refer to type of the advicement by:
 # FD for first delegate
