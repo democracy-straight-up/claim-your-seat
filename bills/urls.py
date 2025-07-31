@@ -14,6 +14,7 @@ router.register('bill-second-del-notes', billViews.BillSecondDelNotesViewSet)
 router.register('bill-moda-notes', billViews.BillModaNotesViewSet)
 router.register('bill-holc-notes', billViews.BillHolcNotesViewSet)
 router.register('bill-house-rep-notes', billViews.BillHouseRepNotesViewSet)
+router.register('bill-advisements', billViews.BillAdvisementViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),

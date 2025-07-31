@@ -77,19 +77,38 @@ class BillVote(models.Model):
     last_update = models.DateTimeField(auto_now=True)
 
 
-class FDelAdvisement(models.Model):
-    bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name='f_del_advisements')
-    fdel = models.ForeignKey(User, on_delete=models.CASCADE, related_name='fdel_advisements')
-    advisement = models.TextField()
-    vote = models.CharField(max_length=10,null=True, blank=True)
+# type refer to type of the advicement by:
+# FD for first delegate
+# SD for second delegate
+# MD for MoDa
+# HL for HoLC
+# HR for House Rep
+class BillAdvisement(models.Model):
+    TYPE_CHOICES = [
+        ('FD', 'First Delegate'),
+        ('SD', 'Second Delegate'), 
+        ('MD', 'MoDa'),
+        ('HL', 'HoLC'),
+        ('HR', 'House Rep'),
+    ]
+    
+    # refering to the bill
+    bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name="bill_advisements")
+    # refering to the user model of adviser.
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="bill_advisements") 
+    # userType of the adviser
+    type = models.CharField(max_length=2, choices=TYPE_CHOICES)  
+    # either true for yeah and false for nay
+    advisement = models.BooleanField()
     created_at = models.DateTimeField(auto_now_add=True)
+    last_update = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ('bill', 'fdel')
+        unique_together = ('bill', 'user', 'type')
         ordering = ('-created_at',)
 
     def __str__(self):
-        return f"F-Del advisement by {self.fdel.username} on {self.bill.number}"
+        return f"{self.get_type_display()} advisement by {self.user.username} on {self.bill.number}"
 
 
 class BillUserNotes(models.Model):
