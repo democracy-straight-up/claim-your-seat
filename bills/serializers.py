@@ -337,7 +337,6 @@ class BillHouseRepNotesSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Only House Rep can create House Rep notes")
         return data
 
-
 class BillAdvisementSerializer(serializers.ModelSerializer):
     bill = CustomBillSerializer(read_only=True)
     user = CustomVoterSerializer(read_only=True)
@@ -406,4 +405,3 @@ class BillAdvisementSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("Only House Rep can create HR advisements")
         
         return data
-        
