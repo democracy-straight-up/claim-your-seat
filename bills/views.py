@@ -32,7 +32,6 @@ class BillViewSet(viewsets.ModelViewSet):
     pagination_class = CustomPagination
     permission_classes = [AllowAny]
 
-
 class BillVoteViewSet(viewsets.ModelViewSet):
     """We have bill vote view set in case that for sure there
     is going to be needed to have endpoints for
@@ -49,7 +48,6 @@ class BillVoteViewSet(viewsets.ModelViewSet):
     serializer_class = billSerializers.BillVoteSerializer
     pagination_class = CustomPagination
     permission_classes = [AllowAny]
-
 
 class BillUserNotesViewSet(viewsets.ModelViewSet):
     """ViewSet for BillUserNotes that allows users to:
@@ -449,7 +447,6 @@ class BillModaNotesViewSet(viewsets.ModelViewSet):
         
         instance.delete()
 
-
 class BillHolcNotesViewSet(viewsets.ModelViewSet):
     """ViewSet for BillHolcNotes that allows Holc to:
     1. Create new notes for bills
@@ -572,7 +569,6 @@ class BillHolcNotesViewSet(viewsets.ModelViewSet):
         
         instance.delete()
 
-
 class BillHouseRepNotesViewSet(viewsets.ModelViewSet):
     """ViewSet for BillHouseRepNotes that allows House Rep to:
     1. Create new notes for bills
@@ -594,20 +590,14 @@ class BillHouseRepNotesViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Filter notes based on user role and chain of delegation"""
         user = self.request.user
-        
         # Filter by bill if bill_id is provided in query params
         bill_id = self.request.query_params.get('bill_id', None)
         
         # Check if user is a Holc
         from rep.models import DistrictCouncilMembers
-        is_house_rep = DistrictCouncilMembers.objects.filter(
-            user=user,
-            is_delegate=True
-        ).exists()
-        
+        is_house_rep = DistrictCouncilMembers.objects.filter(user=user,is_delegate=True).exists()
         # Build the queryset based on user role
         user_ids_to_show = []
-        
         # Always include notes created by the current user
         user_ids_to_show.append(user.id)
         
@@ -618,11 +608,7 @@ class BillHouseRepNotesViewSet(viewsets.ModelViewSet):
                 rep_member_instance = DistrictCouncilMembers.objects.filter(user=user).first()
                 if rep_member_instance:
                     # Find the Holc in their group
-                    rep_delegate_instance = DistrictCouncilMembers.objects.filter(
-                        district_council=rep_member_instance.district_council,
-                        is_delegate=True
-                    ).first()
-                    
+                    rep_delegate_instance = DistrictCouncilMembers.objects.filter(district_council=rep_member_instance.district_council, is_delegate=True).first()
                     if rep_delegate_instance and rep_delegate_instance.user.id not in user_ids_to_show:
                         # Add their Holc's notes
                         user_ids_to_show.append(rep_delegate_instance.user.id)
@@ -632,7 +618,6 @@ class BillHouseRepNotesViewSet(viewsets.ModelViewSet):
         
         # Create the queryset
         queryset = billModels.BillHouseRepNotes.objects.filter(user_id__in=user_ids_to_show)
-        
         # Filter by bill if bill_id is provided
         if bill_id is not None:
             queryset = queryset.filter(bill_id=bill_id)
@@ -642,14 +627,9 @@ class BillHouseRepNotesViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Automatically set the user when creating a note and validate House Rep status"""
         user = self.request.user
-        
         # Check if the user is actually a Holc by looking at HolcMembers records
         from rep.models import DistrictCouncilMembers
-        is_rep = DistrictCouncilMembers.objects.filter(
-            user=user,
-            is_delegate=True
-        ).exists()
-        
+        is_rep = DistrictCouncilMembers.objects.filter(user=user,is_delegate=True).exists()
         if not is_rep:
             raise PermissionDenied("Only House Rep can create House Rep notes")
         serializer.save(user=user)
@@ -665,11 +645,7 @@ class BillHouseRepNotesViewSet(viewsets.ModelViewSet):
         
         # Also check if the user is still a Holc
         from rep.models import DistrictCouncilMembers
-        is_rep = DistrictCouncilMembers.objects.filter(
-            user=user,
-            is_delegate=True
-        ).exists()
-        
+        is_rep = DistrictCouncilMembers.objects.filter( user=user,is_delegate=True).exists()
         if not is_rep:
             raise PermissionDenied("Only House Rep can update House Rep notes")
         
@@ -685,12 +661,223 @@ class BillHouseRepNotesViewSet(viewsets.ModelViewSet):
         
         # Also check if the user is still a MoDa
         from rep.models import DistrictCouncilMembers
-        is_rep = DistrictCouncilMembers.objects.filter(
-            user=user,
-            is_delegate=True
-        ).exists()
+        is_rep = DistrictCouncilMembers.objects.filter(user=user,is_delegate=True).exists()
         
         if not is_rep:
             raise PermissionDenied("Only House Rep can delete House Rep notes")
         
         instance.delete()
+
+class BillAdvisementViewSet(viewsets.ModelViewSet):
+    """ViewSet for BillAdvisement that allows delegates to:
+    1. Create new advisements for bills
+    2. List advisements for bills
+    3. Update existing advisements
+    4. Delete advisements
+    
+    Features:
+    - Pagination: default 10 items per page, max 100
+    - Full CRUD operations
+    - Only delegates can create/modify advisements based on their type
+    - Users can view advisements from their delegates
+    """
+    queryset = billModels.BillAdvisement.objects.all()
+    serializer_class = billSerializers.BillAdvisementSerializer
+    pagination_class = CustomPagination
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Filter advisements based on user role and delegation chain"""
+        user = self.request.user
+        
+        # Filter by bill if bill_id is provided in query params
+        bill_id = self.request.query_params.get('bill_id', None)
+        
+        # Build the queryset based on user's delegation hierarchy
+        user_delegate_ids = []
+        
+        try:
+            # Check if user is a first delegate - get their advisements
+            from vote.models import GroupMember
+            if GroupMember.objects.filter(user=user, is_delegate=True).exists():
+                user_delegate_ids.append(user.id)
+            else:
+                # If user is not a first delegate, find their first delegate
+                group_member = GroupMember.objects.filter(user=user).first()
+                if group_member:
+                    f_del = GroupMember.objects.filter(
+                        group=group_member.group,
+                        is_delegate=True
+                    ).first()
+                    if f_del:
+                        user_delegate_ids.append(f_del.user.id)
+            
+            # Check if user is a second delegate - get their advisements  
+            from api.models import SecDelMembers
+            if SecDelMembers.objects.filter(user=user, is_delegate=True).exists():
+                user_delegate_ids.append(user.id)
+            else:
+                # If user is not a second delegate, find their second delegate
+                sec_del_member = SecDelMembers.objects.filter(user=user).first()
+                if sec_del_member:
+                    sec_del = SecDelMembers.objects.filter(
+                        sec_del=sec_del_member.sec_del,
+                        is_delegate=True
+                    ).first()
+                    if sec_del:
+                        user_delegate_ids.append(sec_del.user.id)
+            
+            # Check if user is a MoDa - get their advisements
+            from moda.models import ModaMembers
+            if ModaMembers.objects.filter(user=user, is_delegate=True).exists():
+                user_delegate_ids.append(user.id)
+            else:
+                # If user is not a MoDa, find their MoDa
+                moda_member = ModaMembers.objects.filter(user=user).first()
+                if moda_member:
+                    moda_del = ModaMembers.objects.filter(
+                        moda=moda_member.moda,
+                        is_delegate=True
+                    ).first()
+                    if moda_del:
+                        user_delegate_ids.append(moda_del.user.id)
+            
+            # Check if user is a HoLC - get their advisements
+            from holc.models import HolcMembers
+            if HolcMembers.objects.filter(user=user, is_delegate=True).exists():
+                user_delegate_ids.append(user.id)
+            else:
+                # If user is not a HoLC, find their HoLC
+                holc_member = HolcMembers.objects.filter(user=user).first()
+                if holc_member:
+                    holc_del = HolcMembers.objects.filter(
+                        holc=holc_member.holc,
+                        is_delegate=True
+                    ).first()
+                    if holc_del:
+                        user_delegate_ids.append(holc_del.user.id)
+            
+            # Check if user is a House Rep - get their advisements
+            from rep.models import DistrictCouncilMembers
+            if DistrictCouncilMembers.objects.filter(user=user, is_delegate=True).exists():
+                user_delegate_ids.append(user.id)
+            else:
+                # If user is not a House Rep, find their House Rep
+                rep_member = DistrictCouncilMembers.objects.filter(user=user).first()
+                if rep_member:
+                    rep_del = DistrictCouncilMembers.objects.filter(
+                        district_council=rep_member.district_council,
+                        is_delegate=True
+                    ).first()
+                    if rep_del:
+                        user_delegate_ids.append(rep_del.user.id)
+                        
+        except Exception as e:
+            # If anything fails, just show advisements by current user if they are a delegate
+            pass
+        
+        # Create the queryset
+        queryset = billModels.BillAdvisement.objects.filter(user_id__in=user_delegate_ids)
+        
+        # Filter by bill if bill_id is provided
+        if bill_id is not None:
+            queryset = queryset.filter(bill_id=bill_id)
+            
+        return queryset.order_by('-created_at')
+
+    def perform_create(self, serializer):
+        """Automatically set the user when creating an advisement and validate delegate status"""
+        user = self.request.user
+        delegate_type = serializer.validated_data.get('type')
+        
+        # Additional validation that user can create this type of advisement
+        if delegate_type == 'FD':
+            from vote.models import GroupMember
+            if not GroupMember.objects.filter(user=user, is_delegate=True).exists():
+                raise PermissionDenied("Only First Delegates can create FD advisements")
+        elif delegate_type == 'SD':
+            from api.models import SecDelMembers
+            if not SecDelMembers.objects.filter(user=user, is_delegate=True).exists():
+                raise PermissionDenied("Only Second Delegates can create SD advisements")
+        elif delegate_type == 'MD':
+            from moda.models import ModaMembers
+            if not ModaMembers.objects.filter(user=user, is_delegate=True).exists():
+                raise PermissionDenied("Only MoDa can create MD advisements")
+        elif delegate_type == 'HL':
+            from holc.models import HolcMembers
+            if not HolcMembers.objects.filter(user=user, is_delegate=True).exists():
+                raise PermissionDenied("Only HoLC can create HL advisements")
+        elif delegate_type == 'HR':
+            from rep.models import DistrictCouncilMembers
+            if not DistrictCouncilMembers.objects.filter(user=user, is_delegate=True).exists():
+                raise PermissionDenied("Only House Rep can create HR advisements")
+        
+        serializer.save(user=user)
+
+    def perform_update(self, serializer):
+        """Only allow the creator of the advisement to update it"""
+        user = self.request.user
+        advisement_instance = self.get_object()
+        
+        # Check if the current user is the creator of the advisement
+        if advisement_instance.user != user:
+            raise PermissionDenied("You can only update advisements that you created")
+        
+        # Validate user still has delegate status for the advisement type
+        delegate_type = advisement_instance.type
+        if delegate_type == 'FD':
+            from vote.models import GroupMember
+            if not GroupMember.objects.filter(user=user, is_delegate=True).exists():
+                raise PermissionDenied("Only First Delegates can update FD advisements")
+        elif delegate_type == 'SD':
+            from api.models import SecDelMembers
+            if not SecDelMembers.objects.filter(user=user, is_delegate=True).exists():
+                raise PermissionDenied("Only Second Delegates can update SD advisements")
+        elif delegate_type == 'MD':
+            from moda.models import ModaMembers
+            if not ModaMembers.objects.filter(user=user, is_delegate=True).exists():
+                raise PermissionDenied("Only MoDa can update MD advisements")
+        elif delegate_type == 'HL':
+            from holc.models import HolcMembers
+            if not HolcMembers.objects.filter(user=user, is_delegate=True).exists():
+                raise PermissionDenied("Only HoLC can update HL advisements")
+        elif delegate_type == 'HR':
+            from rep.models import DistrictCouncilMembers
+            if not DistrictCouncilMembers.objects.filter(user=user, is_delegate=True).exists():
+                raise PermissionDenied("Only House Rep can update HR advisements")
+        
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        """Only allow the creator of the advisement to delete it"""
+        user = self.request.user
+        
+        # Check if the current user is the creator of the advisement
+        if instance.user != user:
+            raise PermissionDenied("You can only delete advisements that you created")
+        
+        # Validate user still has delegate status for the advisement type
+        delegate_type = instance.type
+        if delegate_type == 'FD':
+            from vote.models import GroupMember
+            if not GroupMember.objects.filter(user=user, is_delegate=True).exists():
+                raise PermissionDenied("Only First Delegates can delete FD advisements")
+        elif delegate_type == 'SD':
+            from api.models import SecDelMembers
+            if not SecDelMembers.objects.filter(user=user, is_delegate=True).exists():
+                raise PermissionDenied("Only Second Delegates can delete SD advisements")
+        elif delegate_type == 'MD':
+            from moda.models import ModaMembers
+            if not ModaMembers.objects.filter(user=user, is_delegate=True).exists():
+                raise PermissionDenied("Only MoDa can delete MD advisements")
+        elif delegate_type == 'HL':
+            from holc.models import HolcMembers
+            if not HolcMembers.objects.filter(user=user, is_delegate=True).exists():
+                raise PermissionDenied("Only HoLC can delete HL advisements")
+        elif delegate_type == 'HR':
+            from rep.models import DistrictCouncilMembers
+            if not DistrictCouncilMembers.objects.filter(user=user, is_delegate=True).exists():
+                raise PermissionDenied("Only House Rep can delete HR advisements")
+        
+        instance.delete()
+
