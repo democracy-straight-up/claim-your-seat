@@ -1,6 +1,8 @@
 from bills import models as billModels
 from bills import serializers as billSerializers
-from rest_framework import viewsets
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
@@ -32,22 +34,143 @@ class BillViewSet(viewsets.ModelViewSet):
     pagination_class = CustomPagination
     permission_classes = [AllowAny]
 
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def vote(self, request, pk=None):
+        """Allow users to vote on a bill"""
+        try:
+            bill = self.get_object()
+            your_vote = request.data.get('your_vote')
+            
+            print(f"Vote attempt: User={request.user.username}, Bill={bill.id}, Vote={your_vote}")
+            
+            if your_vote not in ['Y', 'N', 'Pr', 'Px']:
+                print(f"Invalid vote value: {your_vote}")
+                return Response(
+                    {'error': 'Invalid vote. Must be Y, N, Pr, or Px'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Check if user has proper profile
+            if not hasattr(request.user, 'users'):
+                print(f"User {request.user.username} has no profile")
+                return Response(
+                    {'error': 'User profile not found'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Get or create vote
+            vote, created = billModels.BillVote.objects.get_or_create(
+                bill=bill,
+                voter=request.user,
+                defaults={'your_vote': your_vote}
+            )
+            
+            if not created:
+                print(f"Updating existing vote from {vote.your_vote} to {your_vote}")
+                # Update existing vote
+                vote.your_vote = your_vote
+                vote.save()
+            else:
+                print(f"Created new vote: {your_vote}")
+            
+            return Response({
+                'message': 'Vote recorded successfully',
+                'your_vote': vote.your_vote,
+                'vote_display': vote.get_your_vote_display()
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            print(f"Error in vote action: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {'error': f'Server error: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def my_vote(self, request, pk=None):
+        """Get the current user's vote for this bill"""
+        bill = self.get_object()
+        try:
+            vote = billModels.BillVote.objects.get(bill=bill, voter=request.user)
+            return Response({
+                'your_vote': vote.your_vote,
+                'vote_display': vote.get_your_vote_display(),
+                'vote_date': vote.vote_date
+            })
+        except billModels.BillVote.DoesNotExist:
+            return Response({'your_vote': None})
+
+    @action(detail=True, methods=['get'])
+    def vote_counts(self, request, pk=None):
+        """Get vote counts for this bill"""
+        bill = self.get_object()
+        print("here before", bill, request.user)
+        
+        # Get user's district for district counts
+        user_district = None
+        if request.user.is_authenticated:
+            print("here", request.user)
+            user_district = getattr(getattr(request.user, 'users', None), 'district', None)
+            user_district_code = getattr(user_district, 'code', None) if user_district else None
+        
+        return Response({
+            'national_counts': {
+                'yea': bill.count_yea_votes(),
+                'nay': bill.count_nay_votes(),
+                'present': bill.count_present_votes(),
+                'proxy': bill.count_proxy_votes()
+            },
+            'district_counts': {
+                'yea': bill.count_district_yea_votes(user_district_code) if user_district_code else 0,
+                'nay': bill.count_district_nay_votes(user_district_code) if user_district_code else 0,
+                'present': bill.count_district_present_votes(user_district_code) if user_district_code else 0,
+                'proxy': bill.count_district_proxy_votes(user_district_code) if user_district_code else 0
+            } if user_district_code else {}
+        })
+
 class BillVoteViewSet(viewsets.ModelViewSet):
-    """We have bill vote view set in case that for sure there
-    is going to be needed to have endpoints for
-    1. adding a new vote,
-    2. updating a vote record,
-    3. removing a record.
+    """ViewSet for BillVote that allows users to:
+    1. Create new votes for bills
+    2. Update existing votes (no duplicates - will update existing vote)
+    3. List votes
+    4. Delete votes
      It handles the followings:
       1. pagination: default paginating is 10 and max is 100
       and can be changed via url param named: page_size
-      2. it list the bill's votes.
+      2. it lists the bill's votes.
       3. updates via put and patch request method.
-      4. removed a record via delete request method"""
+      4. removes a record via delete request method
+      5. automatically handles vote updates instead of creating duplicates"""
     queryset = billModels.BillVote.objects.all()
     serializer_class = billSerializers.BillVoteSerializer
     pagination_class = CustomPagination
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Filter votes to show only user's own votes"""
+        return billModels.BillVote.objects.filter(voter=self.request.user)
+
+    def perform_create(self, serializer):
+        """Create or update a vote - no duplicates allowed"""
+        bill_id = serializer.validated_data.get('bill_id')
+        user = self.request.user
+        your_vote = serializer.validated_data.get('your_vote')
+        
+        # Try to get existing vote
+        existing_vote, created = billModels.BillVote.objects.get_or_create(
+            bill_id=bill_id,
+            voter=user,
+            defaults={'your_vote': your_vote}
+        )
+        
+        if not created:
+            # Update existing vote
+            existing_vote.your_vote = your_vote
+            existing_vote.save()
+            
+        return existing_vote
 
 class BillUserNotesViewSet(viewsets.ModelViewSet):
     """ViewSet for BillUserNotes that allows users to:

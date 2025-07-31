@@ -11,7 +11,7 @@ def order_offer_observer(sender, instance, created, **kwargs):
         voter = instance.voter.username
         bill_id = instance.bill.number
         pm_obj = GroupMember.objects.get(user__username=voter)
-        circleName = pm_obj.circle.code
+        circleName = pm_obj.group.code
         is_delegate = pm_obj.is_delegate
         room_group_name = f'bill_{bill_id}_circle_{circleName}'
 

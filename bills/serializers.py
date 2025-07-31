@@ -8,13 +8,19 @@ class BillSerializer(serializers.ModelSerializer):
     nay_votes_count = serializers.SerializerMethodField()
     present_votes_count = serializers.SerializerMethodField()
     proxy_votes_count = serializers.SerializerMethodField()
+    district_yea_votes_count = serializers.SerializerMethodField()
+    district_nay_votes_count = serializers.SerializerMethodField()
+    district_present_votes_count = serializers.SerializerMethodField()
+    district_proxy_votes_count = serializers.SerializerMethodField()
+    user_vote = serializers.SerializerMethodField()
     url = serializers.SerializerMethodField()
     advisements = serializers.SerializerMethodField()
 
     class Meta:
         model = billModels.Bill
         fields = "__all__"
-        extra_fields = ['url', 'advisements']
+        extra_fields = ['url', 'advisements', 'user_vote', 'district_yea_votes_count', 
+                       'district_nay_votes_count', 'district_present_votes_count', 'district_proxy_votes_count']
 
     def get_yea_votes_count(self, obj):
         return obj.count_yea_votes()
@@ -28,17 +34,64 @@ class BillSerializer(serializers.ModelSerializer):
     def get_proxy_votes_count(self, obj):
         return obj.count_proxy_votes()
 
-    def get_district_yea_votes_count(self, obj, district_code):
-        return obj.count_district_yea_votes(district_code)
+    def get_district_yea_votes_count(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return 0
+        try:
+            user_district = getattr(request.user, 'users', None)
+            district_code = getattr(getattr(user_district, 'district', None), 'code', None) if user_district else None
+            if district_code:
+                return obj.count_district_yea_votes(district_code)
+        except Exception as e:
+            print(f"Error getting district yea votes: {e}")
+        return 0
 
-    def get_district_nay_votes_count(self, obj, district_code):
-        return obj.count_district_nay_votes(district_code)
+    def get_district_nay_votes_count(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return 0
+        try:
+            user_district = getattr(request.user, 'users', None)
+            district_code = getattr(getattr(user_district, 'district', None), 'code', None) if user_district else None
+            if district_code:
+                return obj.count_district_nay_votes(district_code)
+        except Exception as e:
+            print(f"Error getting district nay votes: {e}")
+        return 0
 
-    def get_district_present_votes_count(self, obj, district_code):
-        return obj.count_district_present_votes(district_code)
+    def get_district_present_votes_count(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return 0
+        try:
+            user_district = getattr(request.user, 'users', None)
+            district_code = getattr(getattr(user_district, 'district', None), 'code', None) if user_district else None
+            if district_code:
+                return obj.count_district_present_votes(district_code)
+        except Exception as e:
+            print(f"Error getting district present votes: {e}")
+        return 0
 
-    def get_district_proxy_votes_count(self, obj, district_code):
-        return obj.count_district_proxy_votes(district_code)
+    def get_district_proxy_votes_count(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return 0
+        try:
+            user_district = getattr(request.user, 'users', None)
+            district_code = getattr(getattr(user_district, 'district', None), 'code', None) if user_district else None
+            if district_code:
+                return obj.count_district_proxy_votes(district_code)
+        except Exception as e:
+            print(f"Error getting district proxy votes: {e}")
+        return 0
+
+    def get_user_vote(self, obj):
+        """Get the current user's vote for this bill"""
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return None
+        return obj.get_user_vote(request.user)
 
     def get_url(self, obj):
         request = self.context.get('request')
@@ -163,11 +216,24 @@ class CustomVoterSerializer(serializers.ModelSerializer):
         fields = ['id','username']
 
 class BillVoteSerializer(serializers.ModelSerializer):
-    bill = CustomBillSerializer()
-    voter = CustomVoterSerializer()
+    bill = CustomBillSerializer(read_only=True)
+    voter = CustomVoterSerializer(read_only=True)
+    bill_id = serializers.IntegerField(write_only=True)
+    
     class Meta:
         model = billModels.BillVote
-        fields = ['id',"bill","voter","voted_by_fDel","your_vote","vote_date","last_update"]
+        fields = ['id', "bill", "voter", "your_vote", "vote_date", "last_update", "bill_id"]
+        read_only_fields = ['vote_date', 'last_update', 'voter']
+
+    def create(self, validated_data):
+        bill_id = validated_data.pop('bill_id')
+        validated_data['bill_id'] = bill_id
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        # Remove bill_id from validated_data if present during update
+        validated_data.pop('bill_id', None)
+        return super().update(instance, validated_data)
 
 
 class BillUserNotesSerializer(serializers.ModelSerializer):
