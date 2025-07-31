@@ -11,9 +11,9 @@ class BillAdmin(admin.ModelAdmin):
 admin.site.register(models.Bill, BillAdmin)
 
 class BillVoteAdmin(admin.ModelAdmin):
-    list_display = ['bill', 'voter', 'your_vote','vote_date', 'last_update']
-    list_filter = ['vote_date', 'last_update', 'your_vote']
-    list_display_links = ["bill",'voter', 'your_vote']
+    list_display = ['bill', 'voter', 'vote','vote_date', 'last_update']
+    list_filter = ['vote_date', 'last_update', 'vote']
+    list_display_links = ["bill",'voter', 'vote']
 admin.site.register(models.BillVote, BillVoteAdmin)
 
 class BillUserNotesAdmin(admin.ModelAdmin):

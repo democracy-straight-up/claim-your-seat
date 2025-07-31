@@ -61,21 +61,20 @@ class Bill(models.Model):
         return BillVote.objects.filter(bill=self, voter__users__district=district_code,your_vote='Px').count()
 
 class BillVote(models.Model):
-
     VOTE_CHOICES = [
         ('Y', 'Yea'),
         ('N', 'Nay'),
         ('Pr', 'Present'),
         ('Px', 'Proxy'),
     ]
-
-    bill = models.ForeignKey(Bill, on_delete=models.CASCADE)
-    voter = models.ForeignKey(User, on_delete=models.CASCADE)
-    voted_by_fDel = models.BooleanField(default=False)
-    your_vote = models.CharField(max_length=2, choices=VOTE_CHOICES, default='Px')
+    bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name="bill_votes")
+    voter = models.ForeignKey(User, on_delete=models.CASCADE, related_name="user_votes")
+    vote = models.CharField(max_length=2, choices=VOTE_CHOICES, default='Px')
     vote_date = models.DateTimeField(auto_now_add=True)
     last_update = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        unique_together = ('bill', 'voter', 'vote')
 
 # type refer to type of the advicement by:
 # FD for first delegate
