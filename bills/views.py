@@ -130,6 +130,7 @@ class BillViewSet(viewsets.ModelViewSet):
             } if user_district_code else {}
         })
 
+
 class BillVoteViewSet(viewsets.ModelViewSet):
     """ViewSet for BillVote that allows users to:
     1. Create new votes for bills
