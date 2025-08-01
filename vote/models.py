@@ -97,18 +97,12 @@ class GroupMember(models.Model):
 
     def check_for_removing(self):
         total_members = GroupMember.objects.filter(group=self.group).filter(is_member = True).count()
-        print("total members: ", total_members)
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
-        print("majority threshold: ", majority_threshold)
-        print("count vote out: ", self.count_vote_out())
         if self.count_vote_out() >= majority_threshold:
-            print("removing the members...")
             self.user.users.userType = 'U0D0'
             self.user.users.verificationScore = 1
             self.user.users.save()
-            print("user type is changed: ", self.user.users.userType)
-            self.delete()
-            print("deleted the member")
+            super(GroupMember,self).delete()
             # set the deleted user.users userType to 0
 
     def check_put_farward(self):
@@ -185,7 +179,6 @@ class CircleMember_put_forward(models.Model):
 
     def save(self, *args, **kwargs):
         super(CircleMember_put_forward, self).save(*args, **kwargs)
-        print("from the model save method, checking for the majoriyt of gele:... ")
         self.recipient.check_put_farward()
 
     def __str__(self):
