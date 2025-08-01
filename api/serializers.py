@@ -297,7 +297,6 @@ class UsernameRequestSerializer(serializers.Serializer):
         return value
 
 
-
 class ContactInfoSerializer(serializers.ModelSerializer):
     member = CircleMemberSerializer()
 
