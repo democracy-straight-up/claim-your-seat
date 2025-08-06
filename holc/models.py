@@ -34,7 +34,8 @@ class HolcModel(models.Model):
     
     @property
     def is_active(self):
-        # check if the member <= 12 and return true
+        # check if the member <= 12 and return true 
+        # this will be updated.
         if 4 <= self.holcmembers_set.filter(is_member = True).count() <= 12:
             return True
         return False

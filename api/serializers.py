@@ -190,7 +190,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 class CircleSerializer(serializers.ModelSerializer):
     district = DistrictsSerializer()
     # is_active is a property defined on the model
-    is_active = serializers.ReadOnlyField()
+    # is_active = serializers.ReadOnlyField()
     member_count = serializers.ReadOnlyField()
     class Meta:
         model = voteModels.Group
