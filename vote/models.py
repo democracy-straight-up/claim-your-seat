@@ -158,6 +158,7 @@ class GroupMember(models.Model):
             # Delete the member - this will trigger the custom delete method
             self.delete()
 
+
     def check_put_farward(self):
         total_members = GroupMember.objects.filter(group=self.group).filter(is_member = True).count()
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
