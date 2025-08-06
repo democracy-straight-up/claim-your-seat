@@ -27,10 +27,9 @@ class Users(models.Model):
     # i am registered to vote in this district
     is_reg      = models.BooleanField(default=False)
     # this is for if the user is registered with conditional.
+    # verificationScore is named ConnectionScore everywhere
     verificationScore = models.SmallIntegerField(default=1,null=True, blank=True)
     address     = models.CharField(max_length=150, null=True, blank=True)
-    # userType is the from 0 to 5.
-    # userType    = models.PositiveSmallIntegerField(default=0)
     userType = models.CharField(max_length=4, default='U0D0')
     VVAT_Number = models.CharField(max_length=15, null=True, blank=True)
 
@@ -43,7 +42,8 @@ class Group(models.Model):
     created_at      = models.DateTimeField(auto_now_add=True)
     updated_at      = models.DateTimeField(auto_now=True)
     invitation_code = models.CharField(max_length=10)
-    FDel_election   =  models.BooleanField(default=False)
+    FDel_election   = models.BooleanField(default=False)
+    status          = models.BooleanField(default=False, null=True, blank=True)
     group_type = models.IntegerField()
     parent_group = models.ForeignKey('self', null=True,blank=True,  on_delete=models.CASCADE)
 
@@ -53,17 +53,43 @@ class Group(models.Model):
     @property
     def is_active(self):
         # check if the member <= 12 and return true
-        if 6 <= self.groupmember_set.filter(is_member = True).count() <= 12:
+        member_count = self.groupmember_set.filter(is_member = True).count()
+        is_currently_active = 6 <= member_count <= 12
+        if is_currently_active:
+            if(self.status == False):
+                self.status = True
+                self.save()
+                self._update_member_verification_scores(10)
             return True
-        return False
+        else:
+            if(self.status==True):
+                self.status = False
+                self.save()
+                self._update_member_verification_scores(0)
+            return False
+
+    def delete(self):
+        members = self.groupmember_set.all()
+        for member in members:
+            member.user.users.userType ="U0D0"
+            member.user.users.verificationScore = 0
+            member.user.users.save()
+            member.delete()
+
+
+    def _update_member_verification_scores(self, score):
+        """Helper method to update verification scores for all group members"""
+        members = self.groupmember_set.filter(is_member=True)
+        for member in members:
+            member.user.users.verificationScore = score
+            member.user.users.save()
+
     
     @property
     def member_count(self):
         return self.groupmember_set.filter(is_member = True).count()
 
 class GroupMember(models.Model):
-    # user = models.IntegerField()
-    # group = models.IntegerField()
     user    = models.ForeignKey(User, on_delete=models.CASCADE)
     group     = models.ForeignKey(Group, on_delete=models.CASCADE)
     is_member       = models.BooleanField(default=False)
@@ -79,14 +105,39 @@ class GroupMember(models.Model):
     class Meta:
         ordering = ['-is_delegate', 'date_joined']
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # Check group status after saving a member
+        if self.group:
+            self.group.is_active
+
+    def delete(self, *args, **kwargs):
+        # set the userType to U0D0 and verification score to 0
+        self.user.users.userType = "U0D0"
+        self.user.users.verificationScore = 0
+        self.user.users.save()
+        super().delete(*args, **kwargs)
+
+        # once the member is removed, check the grou status and update the status and that will update the 
+        # members connection scores (verification score) as well.
+        if self.group:
+            self.group.is_active
+
+        
     def check_for_majority(self): 
         total_members = GroupMember.objects.filter(group=self.group).filter(is_member = True).count()
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_vote_in() >= majority_threshold:
             self.is_member = True
-            # set the user.users userType to U1D0
+            # set the user.users userType to U1D0 (member, not delegate)
             self.user.users.userType = 'U1D0'
-            self.user.users.verificationScore = 2
+            
+            # Set verification score based on group status
+            if self.group.is_active:
+                self.user.users.verificationScore = 10
+            # else:
+            #     self.user.users.verificationScore = 2
+                
             self.user.users.save()
             self.save()
             # Delete related CircleMember_vote_in instances
@@ -99,11 +150,14 @@ class GroupMember(models.Model):
         total_members = GroupMember.objects.filter(group=self.group).filter(is_member = True).count()
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_vote_out() >= majority_threshold:
-            self.user.users.userType = 'U0D0'
-            self.user.users.verificationScore = 1
-            self.user.users.save()
-            super(GroupMember,self).delete()
-            # set the deleted user.users userType to 0
+            print("removing the memeber via voting out.")
+            
+            # Delete related vote instances
+            CircleMember_vote_out.objects.filter(candidate=self).delete()
+            
+            # Delete the member - this will trigger the custom delete method
+            self.delete()
+
 
     def check_put_farward(self):
         total_members = GroupMember.objects.filter(group=self.group).filter(is_member = True).count()

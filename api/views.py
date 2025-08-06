@@ -217,8 +217,8 @@ class CreateCIRCLE(APIView):
                 messages = "User and District are required."
                 return Response({"message:": messages}, status=status.HTTP_400_BAD_REQUEST)
 
-            # check if the userType is not 0 return
-            if user.users.userType == 'U1':
+            # check if the userType is not U0D0 (user is already in a circle)
+            if user.users.userType != 'U0D0':
                 messages = "Already belongs to a circle."
                 return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
             
@@ -235,9 +235,6 @@ class CreateCIRCLE(APIView):
             )
         
             circle.save()
-            # set the userType attribute of the creator to 1
-            user.users.userType = 'U1D1'
-            user.users.save()
 
             # add the user to circle member as delegate
             circle_member_obj = voteModels.GroupMember.objects.create(
@@ -247,14 +244,10 @@ class CreateCIRCLE(APIView):
                 is_member=True
             )
             circle_member_obj.save()
+            # # set the userType attribute of the creator to U1D1 (delegate)
+            user.users.userType = 'U1D1'
+            user.users.save()
 
-            # save delegate member contact info
-            contact_info = voteModels.ContactInfo.objects.create(
-                member=circle_member_obj,
-                address=circle_member_obj.user.users.address,
-                email=circle_member_obj.user.email
-            )
-            contact_info.save()
             obj = apiSerializers.CircleSerializer(circle)
         
             return JsonResponse(obj.data)

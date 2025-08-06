@@ -121,8 +121,8 @@ class CircleConsumer(AsyncWebsocketConsumer):
             remover = User.objects.get(username = data['remover'])
             member = voteModels.GroupMember.objects.get(pk = data['candidate'])
             # set back the userType to 0 while removing.
-            member.user.users.userType = 'U0D0'
-            member.user.users.save()
+            # member.user.users.userType = 'U0D0'
+            # member.user.users.save()
             member.delete()
             # remove the circlemember
             vote = serializers.UserSerializer(remover)
@@ -171,8 +171,8 @@ class CircleConsumer(AsyncWebsocketConsumer):
             if member.is_delegate and member.group.groupmember_set.all().count() == 1:
                 member.group.delete()
                 # set the userType to 0
-                member.user.users.userType = 'U0D0'
-                member.user.users.save()
+                # member.user.users.userType = 'U0D0'
+                # member.user.users.save()
                 return {"status":"success","action":'dissolve', "message":"Circle Dissolved."}
         except:
             return {"status": "error","action":"dissolve", "message": "Could not dissolve."}
