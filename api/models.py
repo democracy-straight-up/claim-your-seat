@@ -148,6 +148,7 @@ class SecDelMembers(models.Model):
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_vote_out() >= majority_threshold:
             self.user.users.userType = 'U1D1'
+            self.user.users.verificationScore = 10
             self.user.users.save()
             self.delete()
 
