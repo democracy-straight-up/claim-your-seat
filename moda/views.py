@@ -53,6 +53,7 @@ class ModaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST)
         # get_object_or_404 handles the try/except DoesNotExist for you
         # It raises Http404 if the object is not found
+  
         instance = get_object_or_404(models.ModaMembers, user__username=username)
         # If the object is found, execution continues here
         serial = self.get_serializer(instance.moda)
