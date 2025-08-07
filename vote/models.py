@@ -150,8 +150,6 @@ class GroupMember(models.Model):
         total_members = GroupMember.objects.filter(group=self.group).filter(is_member = True).count()
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_vote_out() >= majority_threshold:
-            print("removing the memeber via voting out.")
-            
             # Delete related vote instances
             CircleMember_vote_out.objects.filter(candidate=self).delete()
             
