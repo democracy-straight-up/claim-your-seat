@@ -21,6 +21,7 @@ class ModaModel(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     district = models.ForeignKey(Districts, on_delete=models.DO_NOTHING)
     invitation_key = models.PositiveBigIntegerField(unique=True, default=generate_unique_invitation_key)
+    status = models.BooleanField(default=False, null=True, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.code:
@@ -32,12 +33,41 @@ class ModaModel(models.Model):
     def __str__(self):
         return str(self.code)
     
+    def delete(self):
+        members = self.modamembers_set.all()
+        for member in members:
+            member.user.users.userType ="U2D2"
+            member.user.users.verificationScore = 100
+            member.user.users.save()
+            member.delete()
+
+
     @property
     def is_active(self):
         # check if the member <= 12 and return true
-        if 6 <= self.modamembers_set.filter(is_member = True).count() <= 12:
+        member_count = self.modamembers_set.filter(is_member = True).count()
+        is_currently_active = 3 <= member_count <= 12
+        if is_currently_active:
+            if(self.status == False):
+                self.status = True
+                self.save()
+                self._update_member_verification_scores(1000)
             return True
-        return False
+        else:
+            if(self.status==True):
+                self.status = False
+                self.save()
+                self._update_member_verification_scores(100)
+            return False
+    
+    def _update_member_verification_scores(self, score):
+        """Helper method to update verification scores for all sec_del members"""
+        members = self.modamembers_set.filter(is_member=True)
+        for member in members:
+            member.user.users.verificationScore = score
+            member.user.users.save()
+
+
     @property
     def member_count(self):
         return self.modamembers_set.filter(is_member = True).count()
@@ -64,12 +94,18 @@ class ModaMembers(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.moda.code}"
     
-    def delete(self, using=None, keep_parents=False):
-        # check if the user type is correct.
-        self.user.users.userType = 'U2D1'
+    def delete(self, *args, **kwargs):
+        # set the userType to U0D0 and verification score to 0
+        self.user.users.userType = "U2D2"
+        self.user.users.verificationScore = 100
         self.user.users.save()
-        super().delete(using, keep_parents)
-    
+        super().delete(*args, **kwargs)
+
+        # once the member is removed, check the grou status and update the status and that will update the 
+        # members connection scores (verification score) as well.
+        if self.moda:
+            self.moda.is_active
+
     def save(self, *args, **kwargs):
         # check for max membership 
         if ModaMembers.objects.filter(is_member=True).count() > 12:
@@ -98,7 +134,7 @@ class ModaMembers(models.Model):
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_vote_in() >= majority_threshold:
             self.is_member = True
-            # set the user.users userType to U1D0
+            # set the user.users userType to U3D2
             self.save()
             self.user.users.userType = 'U3D2'
             self.user.users.save()
