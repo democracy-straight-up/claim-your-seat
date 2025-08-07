@@ -167,13 +167,13 @@ class SecDelConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def remove_candidate(self, data):
         """ remove the candidate or members from this circle
+        removing candidate... {'action': 'remove_candidate', 'payload': {'remover': 'I3H5N', 'candidate': 60}}
+        removing candidate    {'action': 'remove_candidate', 'remover': 'I3H5N', 'candidate': 63}
+
         """
         try:
-            remover = User.objects.get(username = data['remover'])
-            member = apiModels.SecDelMembers.objects.get(pk = data['candidate'])
-            # set back the userType to 0 while removing.
-            member.user.users.userType = 'U1D1'
-            member.user.users.save()
+            remover = User.objects.get(username = data['payload']['remover'])
+            member = apiModels.SecDelMembers.objects.get(pk = data['payload']['candidate'])
             member.delete()
             # remove the circlemember
             vote = serializers.UserSerializer(remover)
@@ -187,8 +187,8 @@ class SecDelConsumer(AsyncWebsocketConsumer):
     def DissolveSecDel(payload):  
         instance = apiModels.SecDelMembers.objects.get(pk = payload['member'])
         instance.sec_del.delete()
-        instance.user.users.userType = 'U1D1'
-        instance.user.users.save()
+        # instance.user.users.userType = 'U1D1'
+        # instance.user.users.save()
         return {"status":"success", "message":"removed"}
 
     async def receive(self, text_data):
@@ -198,7 +198,6 @@ class SecDelConsumer(AsyncWebsocketConsumer):
         match data["action"]:
             case 'remove_candidate':
                 # remove the candidate or member and return the circle members
-                print("removing candidate...", data)
                 res = await self.remove_candidate(data)
                 if res['status'] == 'error':
                     await self.channel_layer.group_send(self.room_name, {
