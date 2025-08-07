@@ -24,6 +24,7 @@ class DistrictCouncil(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     district = models.ForeignKey(Districts, on_delete=models.DO_NOTHING)
     invitation_key = models.PositiveBigIntegerField(unique=True, default=generate_unique_invitation_key)
+    status = models.BooleanField(default=False, null=True, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.code:
@@ -34,13 +35,40 @@ class DistrictCouncil(models.Model):
 
     def __str__(self):
         return str(self.code)
-    
+
+    def delete(self):
+        members = self.districtcouncilmembers_set.all()
+        for member in members:
+            member.user.users.userType ="U4D4"
+            member.user.users.verificationScore = 10000
+            member.user.users.save()
+            member.delete()
+
     @property
     def is_active(self):
         # check if the member <= 12 and return true
-        if 5 <= self.districtcouncilmembers_set.filter(is_member = True).count() <= 10:
+        member_count = self.districtcouncilmembers_set.filter(is_member = True).count()
+        is_currently_active = 3 <= member_count <= 10
+        if is_currently_active:
+            if(self.status == False):
+                self.status = True
+                self.save()
+                self._update_member_verification_scores(100000)
             return True
-        return False
+        else:
+            if(self.status==True):
+                self.status = False
+                self.save()
+                self._update_member_verification_scores(10000)
+            return False
+    
+    def _update_member_verification_scores(self, score):
+        """Helper method to update verification scores for all sec_del members"""
+        members = self.districtcouncilmembers_set.filter(is_member=True)
+        for member in members:
+            member.user.users.verificationScore = score
+            member.user.users.save()
+
     @property
     def member_count(self):
         return self.districtcouncilmembers_set.filter(is_member = True).count()
@@ -66,12 +94,16 @@ class DistrictCouncilMembers(models.Model):
     
     def __str__(self):
         return f"{self.user.username} - {self.district_council.code}"
-    
-    def delete(self, using=None, keep_parents=False):
-        # check if the user type is correct.
-        self.user.users.userType = 'U4D3'
+
+    def delete(self, *args, **kwargs):
+        # set the userType to U0D0 and verification score to 0
+        self.user.users.userType = "U4D4"
+        self.user.users.verificationScore = 10000
         self.user.users.save()
-        super().delete(using, keep_parents)
+        super().delete(*args, **kwargs)
+
+        if self.district_council:
+            self.district_council.is_active
     
     def save(self, *args, **kwargs):
         # check for max membership 
@@ -113,7 +145,8 @@ class DistrictCouncilMembers(models.Model):
         total_members = DistrictCouncilMembers.objects.filter(district_council=self.district_council).filter(is_member = True).count()
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_vote_out() >= majority_threshold:
-            self.user.users.userType = 'U4D3'
+            self.user.users.userType = 'U4D4'
+            self.user.users.verificationScore = 10000
             self.user.users.save()
             super(DistrictCouncilMembers,self).delete()
         

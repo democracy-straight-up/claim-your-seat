@@ -101,20 +101,6 @@ class ModaMembers(models.Model):
         self.user.users.save()
         super().delete(*args, **kwargs)
 
-        # once the member is removed, check the grou status and update the status and that will update the 
-        # members connection scores (verification score) as well.
-        if self.moda:
-            self.moda.is_active
-            
-    def delete(self, *args, **kwargs):
-        # set the userType to U0D0 and verification score to 0
-        self.user.users.userType = "U2D2"
-        self.user.users.verificationScore = 100
-        self.user.users.save()
-        super().delete(*args, **kwargs)
-
-        # once the member is removed, check the grou status and update the status and that will update the 
-        # members connection scores (verification score) as well.
         if self.moda:
             self.moda.is_active
 
