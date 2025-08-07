@@ -28,7 +28,7 @@ class Users(models.Model):
     is_reg      = models.BooleanField(default=False)
     # this is for if the user is registered with conditional.
     # verificationScore is named ConnectionScore everywhere
-    verificationScore = models.SmallIntegerField(default=1,null=True, blank=True)
+    verificationScore = models.PositiveIntegerField(default=0,null=True, blank=True)
     address     = models.CharField(max_length=150, null=True, blank=True)
     userType = models.CharField(max_length=4, default='U0D0')
     VVAT_Number = models.CharField(max_length=15, null=True, blank=True)

@@ -159,8 +159,8 @@ class DistrictCouncilConsumer(AsyncWebsocketConsumer):
         try:
             remover = User.objects.get(username = data['remover'])
             member = models.DistrictCouncilMembers.objects.get(pk = data['candidate'])
-            member.user.users.userType = 'U4D4'
-            member.user.users.save()
+            # member.user.users.userType = 'U4D4'
+            # member.user.users.save()
             member.delete()
             vote = serializers.UserSerializer(remover)
             return {"status":"success","action":'remove_candidate', "message":"removed successfully.", "user":vote.data}
@@ -173,8 +173,8 @@ class DistrictCouncilConsumer(AsyncWebsocketConsumer):
     def DissolveDistrictCouncil(payload):  
         instance = models.DistrictCouncilMembers.objects.get(pk = payload['member'])
         instance.district_council.delete()
-        instance.user.users.userType = 'U4D4'
-        instance.user.users.save()
+        # instance.user.users.userType = 'U4D4'
+        # instance.user.users.save()
         return {"status":"success", "message":"removed"}
 
     async def receive(self, text_data):
