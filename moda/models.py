@@ -105,6 +105,7 @@ class ModaMembers(models.Model):
         # members connection scores (verification score) as well.
         if self.moda:
             self.moda.is_active
+            
     def delete(self, *args, **kwargs):
         # set the userType to U0D0 and verification score to 0
         self.user.users.userType = "U2D2"
