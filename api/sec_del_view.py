@@ -25,18 +25,17 @@ class SecDelViewSet(viewsets.ModelViewSet):
             else:
                 messages = "District are required."
                 return Response({"message:": messages}, status=status.HTTP_400_BAD_REQUEST)
-
+            
+            print("later on, uncomment this condition ", user,district)
             # check if the userType is not 0 return
-            if user.users.userType[:2] == 'U2':
-                messages = "Already belongs to a sec del."
-                return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
+            # if user.users.userType[:2] == 'U2':
+            #     messages = "Already belongs to a sec del."
+            #     return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
             # create a sec_del object
             sec_del = apiModels.SecDelModel.objects.create( district=district  )
-    
             # set the userType attribute of the creator to 1
             # add the user to circle member as delegate. it does not require to save. create automatically saves as well
             apiModels.SecDelMembers.objects.create(user=user,sec_del=sec_del, is_member=True)
-
             obj = apiSerializer.SecDelSerializer(sec_del)
     
             return JsonResponse(obj.data)
