@@ -21,7 +21,8 @@ class HolcModel(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     district = models.ForeignKey(Districts, on_delete=models.DO_NOTHING)
     invitation_key = models.PositiveBigIntegerField(unique=True, default=generate_unique_invitation_key)
-
+    status = models.BooleanField(default=False, null=True, blank=True)
+    
     def save(self, *args, **kwargs):
         if not self.code:
             self.code = generate_unique_code()
