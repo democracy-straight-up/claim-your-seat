@@ -37,6 +37,14 @@ class SecDelModel(models.Model):
     def __str__(self):
         return str(self.code)
     
+    def delete(self):
+        members = self.secdelmembers_set.all()
+        for member in members:
+            member.user.users.userType ="U1D1"
+            member.user.users.verificationScore = 10
+            member.user.users.save()
+            member.delete()
+
     @property
     def is_active(self):
         # check if the member <= 12 and return true
@@ -97,8 +105,8 @@ class SecDelMembers(models.Model):
 
         # once the member is removed, check the grou status and update the status and that will update the 
         # members connection scores (verification score) as well.
-        if self.group:
-            self.group.is_active
+        if self.sec_del:
+            self.sec_del.is_active
     
     def save(self, *args, **kwargs):
         # check for max membership 
