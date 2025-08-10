@@ -157,6 +157,8 @@ class DistrictCouncilMembers(models.Model):
         if self.count_put_forward() >= majority_votes:
             # find the current delegate and set is_delegate false.
             current_delegate = DistrictCouncilMembers.objects.filter(district_council=self.district_council).filter(is_delegate = True).first()
+            old_delegate_user = current_delegate.user
+            
             current_delegate.is_delegate = False
             current_delegate.save()
             # set the user.users userType to U1D1
@@ -169,6 +171,20 @@ class DistrictCouncilMembers(models.Model):
             self.user.users.save()
             # save the current member instance
             self.save()
+            
+            # Trigger succession line for higher groups (none for DistrictCouncil as it's top level)
+            try:
+                from succession_line import succession_manager
+                succession_manager.handle_delegate_change(
+                    'districtcouncil', 
+                    old_delegate_user, 
+                    self.user, 
+                    self.district_council
+                )
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error in succession line: {str(e)}")
 
 
 class VoteOutDistrictCouncilMember(models.Model):

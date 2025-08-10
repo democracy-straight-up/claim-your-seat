@@ -162,6 +162,8 @@ class HolcMembers(models.Model):
         if self.count_put_forward() >= majority_votes:
             # find the current delegate and set is_delegate false.
             current_delegate = HolcMembers.objects.filter(holc=self.holc).filter(is_delegate = True).first()
+            old_delegate_user = current_delegate.user
+            
             current_delegate.is_delegate = False
             current_delegate.save()
             # set the user.users userType to U1D1
@@ -174,6 +176,20 @@ class HolcMembers(models.Model):
             self.user.users.save()
             # save the current member instance
             self.save()
+            
+            # Trigger succession line for higher groups
+            try:
+                from succession_line import succession_manager
+                succession_manager.handle_delegate_change(
+                    'holc', 
+                    old_delegate_user, 
+                    self.user, 
+                    self.holc
+                )
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error in succession line: {str(e)}")
 
 
 class VoteOutHolcMember(models.Model):
