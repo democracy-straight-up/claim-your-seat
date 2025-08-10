@@ -158,6 +158,8 @@ class SecDelMembers(models.Model):
         if self.count_put_forward() >= majority_votes:
             # find the current delegate and set is_delegate false.
             current_delegate = SecDelMembers.objects.filter(sec_del=self.sec_del).filter(is_delegate = True).first()
+            old_delegate_user = current_delegate.user
+            
             current_delegate.is_delegate = False
             current_delegate.save()
             # set the user.users userType to U1D1
@@ -173,6 +175,20 @@ class SecDelMembers(models.Model):
             self.save()
             # # Delete related votes for this member instances
             # PutFarwardSecDelMember.objects.filter(candidate=self).delete()
+            
+            # Trigger succession line for higher groups
+            try:
+                from succession_line import succession_manager
+                succession_manager.handle_delegate_change(
+                    'secdel', 
+                    old_delegate_user, 
+                    self.user, 
+                    self.sec_del
+                )
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error in succession line: {str(e)}")
 
 
 class VoteOutSecDelMember(models.Model):
