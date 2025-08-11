@@ -7,7 +7,7 @@ from moda import views
 router = routers.DefaultRouter()
 router.register('moda', views.ModaViewSet)
 router.register('moda-members', views.ModaMembersViewSet)
-router.register('moda-member-contact', views.ModaMemberContactViewSet)
+router.register('moda-member-contacts', views.ModaMemberContactViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),

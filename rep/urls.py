@@ -7,7 +7,7 @@ from rep import views
 router = routers.DefaultRouter()
 router.register('district-council', views.DistrictCouncilViewSet)
 router.register('district-council-members', views.DistrictCouncilMembersViewSet)
-router.register('district-council-member-contact', views.DistrictCouncilMemberContactViewSet)
+router.register('district-council-member-contacts', views.DistrictCouncilMemberContactViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),

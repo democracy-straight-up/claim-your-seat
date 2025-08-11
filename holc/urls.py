@@ -7,6 +7,6 @@ from holc import views
 router = routers.DefaultRouter()
 router.register('holc', views.HolcViewSet)
 router.register('holc-members', views.HolcMembersViewSet)
-router.register('holc-member-contact', views.HolcMemberContactViewSet)
+router.register('holc-member-contacts', views.HolcMemberContactViewSet)
 
 urlpatterns = [path('', include(router.urls)),]
