@@ -14,6 +14,7 @@ router.register('get-circle', apiViews.CircleViewSet)
 
 # Contact routes for different member types
 router.register('circle-member-contacts', apiViews.GroupMemberContactViewSet, basename='groupmembercontact')
+router.register('sec-del-member-contacts', sec_del_view.SecDelContactInfoViewSet, basename='secdelmembercontact')
 
 # second delegate routes:
 router.register('second-delegate', sec_del_view.SecDelViewSet)

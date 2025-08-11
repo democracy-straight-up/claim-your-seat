@@ -139,8 +139,17 @@ class SecDelMembers(models.Model):
             self.save()
             self.user.users.userType = 'U2D1'
             self.user.users.save()
+            # create an instance of the contact info
+            ContactInfo.objects.get_or_create(
+                member=self,
+                legal_name=self.user.users.legalName,
+                address=self.user.users.address,
+                email=self.user.email,
+                sec_del=self.sec_del
+            )
+
+            print("contact info created as well")
             return self
-            # ContactInfo.objects.create(member=self,address=self.user.users.address,email=self.user.email)
         return self
     
     def check_for_removing(self):
@@ -236,6 +245,25 @@ class PutFarwardSecDelMember(models.Model):
         super(PutFarwardSecDelMember, self).save(*args, **kwargs)
         self.candidate.check_put_farward()
 
+
+#sed del contact information
+class ContactInfo(models.Model):
+    member = models.OneToOneField(SecDelMembers, null=True, blank=True, on_delete=models.CASCADE)
+    sec_del = models.ForeignKey(SecDelModel, on_delete=models.CASCADE, null=True, blank=True)
+    address = models.TextField(null=True, blank=True)
+    legal_name = models.CharField(max_length=255, null=True, blank=True)
+    phone = models.CharField(max_length=15, null=True, blank=True)
+    email = models.EmailField(max_length=255, blank=True, null=True)
+    contact_rules = models.TextField(null=True, blank=True)
+    contact = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, blank=True, null=True)
+
+    def __str__(self):
+        return str(self.member)
+
+    class Meta:
+        ordering = ['created_at']
+
 # below is some code to generaate voters, circles and f-links
 from vote.views import circle_code_generator, circle_invitation_generator
 import random
@@ -327,19 +355,6 @@ def create_circle(circle, district_code, voters):
 
         groups.append(crcl)
     return [members,groups]
-
-# def create_f_link(f_link, circle, district_code, voters):
-#     f_links =[]
-#     crcls = create_circle(circle, district_code, voters)
-
-#     for i in range(f_link):
-#         dist = vote_models.Districts.objects.get(code=district_code)
-#         link = SecDelModel.objects.create(district = dist)
-#         link.save()
-#         # add members to this links.
-#         print("cic:", crcls[0])
-#         f_links.append(link)
-#     pass
 
 
 class DummyVoters(models.Model):

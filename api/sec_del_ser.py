@@ -39,3 +39,13 @@ class PutFarwardSecDelMemberSerializer(serializers.ModelSerializer):
     class Meta: 
         model = apiModels.PutFarwardSecDelMember
         fields = "__all__"
+
+
+# Contact Serializers for each member
+class SecDelMemberContactInfoSerializer(serializers.ModelSerializer):
+    member = SecDelMembersSerializer(read_only=True)
+    class Meta:
+        model = apiModels.ContactInfo
+        fields = ['id', 'member', 'sec_del', 'legal_name', 'contact_rules', 'address',
+                  'contact', 'phone', 'email', 'created_at']
+        read_only_fields = ['created_at',]

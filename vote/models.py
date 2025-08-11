@@ -151,7 +151,6 @@ class GroupMember(models.Model):
                 email=self.user.email,
                 group=self.group
             )
-            print("created a contactInfo")
 
 
     def check_for_removing(self):
