@@ -119,7 +119,17 @@ class SecDelMembers(models.Model):
             self.user.users.userType = 'U2D2'
             self.user.users.save()
 
+
         super(SecDelMembers, self).save(*args, **kwargs)
+        
+        if self.is_member:
+            ContactInfo.objects.get_or_create(
+                member=self,
+                legal_name=self.user.users.legalName,
+                address=self.user.users.address,
+                email=self.user.email,
+                sec_del=self.sec_del
+            )
 
     def count_vote_out(self):
         return VoteOutSecDelMember.objects.filter(candidate=self).count()
@@ -148,7 +158,6 @@ class SecDelMembers(models.Model):
                 sec_del=self.sec_del
             )
 
-            print("contact info created as well")
             return self
         return self
     

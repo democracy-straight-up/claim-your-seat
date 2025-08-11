@@ -89,6 +89,13 @@ class Group(models.Model):
     def member_count(self):
         return self.groupmember_set.filter(is_member = True).count()
 
+
+# for maximum f-link membership validation
+from django.core.exceptions import ValidationError
+class MaxMembershipReached(ValidationError):
+    def __init__(self, message="Circle has reached the max membership status. No longer accepting candidates."):
+        super().__init__(message)
+
 class GroupMember(models.Model):
     user    = models.ForeignKey(User, on_delete=models.CASCADE)
     group     = models.ForeignKey(Group, on_delete=models.CASCADE)
@@ -106,10 +113,29 @@ class GroupMember(models.Model):
         ordering = ['-is_delegate', 'date_joined']
 
     def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        # Check group status after saving a member
+        # check for max membership 
+        if GroupMember.objects.filter(is_member=True, group = self.group).count() > 12:
+            raise MaxMembershipReached()  # Raise maxMember validation
+        # on each first member, make the member the delegate member by default.
+        if not self.pk and not self.group.groupmember_set.exists():
+            self.is_delegate = True
+            self.is_member = True
+            self.user.users.userType = 'U1D1'
+            self.user.users.save()
+
+
+        super(GroupMember, self).save(*args, **kwargs)
         if self.group:
             self.group.is_active
+
+        if self.is_member:
+            ContactInfo.objects.get_or_create(
+                member=self,
+                legal_name=self.user.users.legalName,
+                address=self.user.users.address,
+                email=self.user.email,
+                group=self.group
+            )
 
     def delete(self, *args, **kwargs):
         # set the userType to U0D0 and verification score to 0
