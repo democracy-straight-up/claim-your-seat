@@ -40,3 +40,13 @@ class PutForwardDistrictCouncilMemberSerializer(serializers.ModelSerializer):
     class Meta: 
         model = repModels.PutForwardDistrictCouncilMember
         fields = "__all__"
+
+
+class DistrictCouncilMemberContactSerializer(serializers.ModelSerializer):
+    member = DistrictCouncilMembersSerializer(read_only=True)
+    district_council = DistrictCouncilSerializer(read_only=True)
+    
+    class Meta:
+        model = repModels.DistrictCouncilMemberContact
+        fields = ["id", "member", "district_council", "legal_name", "contact_rules", 
+                 "address", "contact", "phone", "email", "created_at", "updated_at"]

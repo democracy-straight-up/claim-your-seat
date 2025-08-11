@@ -78,3 +78,40 @@ class ModaMembersViewSet(viewsets.ModelViewSet):
             return Response({"message": "S-Link members not found."}, status=status.HTTP_404_NOT_FOUND)
         except models.MaxMembershipReached:
             return Response({"message": "The S-Link has reached its maximum membership and does not accept new candidate!"}, status=status.HTTP_406_NOT_ACCEPTABLE)
+
+
+class ModaMemberContactViewSet(viewsets.ModelViewSet):
+    queryset = models.ModaMemberContact.objects.all()
+    serializer_class = serializers.ModaMemberContactSerializer
+    
+    @action(detail=False, methods=['GET'])
+    def by_moda_code(self, request):
+        """Get all contact info for a specific moda by code"""
+        code = request.query_params.get('code')
+        if not code:
+            return Response({"message": "Moda code is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            moda = models.ModaModel.objects.get(code=code)
+            contacts = models.ModaMemberContact.objects.filter(moda=moda)
+            serializer = self.get_serializer(contacts, many=True)
+            return Response(serializer.data)
+        except models.ModaModel.DoesNotExist:
+            return Response({"message": "Moda not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+    @action(detail=False, methods=['GET'])
+    def by_member(self, request):
+        """Get contact info for a specific member by username"""
+        username = request.query_params.get('username')
+        if not username:
+            return Response({"message": "Username is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            member = models.ModaMembers.objects.get(user__username=username)
+            contact = models.ModaMemberContact.objects.get(member=member)
+            serializer = self.get_serializer(contact)
+            return Response(serializer.data)
+        except models.ModaMembers.DoesNotExist:
+            return Response({"message": "Member not found"}, status=status.HTTP_404_NOT_FOUND)
+        except models.ModaMemberContact.DoesNotExist:
+            return Response({"message": "Contact info not found"}, status=status.HTTP_404_NOT_FOUND)

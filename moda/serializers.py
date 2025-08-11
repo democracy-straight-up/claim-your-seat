@@ -40,3 +40,13 @@ class PutFarwardModaMemberSerializer(serializers.ModelSerializer):
     class Meta: 
         model = modaModels.PutFarwardModaMember
         fields = "__all__"
+
+
+class ModaMemberContactSerializer(serializers.ModelSerializer):
+    member = ModaMembersSerializer(read_only=True)
+    moda = ModaSerializer(read_only=True)
+    
+    class Meta:
+        model = modaModels.ModaMemberContact
+        fields = ["id", "member", "moda", "legal_name", "contact_rules", 
+                 "address", "contact", "phone", "email", "created_at", "updated_at"]

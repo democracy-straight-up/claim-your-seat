@@ -78,3 +78,40 @@ class HolcMembersViewSet(viewsets.ModelViewSet):
             return Response({"message": "Holc members not found."}, status=status.HTTP_404_NOT_FOUND)
         except models.MaxMembershipReached:
             return Response({"message": "This Holc has reached its maximum membership and does not accept new candidate!"}, status=status.HTTP_406_NOT_ACCEPTABLE)
+
+
+class HolcMemberContactViewSet(viewsets.ModelViewSet):
+    queryset = models.HolcMemberContact.objects.all()
+    serializer_class = serializers.HolcMemberContactSerializer
+    
+    @action(detail=False, methods=['GET'])
+    def by_holc_code(self, request):
+        """Get all contact info for a specific holc by code"""
+        code = request.query_params.get('code')
+        if not code:
+            return Response({"message": "Holc code is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            holc = models.HolcModel.objects.get(code=code)
+            contacts = models.HolcMemberContact.objects.filter(holc=holc)
+            serializer = self.get_serializer(contacts, many=True)
+            return Response(serializer.data)
+        except models.HolcModel.DoesNotExist:
+            return Response({"message": "Holc not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+    @action(detail=False, methods=['GET'])
+    def by_member(self, request):
+        """Get contact info for a specific member by username"""
+        username = request.query_params.get('username')
+        if not username:
+            return Response({"message": "Username is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            member = models.HolcMembers.objects.get(user__username=username)
+            contact = models.HolcMemberContact.objects.get(member=member)
+            serializer = self.get_serializer(contact)
+            return Response(serializer.data)
+        except models.HolcMembers.DoesNotExist:
+            return Response({"message": "Member not found"}, status=status.HTTP_404_NOT_FOUND)
+        except models.HolcMemberContact.DoesNotExist:
+            return Response({"message": "Contact info not found"}, status=status.HTTP_404_NOT_FOUND)

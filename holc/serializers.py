@@ -40,3 +40,13 @@ class PutForwardHolcMemberSerializer(serializers.ModelSerializer):
     class Meta: 
         model = holcModels.PutForwardHolcMember
         fields = "__all__"
+
+
+class HolcMemberContactSerializer(serializers.ModelSerializer):
+    member = HolcMembersSerializer(read_only=True)
+    holc = HolcSerializer(read_only=True)
+    
+    class Meta:
+        model = holcModels.HolcMemberContact
+        fields = ["id", "member", "holc", "legal_name", "contact_rules", 
+                 "address", "contact", "phone", "email", "created_at", "updated_at"]

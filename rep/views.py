@@ -79,3 +79,40 @@ class DistrictCouncilMembersViewSet(viewsets.ModelViewSet):
             return Response({"message": "District Council members not found."}, status=status.HTTP_404_NOT_FOUND)
         except models.MaxMembershipReached:
             return Response({"message": "The District Council has reached its maximum membership and does not accept new candidate!"}, status=status.HTTP_406_NOT_ACCEPTABLE)
+
+
+class DistrictCouncilMemberContactViewSet(viewsets.ModelViewSet):
+    queryset = models.DistrictCouncilMemberContact.objects.all()
+    serializer_class = serializers.DistrictCouncilMemberContactSerializer
+    
+    @action(detail=False, methods=['GET'])
+    def by_district_council_code(self, request):
+        """Get all contact info for a specific district council by code"""
+        code = request.query_params.get('code')
+        if not code:
+            return Response({"message": "District Council code is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            district_council = models.DistrictCouncil.objects.get(code=code)
+            contacts = models.DistrictCouncilMemberContact.objects.filter(district_council=district_council)
+            serializer = self.get_serializer(contacts, many=True)
+            return Response(serializer.data)
+        except models.DistrictCouncil.DoesNotExist:
+            return Response({"message": "District Council not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+    @action(detail=False, methods=['GET'])
+    def by_member(self, request):
+        """Get contact info for a specific member by username"""
+        username = request.query_params.get('username')
+        if not username:
+            return Response({"message": "Username is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            member = models.DistrictCouncilMembers.objects.get(user__username=username)
+            contact = models.DistrictCouncilMemberContact.objects.get(member=member)
+            serializer = self.get_serializer(contact)
+            return Response(serializer.data)
+        except models.DistrictCouncilMembers.DoesNotExist:
+            return Response({"message": "Member not found"}, status=status.HTTP_404_NOT_FOUND)
+        except models.DistrictCouncilMemberContact.DoesNotExist:
+            return Response({"message": "Contact info not found"}, status=status.HTTP_404_NOT_FOUND)
