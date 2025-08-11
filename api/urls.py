@@ -11,7 +11,9 @@ router.register('user', apiViews.UserPageView)
 router.register('voter-page', apiViews.VoterPageView)
 router.register('circle', apiViews.CircleList)
 router.register('get-circle', apiViews.CircleViewSet)
-router.register('contact-info', apiViews.ContactInfoViewSet)
+
+# Contact routes for different member types
+router.register('circle-member-contacts', apiViews.GroupMemberContactViewSet, basename='groupmembercontact')
 
 # second delegate routes:
 router.register('second-delegate', sec_del_view.SecDelViewSet)

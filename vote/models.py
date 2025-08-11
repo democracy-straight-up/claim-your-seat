@@ -144,7 +144,15 @@ class GroupMember(models.Model):
             CircleMember_vote_in.objects.filter(recipient=self).delete()
 
             # create an instance of the contact info
-            ContactInfo.objects.create(member=self,address=self.user.users.address,email=self.user.email)
+            ContactInfo.objects.get_or_create(
+                member=self,
+                legal_name=self.user.users.legalName,
+                address=self.user.users.address,
+                email=self.user.email,
+                group=self.group
+            )
+            print("created a contactInfo")
+
 
     def check_for_removing(self):
         total_members = GroupMember.objects.filter(group=self.group).filter(is_member = True).count()
@@ -265,7 +273,9 @@ class CircleStatus(models.Model):
 #stores required fields in the contacts table
 class ContactInfo(models.Model):
     member = models.OneToOneField(GroupMember, null=True, blank=True, on_delete=models.CASCADE)
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, null=True, blank=True)
     address = models.TextField(null=True, blank=True)
+    legal_name = models.CharField(max_length=255, null=True, blank=True)
     phone = models.CharField(max_length=15, null=True, blank=True)
     email = models.EmailField(max_length=255, blank=True, null=True)
     contact_rules = models.TextField(null=True, blank=True)
@@ -373,3 +383,4 @@ class DelegateEligibilityCheck(models.Model):
     def __str__(self):
         status = "eligible" if self.is_eligible else "ineligible"
         return f"{self.username} {status} for {self.target_group_type}"
+    

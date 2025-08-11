@@ -9,7 +9,9 @@ from django.core.mail import send_mail
 from django.conf import settings
 from rest_framework.validators import UniqueValidator
 from django.contrib.auth.password_validation import validate_password
-from vote import models as voteModels
+import vote.models as voteModels
+import holc.models as holcModels
+import rep.models as repModels
 import os
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 
@@ -296,10 +298,11 @@ class UsernameRequestSerializer(serializers.Serializer):
                 "User with given email does not exist")
         return value
 
-
-class ContactInfoSerializer(serializers.ModelSerializer):
-    member = CircleMemberSerializer()
-
+# Contact Serializers for each member type
+class GroupMemberContactInfoSerializer(serializers.ModelSerializer):
+    member = CircleMemberSerializer(read_only=True)
     class Meta:
         model = voteModels.ContactInfo
-        fields = ['id', 'member', 'email', 'phone', 'address', 'contact_rules', 'contact', 'created_at']
+        fields = ['id', 'member', 'group', 'legal_name', 'contact_rules', 'address',
+                  'contact', 'phone', 'email', 'created_at']
+        read_only_fields = ['created_at',]

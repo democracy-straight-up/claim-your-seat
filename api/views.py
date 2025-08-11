@@ -560,23 +560,6 @@ class UsernameRequestView(APIView):
             return Response({"message": "Email sent."}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class ContactInfoViewSet(viewsets.ModelViewSet):
-    queryset = voteModels.ContactInfo.objects.all()
-    serializer_class = apiSerializers.ContactInfoSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
-
-    # def update(self, request, *args, **kwargs):
-    #     user_id = request.user
-    #     print("yser: ", user_id)
-    #     if not voteModels.GroupMember.objects.filter(user=user_id).exists():
-    #         print("here: insdie ", )
-    #         return Response(
-    #             {"error": "Only delegates can modify the contact rules."},
-    #             status = status.HTTP_403_FORBIDDEN
-    #         )
-    #     return super().update(request, *args, **kwargs)
-
-
 class ChainOfDelegation(APIView):
     permission_classes = [IsAuthenticated]
     
@@ -644,3 +627,42 @@ class ChainOfDelegation(APIView):
                 return Response({"error": "Failed to retrieve chain of delegation"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response(obj, status=status.HTTP_200_OK)
+
+
+# Contact API Views
+class GroupMemberContactViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing GroupMember contacts (Circle Members)
+    """
+    serializer_class = apiSerializers.GroupMemberContactInfoSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        # Get the user's current group (circle) - assuming user is only in one active group
+        user_group_membership = voteModels.GroupMember.objects.filter(
+            user=self.request.user, is_member=True
+        ).first()
+        
+        if not user_group_membership:
+            # If user is not a member of any group, return empty queryset
+            return voteModels.ContactInfo.objects.none()
+        
+        # Return contacts only for the user's current group
+        return voteModels.ContactInfo.objects.filter(
+            group=user_group_membership.group
+        )
+    
+    def perform_update(self, serializer):
+        # Only allow updating if user is a delegate of the group
+        contact = serializer.instance
+        user_is_delegate = voteModels.GroupMember.objects.filter(
+            user=self.request.user, 
+            group=contact.group, 
+            is_delegate=True
+        ).exists()
+        
+        if not user_is_delegate:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only delegates can update contact information")
+        
+        serializer.save()
