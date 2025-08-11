@@ -118,6 +118,20 @@ class DistrictCouncilMembers(models.Model):
             self.user.users.save()
         
         super(DistrictCouncilMembers, self).save(*args, **kwargs)
+        
+        # Create contact if member becomes a member (either first delegate or through voting)
+        if self.is_member:
+            DistrictCouncilMemberContact.objects.get_or_create(
+                member=self,
+                defaults={
+                    'district_council': self.district_council,
+                    'legal_name': self.user.users.legalName,
+                    'address': self.user.users.address,
+                    'email': self.user.email,
+                    'contact_rules': 'Please contact during regular hours.',
+                    'contact': 'Available via email.',
+                }
+            )
     
     def count_vote_out(self):
         return VoteOutDistrictCouncilMember.objects.filter(candidate=self).count()
@@ -137,6 +151,19 @@ class DistrictCouncilMembers(models.Model):
             self.save()
             self.user.users.userType = 'U5D4'
             self.user.users.save()
+            
+            # Create contact info when member is voted in
+            DistrictCouncilMemberContact.objects.get_or_create(
+                member=self,
+                defaults={
+                    'district_council': self.district_council,
+                    'legal_name': self.user.users.legalName,
+                    'address': self.user.users.address,
+                    'email': self.user.email,
+                    'contact_rules': 'Please contact during regular hours.',
+                    'contact': 'Available via email.',
+                }
+            )
             return self
         
         return self
@@ -218,3 +245,29 @@ class PutForwardDistrictCouncilMember(models.Model):
     def save(self, *args, **kwargs):
         super(PutForwardDistrictCouncilMember, self).save(*args, **kwargs)
         self.candidate.check_put_forward()
+
+
+class DistrictCouncilMemberContact(models.Model):
+    member = models.OneToOneField(
+        'DistrictCouncilMembers', 
+        on_delete=models.CASCADE, 
+        related_name='district_contact'
+    )
+    district_council = models.ForeignKey('DistrictCouncil', on_delete=models.CASCADE)
+    
+    # Contact information
+    legal_name = models.CharField(max_length=255, blank=True, null=True)
+    contact_rules = models.TextField(blank=True, null=True)
+    address = models.TextField(blank=True, null=True)
+    contact = models.TextField(blank=True, null=True)
+    phone = models.CharField(max_length=15, blank=True, null=True)
+    email = models.EmailField(max_length=255, blank=True, null=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.legal_name} - {self.member}"
+    
+    class Meta:
+        ordering = ['created_at']

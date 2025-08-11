@@ -117,6 +117,20 @@ class ModaMembers(models.Model):
             self.user.users.save()
         
         super(ModaMembers, self).save(*args, **kwargs)
+        
+        # Create contact if member becomes a member (either first delegate or through voting)
+        if self.is_member:
+            ModaMemberContact.objects.get_or_create(
+                member=self,
+                defaults={
+                    'moda': self.moda,
+                    'legal_name': self.user.users.legalName,
+                    'address': self.user.users.address,
+                    'email': self.user.email,
+                    'contact_rules': 'Please contact during regular hours.',
+                    'contact': 'Available via email.',
+                }
+            )
     
     def count_vote_out(self):
         return VoteOutModaMember.objects.filter(candidate=self).count()
@@ -136,6 +150,19 @@ class ModaMembers(models.Model):
             self.save()
             self.user.users.userType = 'U3D2'
             self.user.users.save()
+            
+            # Create contact info when member is voted in
+            ModaMemberContact.objects.get_or_create(
+                member=self,
+                defaults={
+                    'moda': self.moda,
+                    'legal_name': self.user.users.legalName,
+                    'address': self.user.users.address,
+                    'email': self.user.email,
+                    'contact_rules': 'Please contact during regular hours.',
+                    'contact': 'Available via email.',
+                }
+            )
             return self
         
         return self
@@ -216,3 +243,29 @@ class PutFarwardModaMember(models.Model):
     def save(self, *args, **kwargs):
         super(PutFarwardModaMember, self).save(*args, **kwargs)
         self.candidate.check_put_farward()
+
+
+class ModaMemberContact(models.Model):
+    member = models.OneToOneField(
+        'ModaMembers', 
+        on_delete=models.CASCADE, 
+        related_name='moda_contact'
+    )
+    moda = models.ForeignKey('ModaModel', on_delete=models.CASCADE)
+    
+    # Contact information
+    legal_name = models.CharField(max_length=255, blank=True, null=True)
+    contact_rules = models.TextField(blank=True, null=True)
+    address = models.TextField(blank=True, null=True)
+    contact = models.TextField(blank=True, null=True)
+    phone = models.CharField(max_length=15, blank=True, null=True)
+    email = models.EmailField(max_length=255, blank=True, null=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.legal_name} - {self.member}"

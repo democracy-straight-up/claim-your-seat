@@ -99,17 +99,9 @@ class HolcMembers(models.Model):
         self.user.users.save()
         super().delete(*args, **kwargs)
 
-        # once the member is removed, check the grou status and update the status and that will update the 
-        # members connection scores (verification score) as well.
         if self.holc:
             self.holc.is_active
 
-    # def delete(self, using=None, keep_parents=False):
-    #     # check if the user type is correct.
-    #     self.user.users.userType = 'U3D2'
-    #     self.user.users.save()
-    #     super().delete(using, keep_parents)
-    
     def save(self, *args, **kwargs):
         # check for max membership 
         if HolcMembers.objects.filter(is_member=True).count() > 20:
@@ -123,6 +115,20 @@ class HolcMembers(models.Model):
             self.user.users.save()
         
         super(HolcMembers, self).save(*args, **kwargs)
+        
+        # Create contact if member becomes a member (either first delegate or through voting)
+        if self.is_member:
+            HolcMemberContact.objects.get_or_create(
+                member=self,
+                defaults={
+                    'holc': self.holc,
+                    'legal_name': self.user.users.legalName,
+                    'address': self.user.users.address,
+                    'email': self.user.email,
+                    'contact_rules': 'Please contact during regular hours.',
+                    'contact': 'Available via email.',
+                }
+            )
     
     def count_vote_out(self):
         return VoteOutHolcMember.objects.filter(candidate=self).count()
@@ -142,6 +148,18 @@ class HolcMembers(models.Model):
             self.save()
             self.user.users.userType = 'U4D3'
             self.user.users.save()
+            # create an instance of the contact info
+            HolcMemberContact.objects.get_or_create(
+                member=self,
+                defaults={
+                    'holc': self.holc,
+                    'legal_name': self.user.users.legalName,
+                    'address': self.user.users.address,
+                    'email': self.user.email,
+                    'contact_rules': 'Please contact during regular hours.',
+                    'contact': 'Available via email.',
+                }
+            )
             return self
         
         return self
@@ -223,3 +241,29 @@ class PutForwardHolcMember(models.Model):
     def save(self, *args, **kwargs):
         super(PutForwardHolcMember, self).save(*args, **kwargs)
         self.candidate.check_put_forward()
+
+
+class HolcMemberContact(models.Model):
+    member = models.OneToOneField(
+        'HolcMembers', 
+        on_delete=models.CASCADE, 
+        related_name='holc_contact'
+    )
+    holc = models.ForeignKey('HolcModel', on_delete=models.CASCADE)
+    
+    # Contact information
+    legal_name = models.CharField(max_length=255, blank=True, null=True)
+    contact_rules = models.TextField(blank=True, null=True)
+    address = models.TextField(blank=True, null=True)
+    contact = models.TextField(blank=True, null=True)
+    phone = models.CharField(max_length=15, blank=True, null=True)
+    email = models.EmailField(max_length=255, blank=True, null=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.legal_name} - {self.member}"
+    
+    class Meta:
+        ordering = ['created_at']
