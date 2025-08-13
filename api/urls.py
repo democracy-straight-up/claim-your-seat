@@ -3,6 +3,7 @@ from django.urls import path, include
 from api import views as apiViews
 from api import sec_del_view
 from api import status_messages
+from api import backnforth_views
 
 # Routers provide an easy way of automatically determining the URL conf.
 router = routers.DefaultRouter()
@@ -44,5 +45,26 @@ urlpatterns = [
     path('status/circle/',apiViews.CircleStatus.as_view()),
     path('get-username/', apiViews.UsernameRequestView.as_view(), name='get_username'),
     path('get-status-messages/', status_messages.ItemsViewSet.as_view({'get': 'list'})),
-    path('chain-of-delegation/', apiViews.ChainOfDelegation.as_view())
+    path('chain-of-delegation/', apiViews.ChainOfDelegation.as_view()),
+    
+    # BackNForth Chat API endpoints
+    path('backnforth/<str:sec_del_code>/messages/', backnforth_views.BackNForthChatViewSet.as_view({
+        'get': 'list',
+        'post': 'create'
+    }), name='backnforth-chat-list'),
+    path('backnforth/<str:sec_del_code>/messages/<int:pk>/', backnforth_views.BackNForthChatViewSet.as_view({
+        'get': 'retrieve',
+        'put': 'update',
+        'patch': 'partial_update',
+        'delete': 'destroy'
+    }), name='backnforth-chat-detail'),
+    path('backnforth/<str:sec_del_code>/search/', backnforth_views.BackNForthChatViewSet.as_view({
+        'get': 'search'
+    }), name='backnforth-chat-search'),
+    path('backnforth/<str:sec_del_code>/statistics/', backnforth_views.BackNForthChatViewSet.as_view({
+        'get': 'statistics'
+    }), name='backnforth-chat-statistics'),
+    path('backnforth/<str:sec_del_code>/members/', backnforth_views.BackNForthChatViewSet.as_view({
+        'get': 'members_online'
+    }), name='backnforth-chat-members'),
 ]

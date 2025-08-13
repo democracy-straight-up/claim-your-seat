@@ -10,36 +10,14 @@ from django.conf import settings
 from rest_framework.validators import UniqueValidator
 from django.contrib.auth.password_validation import validate_password
 import vote.models as voteModels
-import holc.models as holcModels
-import rep.models as repModels
 import os
+from api.utils import entry_code_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-
 
 class DistrictsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Districts
         fields = ['name', 'code']
-
-
-def entry_code_generator():
-    """
-    this is the entry code generator.
-    It uses random and checks for the database.
-    return the code if it's not taken
-    """
-    import random
-    code = str(random.choice('abcdefghijklmnpqrstuvwxyz'))
-    code += str(random.randint(1, 9))
-    code += str(random.choice('abcdefghijklmnpqrstuvwxyz'))
-    code += str(random.randint(1, 9))
-    code += str(random.choice('abcdefghijklmnpqrstuvwxyz'))
-    code = code.upper()
-    is_exist = User.objects.filter(username=code).exists()
-
-    if is_exist:
-        entry_code_generator()
-    return code
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -306,3 +284,4 @@ class GroupMemberContactInfoSerializer(serializers.ModelSerializer):
         fields = ['id', 'member', 'group', 'legal_name', 'contact_rules', 'address',
                   'contact', 'phone', 'email', 'created_at']
         read_only_fields = ['created_at',]
+

@@ -2,9 +2,10 @@ import random
 from django.db import models
 from vote.models import Districts
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 
 # imports for the dummy model
-from api.serializers import entry_code_generator 
+from api.utils import entry_code_generator 
 from vote import models as vote_models
 
 def generate_unique_code():
@@ -364,6 +365,34 @@ def create_circle(circle, district_code, voters):
 
         groups.append(crcl)
     return [members,groups]
+
+
+# create the backNForth Model here. 
+class BackNForthChat(models.Model):
+    """Model to store chat messages for F-Links (SecDel)"""
+    sec_del = models.ForeignKey(SecDelModel, on_delete=models.CASCADE, related_name='chat_messages')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
+    message = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    is_edited = models.BooleanField(default=False)
+    edited_at = models.DateTimeField(null=True, blank=True)
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    reply_to = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies')
+    
+    class Meta:
+        ordering = ['-timestamp']
+        verbose_name = "BackNForth Chat Message"
+        verbose_name_plural = "BackNForth Chat Messages"
+    
+    def __str__(self):
+        return f"{self.sender.username} in F-Link {self.sec_del.code}: {self.message[:50]}..."
+    
+    def save(self, *args, **kwargs):
+        # Verify sender is a member of the F-Link
+        if not SecDelMembers.objects.filter(user=self.sender, sec_del=self.sec_del, is_member=True).exists():
+            raise ValidationError("Only F-Link members can send messages")
+        super().save(*args, **kwargs)
 
 
 class DummyVoters(models.Model):
