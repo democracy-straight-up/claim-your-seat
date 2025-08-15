@@ -21,6 +21,7 @@ from api.jwt_middleware import JWTAuthMiddleware
 import live.routing
 import bills.routing
 import api.routing
+import moda.routing
 django.setup()
 
 application = ProtocolTypeRouter({
@@ -31,6 +32,7 @@ application = ProtocolTypeRouter({
                 # More specific patterns first to avoid conflicts
                 *api.routing.websocket_urlpatterns,
                 *bills.routing.websocket_urlpatterns,
+                *moda.routing.websocket_urlpatterns,
                 *live.routing.websocket_urlpatterns,
             ])
         )
