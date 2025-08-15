@@ -275,13 +275,22 @@ class BackNForthChatConsumer(AsyncWebsocketConsumer):
             return {
                 'id': message.id,
                 'message': message.message,
-                'sender': message.sender.username,
+                'sender': {
+                    'id': message.sender.id,
+                    'username': message.sender.username,
+                    'email': message.sender.email,
+                    'date_joined': message.sender.date_joined.isoformat(),
+                    'users': {
+                        'legalName': getattr(message.sender.users, 'legalName', message.sender.username)
+                    }
+                },
                 'sender_name': getattr(message.sender.users, 'legalName', message.sender.username),
                 'timestamp': message.timestamp.isoformat(),
-                'reply_to': {
+                'reply_to_message': {
                     'id': reply_to_message.id,
                     'message': reply_to_message.message[:50] + '...' if len(reply_to_message.message) > 50 else reply_to_message.message,
-                    'sender': reply_to_message.sender.username
+                    'sender': reply_to_message.sender.username,
+                    'sender_name': getattr(reply_to_message.sender.users, 'legalName', reply_to_message.sender.username)
                 } if reply_to_message else None,
                 'is_edited': message.is_edited,
                 'edited_at': message.edited_at.isoformat() if message.edited_at else None
@@ -369,13 +378,22 @@ class BackNForthChatConsumer(AsyncWebsocketConsumer):
                 message_data = {
                     'id': message.id,
                     'message': message.message,
-                    'sender': message.sender.username,
+                    'sender': {
+                        'id': message.sender.id,
+                        'username': message.sender.username,
+                        'email': message.sender.email,
+                        'date_joined': message.sender.date_joined.isoformat(),
+                        'users': {
+                            'legalName': getattr(message.sender.users, 'legalName', message.sender.username)
+                        }
+                    },
                     'sender_name': getattr(message.sender.users, 'legalName', message.sender.username),
                     'timestamp': message.timestamp.isoformat(),
-                    'reply_to': {
+                    'reply_to_message': {
                         'id': message.reply_to.id,
                         'message': message.reply_to.message[:50] + '...' if len(message.reply_to.message) > 50 else message.reply_to.message,
-                        'sender': message.reply_to.sender.username
+                        'sender': message.reply_to.sender.username,
+                        'sender_name': getattr(message.reply_to.sender.users, 'legalName', message.reply_to.sender.username)
                     } if message.reply_to else None,
                     'is_edited': message.is_edited,
                     'edited_at': message.edited_at.isoformat() if message.edited_at else None
