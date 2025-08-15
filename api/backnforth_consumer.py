@@ -246,11 +246,7 @@ class BackNForthChatConsumer(AsyncWebsocketConsumer):
         """Save message to database"""
         try:
             user = self.scope["user"]
-            print(f"Saving message from user: {user.username}")
-            
             sec_del = SecDelModel.objects.get(code=self.sec_del_code)
-            print(f"SecDel found: {sec_del.code}")
-            
             reply_to_message = None
             if reply_to_id:
                 try:
@@ -259,7 +255,6 @@ class BackNForthChatConsumer(AsyncWebsocketConsumer):
                         sec_del=sec_del
                     )
                 except BackNForthChat.DoesNotExist:
-                    print(f"Reply message with id {reply_to_id} not found")
                     pass
             
             message = BackNForthChat.objects.create(
@@ -268,8 +263,6 @@ class BackNForthChatConsumer(AsyncWebsocketConsumer):
                 message=message_content,
                 reply_to=reply_to_message
             )
-            
-            print(f"Message saved with id: {message.id}")
             
             # Return serialized message data
             return {
