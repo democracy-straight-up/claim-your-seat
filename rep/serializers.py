@@ -50,3 +50,55 @@ class DistrictCouncilMemberContactSerializer(serializers.ModelSerializer):
         model = repModels.DistrictCouncilMemberContact
         fields = ["id", "member", "district_council", "legal_name", "contact_rules", 
                  "address", "contact", "phone", "email", "created_at", "updated_at"]
+
+
+class DistrictCouncilBackNForthSerializer(serializers.ModelSerializer):
+    sender = UserSerializer(read_only=True)
+    sender_name = serializers.CharField(source='sender.users.legalName', read_only=True)
+    reply_to_message = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = repModels.DistrictCouncilBackNForth
+        fields = [
+            'id', 'message', 'sender', 'sender_name', 'timestamp', 
+            'is_edited', 'edited_at', 'reply_to', 'reply_to_message'
+        ]
+        read_only_fields = ['id', 'timestamp', 'sender', 'is_edited', 'edited_at']
+    
+    def get_reply_to_message(self, obj):
+        if obj.reply_to:
+            return {
+                'id': obj.reply_to.id,
+                'message': obj.reply_to.message[:100] + '...' if len(obj.reply_to.message) > 100 else obj.reply_to.message,
+                'sender': obj.reply_to.sender.username,
+                'sender_name': getattr(obj.reply_to.sender.users, 'legalName', obj.reply_to.sender.username)
+            }
+        return None
+
+
+class DistrictCouncilBackNForthCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = repModels.DistrictCouncilBackNForth
+        fields = ['message', 'reply_to']
+    
+    def create(self, validated_data):
+        request = self.context['request']
+        district_council_code = self.context['district_council_code']
+        
+        try:
+            district_council = repModels.DistrictCouncil.objects.get(code=district_council_code)
+        except repModels.DistrictCouncil.DoesNotExist:
+            raise serializers.ValidationError("District Council not found")
+        
+        # Verify user is a member
+        if not repModels.DistrictCouncilMembers.objects.filter(
+            user=request.user,
+            district_council=district_council,
+            is_member=True
+        ).exists():
+            raise serializers.ValidationError("You must be a District Council member to send messages")
+        
+        validated_data['sender'] = request.user
+        validated_data['district_council'] = district_council
+        
+        return super().create(validated_data)

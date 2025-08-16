@@ -271,3 +271,35 @@ class DistrictCouncilMemberContact(models.Model):
     
     class Meta:
         ordering = ['created_at']
+
+
+class DistrictCouncilBackNForth(models.Model):
+    """
+    Chat messages for District Council BackNForth conversations
+    """
+    district_council = models.ForeignKey(DistrictCouncil, on_delete=models.CASCADE, related_name='chat_messages')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    message = models.TextField()
+    reply_to = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='replies')
+    
+    # Timestamps
+    timestamp = models.DateTimeField(auto_now_add=True)
+    
+    # Edit tracking
+    is_edited = models.BooleanField(default=False)
+    edited_at = models.DateTimeField(null=True, blank=True)
+    
+    # Soft delete
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['district_council', '-timestamp']),
+            models.Index(fields=['sender']),
+            models.Index(fields=['is_deleted']),
+        ]
+    
+    def __str__(self):
+        return f"{self.sender.username} in district-council-{self.district_council.code}: {self.message[:50]}"
