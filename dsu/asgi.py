@@ -22,6 +22,7 @@ import live.routing
 import bills.routing
 import api.routing
 import moda.routing
+import holc.routing
 django.setup()
 
 application = ProtocolTypeRouter({
@@ -33,6 +34,7 @@ application = ProtocolTypeRouter({
                 *api.routing.websocket_urlpatterns,
                 *bills.routing.websocket_urlpatterns,
                 *moda.routing.websocket_urlpatterns,
+                *holc.routing.websocket_urlpatterns,
                 *live.routing.websocket_urlpatterns,
             ])
         )

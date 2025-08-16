@@ -2,6 +2,7 @@ import random
 from django.db import models
 from vote.models import Districts
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 def generate_unique_code():
     while True:
@@ -267,3 +268,35 @@ class HolcMemberContact(models.Model):
     
     class Meta:
         ordering = ['created_at']
+
+
+class HolcBackNForthChat(models.Model):
+    """
+    Chat messages for HoLC (House of Local Councils) BackNForth conversations
+    """
+    holc = models.ForeignKey(HolcModel, on_delete=models.CASCADE, related_name='chat_messages')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    message = models.TextField()
+    reply_to = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='replies')
+    
+    # Timestamps
+    timestamp = models.DateTimeField(auto_now_add=True)
+    
+    # Edit tracking
+    is_edited = models.BooleanField(default=False)
+    edited_at = models.DateTimeField(null=True, blank=True)
+    
+    # Soft delete
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['holc', '-timestamp']),
+            models.Index(fields=['sender']),
+            models.Index(fields=['is_deleted']),
+        ]
+    
+    def __str__(self):
+        return f"{self.sender.username} in HoLC-{self.holc.code}: {self.message[:50]}"
