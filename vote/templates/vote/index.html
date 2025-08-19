@@ -1,54 +1,22 @@
-{%extends 'vote/base.html'%}
-{% load static %}
-
-{%block content%}
-
-{%include 'vote/header.html' %}
+{%extends 'vote/base.html'%} {% load static %} {%block content%}
 
 <div class="container">
-  <div class="row">
-    {% if messages %}
-        {% for message in messages %}
-         <div class="alert alert-{{message.extra_tags}}" role="alert">{{message}}</div>
-        {% endfor %}
-    {% endif %}
+  <div class="row justify-content-center mt-5">
+    <div class="col-12 text-center">
+      <img
+        src="{% static 'image/logo.png' %}"
+        class="mx-auto mb-4"
+        alt="Head shot of chimpanzee stroking his chin as if mulling over a particularly tricky thought"
+        style="max-width: 250px; width: 100%" />
+      <h2 class="m-4">Welcome to the Democracy Straight-Up Project!</h2>
+      <h2 class="text-secondary m-4">Vote directly on federal legislation.</h2>
+      <a
+        class="btn btn-lg btn-primary m-3 text-decoration-none"
+        href="https://dsup-front-738bf2b06978.herokuapp.com/"
+        >Claim Your Seat</a
+      >
+    </div>
   </div>
-  <div class="row mt-5">
-    <div class="col col-sm-12 col-md-4 col-lg-4 mt-5">
-      <div class="container text-center ">
-        <a href="https://rubyonrails.org/" class=" row">
-          <img src="{% static 'image/logo.png' %}"  class="mx-auto"
-          alt="Head shot of chimpanzee stroking his chin as if mulling over a particularly tricky thought"  />
-        </a>
-      </div>
-    </div>
-    <div class="col col-sm-12 col-md-8 col-lg-8">
-      <div class="text-center ">
-        <h1 class="m-4">Welcome to the Democracy Straight-Up Project!</h1>
-        <div class="text-center">
-          <h2 class="text-secondary m-4"> Vote directly on federal legislation. </h2>
-            <div class="row">
-              {%if user.is_authenticated %}
-              
-              {%else%}
-              <div class="col col-sm-12 col-md-6 col-lg-6">
-                <a class="btn btn-lg btn-primary m-3 text-decoration-none" href="{%url 'ClaimYourSeat'%}">Claim Your Seat</a> 
-              </div>
-              <div class="col col-sm-12 col-md-6 col-lg-6">
-                <a class="btn btn-lg btn-primary m-3 text-decoration-none" href="{% url 'EnterTheFloor' %}">Enter the Floor</a>
-              </div>
-              {%endif%}
-            </div>
-        </div>
-      </div>
-    </div>
-    
-  </div>  
 </div>
 
-{%include 'vote/footer.html'%}
-
 {%endblock content%}
-
-
-
