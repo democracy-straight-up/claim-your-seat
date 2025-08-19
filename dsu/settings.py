@@ -81,14 +81,24 @@ TEMPLATES = [
 
 DATABASES = {
     'default': {
-        'ENGINE': os.environ.get('DB_ENGINE'),
-        'NAME':  os.environ.get('DB_NAME'),
-        'USER': os.environ.get('DB_USER'),
-        'PASSWORD': os.environ.get('DB_PASSWORD'),
-        'HOST': os.environ.get('DB_HOST'),
-        'PORT': os.environ.get('DB_PORT'),
+        'ENGINE': "django.db.backends.postgresql",
+        'NAME':  "d9vkdtckjioa78",
+        'USER': "u5iilc5mcvpnd",
+        'PASSWORD': "p4e82072dce26fb54f9fd6e528b600466bd8ab7e73a2b37a88f1746e0e21e5abf",
+        'HOST': "cc0gj7hsrh0ht8.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com",
+        'PORT': "5432",
         }
     }
+# DATABASES = {
+#     'default': {
+#         'ENGINE': os.environ.get('DB_ENGINE'),
+#         'NAME':  os.environ.get('DB_NAME'),
+#         'USER': os.environ.get('DB_USER'),
+#         'PASSWORD': os.environ.get('DB_PASSWORD'),
+#         'HOST': os.environ.get('DB_HOST'),
+#         'PORT': os.environ.get('DB_PORT'),
+#         }
+#     }
 
 
 WSGI_APPLICATION = 'dsu.wsgi.application'
@@ -210,13 +220,7 @@ JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
 CORS_ALLOW_ALL_ORIGINS = True # If this is used then `CORS_ALLOWED_ORIGINS` will not have any effect
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = ['*']
-CORS_ORIGIN_WHITELIST = ['http://localhost:8080', 'http://localhost',
-                         'https://dsu-front.herokuapp.com', 'http://dsu-front.herokuapp.com',
-                         'http://claim-your-seat.herokuapp.com', 'https://claim-your-seat.herokuapp.com']
-
-CSRF_TRUSTED_ORIGINS = ['http://dsup-voting-portal.herokuapp.com',
-                        'https://dsup-voting-portal.herokuapp.com',
-                        'https://dsu-front.herokuapp.com',
-                        'http://dsu-front.herokuapp.com',
-                        'http://claim-your-seat.herokuapp.com'
-                        'https://claim-your-seat.herokuapp.com']
+CORS_ORIGIN_WHITELIST = os.environ.get('CORS_ORIGIN_WHITELIST', '').split(',')
+CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
+print("CORS_ORIGIN_WHITELIST:", CORS_ORIGIN_WHITELIST)
+print("CSRF_TRUSTED_ORIGINS:", CSRF_TRUSTED_ORIGINS)
