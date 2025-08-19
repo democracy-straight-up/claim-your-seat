@@ -38,14 +38,11 @@ INSTALLED_APPS = [
     'vote.apps.VoteConfig',
     'rest_framework',
     'rest_framework_simplejwt',
-    # 'drf_spectacular',
     'live.apps.LiveConfig',
     'bills.apps.BillsConfig',
     'moda.apps.ModaConfig',
     'holc.apps.HolcConfig',
-    'rep.apps.RepConfig',
-    # 'django_extensions',
-
+    'rep.apps.RepConfig'
 ]
 
 MIDDLEWARE = [
@@ -81,34 +78,18 @@ TEMPLATES = [
 
 DATABASES = {
     'default': {
-        'ENGINE': "django.db.backends.postgresql",
-        'NAME':  "d9vkdtckjioa78",
-        'USER': "u5iilc5mcvpnd",
-        'PASSWORD': "p4e82072dce26fb54f9fd6e528b600466bd8ab7e73a2b37a88f1746e0e21e5abf",
-        'HOST': "cc0gj7hsrh0ht8.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com",
-        'PORT': "5432",
+        'ENGINE': os.environ.get('DB_ENGINE'),
+        'NAME':  os.environ.get('DB_NAME'),
+        'USER': os.environ.get('DB_USER'),
+        'PASSWORD': os.environ.get('DB_PASSWORD'),
+        'HOST': os.environ.get('DB_HOST'),
+        'PORT': os.environ.get('DB_PORT'),
         }
     }
-# DATABASES = {
-#     'default': {
-#         'ENGINE': os.environ.get('DB_ENGINE'),
-#         'NAME':  os.environ.get('DB_NAME'),
-#         'USER': os.environ.get('DB_USER'),
-#         'PASSWORD': os.environ.get('DB_PASSWORD'),
-#         'HOST': os.environ.get('DB_HOST'),
-#         'PORT': os.environ.get('DB_PORT'),
-#         }
-#     }
 
 
 WSGI_APPLICATION = 'dsu.wsgi.application'
 ASGI_APPLICATION = "dsu.asgi.application"
-
-
-
-WSGI_APPLICATION = 'dsu.wsgi.application'
-ASGI_APPLICATION = "dsu.asgi.application"
-
 
 import ssl
 new_context = ssl.SSLContext() # this sets the verify_mode to 'CERT_NONE'
@@ -222,5 +203,3 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = ['*']
 CORS_ORIGIN_WHITELIST = os.environ.get('CORS_ORIGIN_WHITELIST', '').split(',')
 CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
-print("CORS_ORIGIN_WHITELIST:", CORS_ORIGIN_WHITELIST)
-print("CSRF_TRUSTED_ORIGINS:", CSRF_TRUSTED_ORIGINS)
