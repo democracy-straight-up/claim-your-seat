@@ -24,7 +24,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('SECRET_KEY')
 
 ALLOWED_HOSTS= os.environ.get('ALLOWED_HOSTS', '').split(',')
-print("allowed hosts:", ALLOWED_HOSTS)
 # Application definition
 INSTALLED_APPS = [
     'corsheaders',
@@ -101,7 +100,6 @@ WSGI_APPLICATION = 'dsu.wsgi.application'
 ASGI_APPLICATION = "dsu.asgi.application"
 
 
-print("REDIS_URL: ",os.environ.get('REDIS_URL'))
 import ssl
 new_context = ssl.SSLContext() # this sets the verify_mode to 'CERT_NONE'
 host = [{
