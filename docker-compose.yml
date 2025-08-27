@@ -24,6 +24,45 @@ services:
     ports:
       - "6379:6379"
 
+  celery-worker:
+    build: .
+    container_name: celery-worker
+    restart: always
+    command: celery -A dsu worker -l info
+    volumes:
+      - .:/app
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - DB_ENGINE=django.db.backends.postgresql
+      - DB_NAME=db_dsup
+      - DB_USER=user_admin
+      - DB_PASSWORD=pass_admin
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+
+  celery-beat:
+    build: .
+    container_name: celery-beat
+    restart: always
+    command: celery -A dsu beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - .:/app
+    depends_on:
+      - postgres
+      - redis
+      - celery-worker
+    environment:
+      - DB_ENGINE=django.db.backends.postgresql
+      - DB_NAME=db_dsup
+      - DB_USER=user_admin
+      - DB_PASSWORD=pass_admin
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+
 volumes:
   postgres-data:
     name: postgres-data

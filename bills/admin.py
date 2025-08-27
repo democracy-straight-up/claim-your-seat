@@ -4,9 +4,10 @@ from django.contrib import admin
 import bills.models as models
 
 class BillAdmin(admin.ModelAdmin):
-    list_display = ['number','title','schedule_date','created_at', 'updated_at']
+    list_display = ['number','title','bill_type','congress','latest_action_date','schedule_date','created_at', 'updated_at']
     list_display_links = ["number", "title"]
-    list_filter = ['schedule_date', 'created_at', 'updated_at']
+    list_filter = ['bill_type', 'congress', 'schedule_date', 'created_at', 'updated_at']
+    search_fields = ['number', 'title', 'latest_action_text']
 
 admin.site.register(models.Bill, BillAdmin)
 
