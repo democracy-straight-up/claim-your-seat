@@ -21,14 +21,20 @@ class Command(BaseCommand):
             '--limit',
             type=int,
             default=100,
-            help='Limit number of bills to fetch per request',
+            help='Number of bills to fetch per API request (batch size)',
+        )
+        parser.add_argument(
+            '--max-batches',
+            type=int,
+            default=None,
+            help='Maximum number of batches to process (for testing)',
         )
 
     def handle(self, *args, **options):
         if options['test']:
             self.test_api_connection()
         else:
-            self.sync_congress_data(options['limit'])
+            self.sync_congress_data(options['limit'], options.get('max_batches'))
 
     def test_api_connection(self):
         """Test Congress API connection"""
@@ -68,8 +74,8 @@ class Command(BaseCommand):
                 self.style.ERROR(f"❌ API connection failed: {str(e)}")
             )
 
-    def sync_congress_data(self, limit=100):
-        """Sync Congress API data"""
+    def sync_congress_data(self, limit=100, max_batches=None):
+        """Sync Congress API data in batches"""
         self.stdout.write("🇺🇸 Starting Congress API sync...")
         
         api_key = getattr(settings, 'CONGRESS_API_KEY', None)
@@ -82,66 +88,65 @@ class Command(BaseCommand):
         new_bills = 0
         updated_bills = 0
         errors = 0
+        total_processed = 0
+        batch_count = 0
         
         try:
-            # Fetch all bills with pagination
-            all_bills = self.fetch_all_bills(api_key, limit)
+            # Process bills in batches
+            offset = 0
             
-            # Filter for HR bills from Congress 119
-            hr_bills = [
-                bill for bill in all_bills 
-                if bill.get('type') == 'HR' and bill.get('congress') == 119
-            ]
+            while True:
+                batch_count += 1
+                
+                # Check if we've reached max batches limit (for testing)
+                if max_batches and batch_count > max_batches:
+                    self.stdout.write(f"⚠️ Reached maximum batch limit ({max_batches})")
+                    break
+                
+                self.stdout.write(f"\n📥 Batch {batch_count}: Fetching bills starting at offset {offset}...")
+                
+                # Fetch one batch of bills
+                bills_batch = self.fetch_bills_batch(api_key, limit, offset)
+                
+                if not bills_batch:
+                    self.stdout.write("✅ No more bills to fetch")
+                    break
+                
+                # Filter for HR bills from Congress 119 in this batch
+                hr_bills_batch = [
+                    bill for bill in bills_batch 
+                    if bill.get('type') == 'HR' and bill.get('congress') == 119
+                ]
+                
+                self.stdout.write(f"Found {len(hr_bills_batch)} HR bills from Congress 119 in this batch")
+                
+                # Process each bill in this batch
+                batch_new, batch_updated, batch_errors = self.process_bills_batch(hr_bills_batch, api_key)
+                
+                new_bills += batch_new
+                updated_bills += batch_updated
+                errors += batch_errors
+                total_processed += len(bills_batch)
+                
+                self.stdout.write(f"📊 Batch {batch_count} complete: +{batch_new} new, ~{batch_updated} updated, ❌{batch_errors} errors")
+                self.stdout.write(f"📈 Total processed so far: {total_processed} bills")
+                
+                # Move to next batch
+                offset += limit
+                
+                # Safety check to prevent infinite loops
+                if offset > 50000:  # Reasonable upper limit
+                    self.stdout.write("⚠️ Reached safety limit of 50,000 bills")
+                    break
             
-            self.stdout.write(f"Found {len(hr_bills)} HR bills from Congress 119")
-            
-            # Process each bill
-            with transaction.atomic():
-                for i, bill_data in enumerate(hr_bills):
-                    try:
-                        self.stdout.write(f"Processing bill {i+1}/{len(hr_bills)}: HR {bill_data.get('number')}")
-                        
-                        # Get detailed bill info
-                        detailed_data = self.fetch_bill_details(
-                            bill_data.get('congress'),
-                            bill_data.get('type'),
-                            bill_data.get('number'),
-                            api_key
-                        )
-                        
-                        # Merge data
-                        merged_data = {**bill_data, **detailed_data}
-                        
-                        # Check if bill exists
-                        existing_bill = Bill.objects.filter(
-                            number=bill_data.get('number'),
-                            congress=bill_data.get('congress'),
-                            bill_type=bill_data.get('type')
-                        ).first()
-                        
-                        if existing_bill:
-                            if self.update_bill(existing_bill, merged_data):
-                                updated_bills += 1
-                                self.stdout.write(f"  ✅ Updated HR {bill_data.get('number')}")
-                            else:
-                                self.stdout.write(f"  ➡️ No changes for HR {bill_data.get('number')}")
-                        else:
-                            self.create_bill(merged_data)
-                            new_bills += 1
-                            self.stdout.write(f"  🆕 Created HR {bill_data.get('number')}")
-                            
-                    except Exception as e:
-                        errors += 1
-                        self.stdout.write(
-                            self.style.ERROR(f"  ❌ Error processing HR {bill_data.get('number')}: {str(e)}")
-                        )
-            
-            # Summary
-            self.stdout.write("\n" + "="*50)
+            # Final summary
+            self.stdout.write("\n" + "="*60)
             self.stdout.write(self.style.SUCCESS("📊 SYNC COMPLETED"))
             self.stdout.write(f"🆕 New bills: {new_bills}")
             self.stdout.write(f"📝 Updated bills: {updated_bills}")
             self.stdout.write(f"❌ Errors: {errors}")
+            self.stdout.write(f"📈 Total bills processed: {total_processed}")
+            self.stdout.write(f"📦 Batches processed: {batch_count}")
             self.stdout.write(f"⏰ Completed at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
             
         except Exception as e:
@@ -149,49 +154,82 @@ class Command(BaseCommand):
                 self.style.ERROR(f"❌ Fatal error during sync: {str(e)}")
             )
 
-    def fetch_all_bills(self, api_key, limit):
-        """Fetch all bills with pagination"""
-        all_bills = []
-        offset = 0
+    def fetch_bills_batch(self, api_key, limit, offset):
+        """Fetch a single batch of bills from Congress API"""
         headers = {'x-api-key': api_key}
+        params = {'offset': offset, 'limit': limit, 'format': 'json'}
         
-        while True:
-            params = {'offset': offset, 'limit': limit, 'format': 'json'}
+        try:
+            response = requests.get(
+                'https://api.congress.gov/v3/bill',
+                headers=headers,
+                params=params,
+                timeout=30
+            )
+            response.raise_for_status()
             
-            try:
-                response = requests.get(
-                    'https://api.congress.gov/v3/bill',
-                    headers=headers,
-                    params=params,
-                    timeout=30
-                )
-                response.raise_for_status()
-                
-                data = response.json()
-                bills = data.get('bills', [])
-                
-                if not bills:
-                    break
-                    
-                all_bills.extend(bills)
-                self.stdout.write(f"  Fetched {len(bills)} bills (total: {len(all_bills)})")
-                
-                # Check for next page
-                if not data.get('pagination', {}).get('next'):
-                    break
-                    
-                offset += limit
-                
-                # Safety limit
-                if len(all_bills) > 10000:
-                    self.stdout.write("  Reached safety limit of 10,000 bills")
-                    break
-                    
-            except Exception as e:
-                self.stdout.write(f"  Error fetching bills at offset {offset}: {str(e)}")
-                break
+            data = response.json()
+            bills = data.get('bills', [])
+            
+            # Show pagination info
+            pagination = data.get('pagination', {})
+            total_count = pagination.get('count', 0)
+            self.stdout.write(f"  📄 Got {len(bills)} bills (total available: {total_count})")
+            
+            return bills
+            
+        except Exception as e:
+            self.stdout.write(f"  ❌ Error fetching bills at offset {offset}: {str(e)}")
+            return []
+
+    def process_bills_batch(self, hr_bills_batch, api_key):
+        """Process a batch of HR bills"""
+        batch_new = 0
+        batch_updated = 0
+        batch_errors = 0
         
-        return all_bills
+        with transaction.atomic():
+            for i, bill_data in enumerate(hr_bills_batch):
+                try:
+                    bill_number = bill_data.get('number')
+                    self.stdout.write(f"  🔄 Processing {i+1}/{len(hr_bills_batch)}: HR {bill_number}")
+                    
+                    # Get detailed bill info
+                    detailed_data = self.fetch_bill_details(
+                        bill_data.get('congress'),
+                        bill_data.get('type'),
+                        bill_number,
+                        api_key
+                    )
+                    
+                    # Merge data
+                    merged_data = {**bill_data, **detailed_data}
+                    
+                    # Check if bill exists
+                    existing_bill = Bill.objects.filter(
+                        number=bill_number,
+                        congress=bill_data.get('congress'),
+                        bill_type=bill_data.get('type')
+                    ).first()
+                    
+                    if existing_bill:
+                        if self.update_bill(existing_bill, merged_data):
+                            batch_updated += 1
+                            self.stdout.write(f"    ✅ Updated HR {bill_number}")
+                        else:
+                            self.stdout.write(f"    ➡️ No changes for HR {bill_number}")
+                    else:
+                        self.create_bill(merged_data)
+                        batch_new += 1
+                        self.stdout.write(f"    🆕 Created HR {bill_number}")
+                        
+                except Exception as e:
+                    batch_errors += 1
+                    self.stdout.write(
+                        self.style.ERROR(f"    ❌ Error processing HR {bill_data.get('number')}: {str(e)}")
+                    )
+        
+        return batch_new, batch_updated, batch_errors
 
     def fetch_bill_details(self, congress, bill_type, bill_number, api_key):
         """Fetch detailed bill information"""
