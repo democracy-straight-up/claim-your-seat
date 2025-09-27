@@ -4,10 +4,10 @@ This repo is a prototype of the Democracy Straight-Up Project.
 
 1. To get started, click the 'Claim Your Seat' button on Homepage, fill in the information required and register
 2. After registration, you can 'Enter The Floor' and
-    - Create a CrCl
-    - Join a CrCl
-    - Manage rooms
-    - Vote on bills
+   - Create a CrCl
+   - Join a CrCl
+   - Manage rooms
+   - Vote on bills
 
 ## Structure
 
@@ -64,12 +64,13 @@ This repo is a prototype of the Democracy Straight-Up Project.
 ```
 
 ### how to set up the project on you local machine:
+
 1. Make a directory anywhere in your machine.
 2. Inside the directory, create python virtualenv and activate it.
 3. Clone this repo inside the directory.
 4. Make sure MySQL client and server are installed on your local machine.
 5. Install all the requirements inside the `requirements.txt` file.
-    - for installing the packages; user `pip install -r requirements.txt`
+   - for installing the packages; user `pip install -r requirements.txt`
 6. Then simply apply the migrations:
 
    `python3 manage.py migrate`
@@ -82,14 +83,14 @@ This repo is a prototype of the Democracy Straight-Up Project.
    `python3 manage.py loaddata districts_data.json`
 
 8. Setup the env file to set config variables.
-    - email config
-    - database
-        - DSU uses db.sqlite file database for production
+
+   - email config
+   - database
+     - DSU uses db.sqlite file database for production
 
 9. Access the live development server at [localhost:8000/api/docs/](http://localhost:8000/api/docs/).
 
 10. To download the schema file [api/docs/](http://localhost:8000/api/schema/)
-
 
 ## APIs
 
@@ -120,6 +121,7 @@ This repo is a prototype of the Democracy Straight-Up Project.
 ```
 
 - Email response:
+
 ```
 Hi XXX,
 Please click on the link to reset your password,
@@ -154,32 +156,30 @@ https://http://{url}/api/activate/{uidb64}/{token}
 
 ```json
 {
-    "message": "Password is reset"
+  "message": "Password is reset"
 }
 ```
 
 - Error Response:
 
 400 Bad Request
+
 ```json
 {
-    "new_password2": [
-        "Password fields didn't match."
-    ]
+  "new_password2": ["Password fields didn't match."]
 }
 ```
 
 400 Bad Request
+
 ```json
 {
-    "new_password": [
-        "This password is too short. It must contain at least 8 characters.",
-        "This password is too common."
-    ]
+  "new_password": [
+    "This password is too short. It must contain at least 8 characters.",
+    "This password is too common."
+  ]
 }
 ```
-
-
 
 ### Retrieve Entry Code
 
@@ -189,15 +189,15 @@ https://http://{url}/api/activate/{uidb64}/{token}
 - Permissions Required: No
 - Parameters:
 
-  | Name | Type | Description | Required |
-  | --- | ----------- | ----------- | ----------- |
-  | email | String | User's email | Yes|
+  | Name  | Type   | Description  | Required |
+  | ----- | ------ | ------------ | -------- |
+  | email | String | User's email | Yes      |
 
 - Example request:
 
 ```json
 {
-  "email": "user@example.com",
+  "email": "user@example.com"
 }
 ```
 
@@ -212,17 +212,14 @@ Your entry code is: T4N9L
 Please use this code to enter the floor.
 ```
 
-
 - Error Response:
-400 Bad Request
+  400 Bad Request
+
 ```json
 {
-    "non_field_errors": [
-        "User with given email does not exist"
-    ]
+  "non_field_errors": ["User with given email does not exist"]
 }
 ```
-
 
 ### Create or Update CircleMemberContact
 
@@ -232,10 +229,10 @@ Please use this code to enter the floor.
 - Permissions Required: User must be authenticated
 - Parameters:
 
-  | Name | Type | Description | Required |
-  | --- | ----------- | ----------- | ----------- |
-  | email | String | User's email | Yes|
-  | phone | String | User's phone number | Yes|
+  | Name  | Type   | Description         | Required |
+  | ----- | ------ | ------------------- | -------- |
+  | email | String | User's email        | Yes      |
+  | phone | String | User's phone number | Yes      |
 
 - Example request:
 
@@ -257,12 +254,11 @@ Please use this code to enter the floor.
 ```
 
 - Error Response:
-400 Bad Request
+  400 Bad Request
+
 ```json
 {
-    "phone": [
-        "This field is required."
-    ]
+  "phone": ["This field is required."]
 }
 ```
 
