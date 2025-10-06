@@ -15,17 +15,6 @@ class HolcMembers_Admin(admin.ModelAdmin):
     search_fields =['user__username','holc__code','is_delegate','is_member','joined_at']
 admin.site.register(holcModels.HolcMembers, HolcMembers_Admin)
 
-class HolcMembersVoteOut_Admin(admin.ModelAdmin):
-    list_display =[ 'voted_at','candidate','holc', 'voter']
-    list_display_links =['voted_at','candidate','holc', 'voter']
-    search_fields =['voted_at','candidate','holc', 'voter']
-admin.site.register(holcModels.VoteOutHolcMember, HolcMembersVoteOut_Admin)
-
-class HolcMembersVoteIn_Admin(admin.ModelAdmin):
-    list_display =[ 'voted_at','candidate','holc', 'voter']
-    list_display_links =['voted_at','candidate','holc', 'voter']
-    search_fields =['voted_at','candidate','holc', 'voter']
-admin.site.register(holcModels.VoteInHolcMember, HolcMembersVoteIn_Admin)
 
 class HolcMembersPutForward_Admin(admin.ModelAdmin):
     list_display =[ 'voted_at','candidate', 'holc', 'voter']

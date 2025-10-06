@@ -3,32 +3,48 @@ from django.db import models
 from vote.models import Districts
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 def generate_unique_code():
-    while True:
-        code = random.randint(10, 99)
+    """Generate a unique code from 1 to 10"""
+    for code in range(1, 11):
         if not HolcModel.objects.filter(code=code).exists():
             return code
+    raise ValidationError("All codes from 1 to 10 are already in use. Cannot create new HOLC.")
 
+# this is for generating unique invitation key, it not used right now.
+# but do not delete it, we might need it in the future.
 def generate_unique_invitation_key():
     while True:
         invitation_key = random.randint(1000000000, 9999999999)
         if not HolcModel.objects.filter(invitation_key=invitation_key).exists():
             return invitation_key
 
+
 class HolcModel(models.Model):
-    code = models.PositiveIntegerField(unique=True, default=generate_unique_code)
+    code = models.PositiveIntegerField(
+        unique=True, 
+        default=generate_unique_code,
+        validators=[MinValueValidator(1), MaxValueValidator(10)]
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     district = models.ForeignKey(Districts, on_delete=models.DO_NOTHING)
-    invitation_key = models.PositiveBigIntegerField(unique=True, default=generate_unique_invitation_key)
+    invitation_key = models.PositiveBigIntegerField(unique=False, null=True, blank=True)
     status = models.BooleanField(default=False, null=True, blank=True)
 
     def save(self, *args, **kwargs):
+        # Generate code if not provided
         if not self.code:
             self.code = generate_unique_code()
-        if not self.invitation_key:
-            self.invitation_key = generate_unique_invitation_key()
+        
+        # Validate code is between 1 and 10
+        if self.code < 1 or self.code > 10:
+            raise ValidationError(f"Code must be between 1 and 10. Got: {self.code}")
+        
+        # Call full_clean to trigger validators
+        self.full_clean()
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -46,7 +62,7 @@ class HolcModel(models.Model):
     def is_active(self):
         # check if the member <= 12 and return true
         member_count = self.holcmembers_set.filter(is_member = True).count()
-        is_currently_active = 3 <= member_count <= 20
+        is_currently_active = 3 <= member_count <= 12
         if is_currently_active:
             if(self.status == False):
                 self.status = True
@@ -105,7 +121,7 @@ class HolcMembers(models.Model):
 
     def save(self, *args, **kwargs):
         # check for max membership 
-        if HolcMembers.objects.filter(is_member=True).count() > 20:
+        if HolcMembers.objects.filter(is_member=True).count() > 12:
             raise MaxMembershipReached()  # Raise maxMember validation
         
         # on each first member, make the member the delegate member by default.
@@ -131,49 +147,8 @@ class HolcMembers(models.Model):
                 }
             )
     
-    def count_vote_out(self):
-        return VoteOutHolcMember.objects.filter(candidate=self).count()
-
-    def count_vote_in(self):
-        return VoteInHolcMember.objects.filter(candidate=self).count()
-      
     def count_put_forward(self):
         return PutForwardHolcMember.objects.filter(candidate=self).count()
-
-    def check_for_majority(self): 
-        total_members = HolcMembers.objects.filter(holc=self.holc).filter(is_member = True).count()
-        majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
-        if self.count_vote_in() >= majority_threshold:
-            self.is_member = True
-            # set the user.users userType to U1D0
-            self.save()
-            self.user.users.userType = 'U4D3'
-            self.user.users.save()
-            # create an instance of the contact info
-            HolcMemberContact.objects.get_or_create(
-                member=self,
-                defaults={
-                    'holc': self.holc,
-                    'legal_name': self.user.users.legalName,
-                    'address': self.user.users.address,
-                    'email': self.user.email,
-                    'contact_rules': 'Please contact during regular hours.',
-                    'contact': 'Available via email.',
-                }
-            )
-            return self
-        
-        return self
-
-    def check_for_removing(self):
-        total_members = HolcMembers.objects.filter(holc=self.holc).filter(is_member = True).count()
-        majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
-        if self.count_vote_out() >= majority_threshold:
-            self.user.users.userType = 'U3D3'
-            self.user.users.verificationScore = 1000
-            self.user.users.save()
-            self.user.save()
-            super(HolcMembers, self).delete()
 
     def check_put_forward(self):
         total_members = HolcMembers.objects.filter(holc=self.holc).filter(is_member = True).count()
@@ -209,28 +184,6 @@ class HolcMembers(models.Model):
                 import logging
                 logger = logging.getLogger(__name__)
                 logger.error(f"Error in succession line: {str(e)}")
-
-
-class VoteOutHolcMember(models.Model):
-    voter = models.ForeignKey(User, on_delete=models.CASCADE)
-    candidate = models.ForeignKey(HolcMembers, related_name='vote_outs', on_delete=models.CASCADE)
-    holc = models.ForeignKey(HolcModel, on_delete=models.CASCADE, null=True, blank=True)
-    voted_at = models.DateTimeField(auto_now_add=True)
-    def save(self, *args, **kwargs):
-        super(VoteOutHolcMember, self).save(*args, **kwargs)
-        self.candidate.check_for_removing()
-
-
-class VoteInHolcMember(models.Model):
-    voter = models.ForeignKey(User, on_delete=models.CASCADE)
-    candidate = models.ForeignKey(HolcMembers, related_name='vote_ins', on_delete=models.CASCADE)
-    holc = models.ForeignKey(HolcModel, on_delete=models.CASCADE, null=True, blank=True)
-    voted_at = models.DateTimeField(auto_now_add=True)
-
-    def save(self, *args, **kwargs):
-        super(VoteInHolcMember, self).save(*args, **kwargs)
-        self.candidate.check_for_majority()
-        return self 
 
 
 class PutForwardHolcMember(models.Model):
