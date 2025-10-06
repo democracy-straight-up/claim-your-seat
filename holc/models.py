@@ -4,6 +4,7 @@ from vote.models import Districts
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 def generate_unique_code():
     """Generate a unique code from 1 to 10"""
@@ -22,7 +23,11 @@ def generate_unique_invitation_key():
 
 
 class HolcModel(models.Model):
-    code = models.PositiveIntegerField(unique=True, default=generate_unique_code)
+    code = models.PositiveIntegerField(
+        unique=True, 
+        default=generate_unique_code,
+        validators=[MinValueValidator(1), MaxValueValidator(10)]
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     district = models.ForeignKey(Districts, on_delete=models.DO_NOTHING)
@@ -30,11 +35,16 @@ class HolcModel(models.Model):
     status = models.BooleanField(default=False, null=True, blank=True)
 
     def save(self, *args, **kwargs):
+        # Generate code if not provided
         if not self.code:
             self.code = generate_unique_code()
+        
         # Validate code is between 1 and 10
         if self.code < 1 or self.code > 10:
-            raise ValidationError("Code must be between 1 and 10")
+            raise ValidationError(f"Code must be between 1 and 10. Got: {self.code}")
+        
+        # Call full_clean to trigger validators
+        self.full_clean()
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -111,7 +121,7 @@ class HolcMembers(models.Model):
 
     def save(self, *args, **kwargs):
         # check for max membership 
-        if HolcMembers.objects.filter(is_member=True).count() > 20:
+        if HolcMembers.objects.filter(is_member=True).count() > 12:
             raise MaxMembershipReached()  # Raise maxMember validation
         
         # on each first member, make the member the delegate member by default.
