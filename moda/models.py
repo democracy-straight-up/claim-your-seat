@@ -46,7 +46,7 @@ class ModaModel(models.Model):
     def is_active(self):
         # check if the member <= 12 and return true
         member_count = self.modamembers_set.filter(is_member = True).count()
-        is_currently_active = 3 <= member_count <= 12
+        is_currently_active = 6 <= member_count <= 12
         if is_currently_active:
             if(self.status == False):
                 self.status = True
