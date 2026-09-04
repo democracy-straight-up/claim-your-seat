@@ -62,8 +62,7 @@ def activate(request, uidb64, token):
         users = None
         return Response({"status": 'exception!'}, status=status.HTTP_400_BAD_REQUEST)
     if users is not None and account_activation_token.check_token(users, token):
-        users.is_active = User.objects.filter(
-            id=uid).update(is_active=True, is_staff=True)
+        User.objects.filter(id=uid).update(is_active=True)
         return JsonResponse({'entry_code': users.username}, safe=False)
     else:
         return Response({"status": 'Activation link is invalid!'}, status=status.HTTP_400_BAD_REQUEST)
