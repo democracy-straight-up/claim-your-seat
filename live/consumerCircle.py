@@ -11,6 +11,15 @@ class CircleConsumer(AsyncWebsocketConsumer):
         self.circle_name = self.scope['url_route']['kwargs']['circle_name']
         self.user_name = self.scope['url_route']['kwargs']['user_name']
         self.room_group_name = 'chat_%s' % self.circle_name
+
+        if not self.scope['user'].is_authenticated:
+            await self.close(code=4401)
+            return
+
+        if not await self.user_belongs_to_circle():
+            await self.close(code=4403)
+            return
+
         # Join room group
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
 
@@ -37,7 +46,12 @@ class CircleConsumer(AsyncWebsocketConsumer):
 
         # Call the parent class disconnect method
         await super().disconnect(close_code)
-
+    @database_sync_to_async
+    def user_belongs_to_circle(self):
+        return voteModels.GroupMember.objects.filter(
+            user=self.scope['user'],
+            group__code=self.circle_name
+        ).exists()
     @database_sync_to_async
     def get_members(self):
         MemberInstances = voteModels.GroupMember.objects.filter(group__code=self.circle_name)
