@@ -83,6 +83,11 @@ class CircleConsumer(AsyncWebsocketConsumer):
         """
         try:
             voter = self.scope['user']
+            voteModels.GroupMember.objects.get(
+                user=voter,
+                group__code=self.circle_name,
+                is_member=True
+            )
             candidate = voteModels.GroupMember.objects.get(
                 pk=data['candidate'],
                 group__code=self.circle_name,
@@ -104,6 +109,11 @@ class CircleConsumer(AsyncWebsocketConsumer):
         """
         try:
             voter = self.scope['user']
+            voteModels.GroupMember.objects.get(
+                user=voter,
+                group__code=self.circle_name,
+                is_member=True
+            )
             member = voteModels.GroupMember.objects.get(
                 pk=data['member'],
                 group__code=self.circle_name,
@@ -124,6 +134,11 @@ class CircleConsumer(AsyncWebsocketConsumer):
         """removing the vote of the member (undoing the voting out)"""
         try:
             voter = self.scope['user']
+            voteModels.GroupMember.objects.get(
+                user=voter,
+                group__code=self.circle_name,
+                is_member=True
+            )
             member = voteModels.GroupMember.objects.get(
                 pk=data['member'],
                 group__code=self.circle_name,
@@ -144,6 +159,12 @@ class CircleConsumer(AsyncWebsocketConsumer):
         """
         try:
             remover = self.scope['user']
+            voteModels.GroupMember.objects.get(
+                user=remover,
+                group__code=self.circle_name,
+                is_member=True,
+                is_delegate=True
+            )
             member = voteModels.GroupMember.objects.get(
                 pk=data['candidate'],
                 group__code=self.circle_name,
@@ -165,6 +186,11 @@ class CircleConsumer(AsyncWebsocketConsumer):
         """ change the circle gelegation."""
         try:
             voter = self.scope['user']
+            voteModels.GroupMember.objects.get(
+                user=voter,
+                group__code=self.circle_name,
+                is_member=True
+            )
             member = voteModels.GroupMember.objects.get(
                 pk=data['member'],
                 group__code=self.circle_name,
@@ -184,6 +210,11 @@ class CircleConsumer(AsyncWebsocketConsumer):
         """ undo the circle delegate vote."""
         try:
             voter = self.scope['user']
+            voteModels.GroupMember.objects.get(
+                user=voter,
+                group__code=self.circle_name,
+                is_member=True
+            )
             member = voteModels.GroupMember.objects.get(
                 pk=data['member'],
                 group__code=self.circle_name,
@@ -202,7 +233,7 @@ class CircleConsumer(AsyncWebsocketConsumer):
     def dissolveCircle(self, data):
         """removing this Circle."""
         try:
-            # this is the only member which is fdel as well. same as voter
+            # this is the only member who is F-Del as well. same as voter
             member = voteModels.GroupMember.objects.get(
                 user=self.scope['user'],
                 group__code=self.circle_name,
@@ -221,6 +252,13 @@ class CircleConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def invitation_key(self):
         try:
+            actor = self.scope['user']
+            voteModels.GroupMember.objects.get(
+                user=actor,
+                group__code=self.circle_name,
+                is_member=True,
+                is_delegate=True
+            )
             circle = voteModels.Group.objects.get(code=self.circle_name)
             circle.invitation_code = apiViews.circle_invitation_generator()
             circle.save()
