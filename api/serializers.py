@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.template.loader import render_to_string
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_encode
+from django.utils import timezone
 from vote.token import account_activation_token
 from django.core.mail import send_mail
 from django.conf import settings
@@ -31,12 +32,13 @@ class RegisterSerializer(serializers.ModelSerializer):
     legalName = serializers.CharField(write_only=True)
     is_reg = serializers.BooleanField(required=False)
     is_reg1 = serializers.BooleanField(required=False)
+    eligibility_attested = serializers.BooleanField(write_only=True, required=False)
     address = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
         fields = ('username', 'password', 'password2', 'email',
-                  'district', 'legalName', 'is_reg', 'is_reg1', 'address')
+                  'district', 'legalName', 'is_reg', 'is_reg1', 'address', 'eligibility_attested')
         # extra_kwargs = {
         #     'first_name': {'required': True},
         #     'last_name': {'required': True}
@@ -74,7 +76,10 @@ class RegisterSerializer(serializers.ModelSerializer):
         # add user district
  
         user.users.district = dist
-
+        if validated_data.get('eligibility_attested', False):
+            user.users.eligibility_attested = True
+            user.users.eligibility_attested_at = timezone.now()
+            user.users.eligibility_attestation_version = 'legal-voter-v1'
         # set if user should be notified within 30 days
         if validated_data.get('is_reg1', False):
             user.users.is_reg = True

@@ -26,6 +26,9 @@ class Users(models.Model):
     district    = models.ForeignKey(Districts, on_delete=models.DO_NOTHING, null=True, blank=True)
     # i am registered to vote in this district
     is_reg      = models.BooleanField(default=False)
+    eligibility_attested = models.BooleanField(default=False)
+    eligibility_attested_at = models.DateTimeField(null=True, blank=True)
+    eligibility_attestation_version = models.CharField(max_length=20, null=True, blank=True)
     # this is for if the user is registered with conditional.
     # verificationScore is named ConnectionScore everywhere
     verificationScore = models.PositiveIntegerField(default=0,null=True, blank=True)
