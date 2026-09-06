@@ -56,19 +56,19 @@ class CircleConsumer(AsyncWebsocketConsumer):
         MemberInstances = voteModels.GroupMember.objects.filter(group__code=self.circle_name)
         members = serializers.CircleMemberSerializer(MemberInstances, many=True)
         return members.data
-    
+
     @database_sync_to_async
     def get_vote_outs(self):
         instances = voteModels.CircleMember_vote_out.objects.filter(group__code=self.circle_name)
         serialize = serializers.CircleMember_VoteOutSer(instances, many=True)
         return serialize.data
-    
+
     @database_sync_to_async
     def get_vote_ins(self):
         instances = voteModels.CircleMember_vote_in.objects.filter(group__code=self.circle_name)
         serialize = serializers.CircleMember_VoteInSer(instances, many=True)
         return serialize.data
-    
+
     @database_sync_to_async
     def get_put_forwards(self):
         instances = voteModels.CircleMember_put_forward.objects.filter(group__code=self.circle_name)
@@ -83,7 +83,11 @@ class CircleConsumer(AsyncWebsocketConsumer):
         """
         try:
             voter = self.scope['user']
-            candidate = voteModels.GroupMember.objects.get(pk = data['candidate'])
+            candidate = voteModels.GroupMember.objects.get(
+                pk=data['candidate'],
+                group__code=self.circle_name,
+                is_member=False
+            )
             group = voteModels.Group.objects.get(code = self.circle_name)
             isinstance_tuple = voteModels.CircleMember_vote_in.objects.update_or_create(voter=voter, group=group, recipient=candidate)
             serialized = serializers.CircleMember_VoteInSer(isinstance_tuple[0])
@@ -100,7 +104,11 @@ class CircleConsumer(AsyncWebsocketConsumer):
         """
         try:
             voter = self.scope['user']
-            member = voteModels.GroupMember.objects.get(pk = data['member'])
+            member = voteModels.GroupMember.objects.get(
+                pk=data['member'],
+                group__code=self.circle_name,
+                is_member=True
+            )
             group = voteModels.Group.objects.get(code=self.circle_name)
             instance =  voteModels.CircleMember_vote_out.objects.update_or_create(voter=voter, candidate=member, group=group)
             # apiModels.VoteOutSecDelMember.objects.update_or_create(voter=voter, candidate=member, sec_del=sec_del)
@@ -110,13 +118,17 @@ class CircleConsumer(AsyncWebsocketConsumer):
         except:
             vote = serializers.UserSerializer(voter)
             return {"status": "error","action":"vote_out", "message": "Could not vote out.","user":vote.data}
-        
+
     @database_sync_to_async
     def undo_vote_out(self, data):
         """removing the vote of the member (undoing the voting out)"""
         try:
             voter = self.scope['user']
-            member = voteModels.GroupMember.objects.get(pk = data['member'])
+            member = voteModels.GroupMember.objects.get(
+                pk=data['member'],
+                group__code=self.circle_name,
+                is_member=True
+            )
             instance = voteModels.CircleMember_vote_out.objects.get(voter=voter, candidate=member)
             instance.delete()
             serialized = serializers.CircleMember_VoteOutSer(instance)
@@ -132,7 +144,11 @@ class CircleConsumer(AsyncWebsocketConsumer):
         """
         try:
             remover = self.scope['user']
-            member = voteModels.GroupMember.objects.get(pk = data['candidate'])
+            member = voteModels.GroupMember.objects.get(
+                pk=data['candidate'],
+                group__code=self.circle_name,
+                is_member=False
+            )
             # set back the userType to 0 while removing.
             # member.user.users.userType = 'U0D0'
             # member.user.users.save()
@@ -149,7 +165,11 @@ class CircleConsumer(AsyncWebsocketConsumer):
         """ change the circle gelegation."""
         try:
             voter = self.scope['user']
-            member = voteModels.GroupMember.objects.get(pk = data['member'])
+            member = voteModels.GroupMember.objects.get(
+                pk=data['member'],
+                group__code=self.circle_name,
+                is_member=True
+            )
             group = voteModels.Group.objects.get(code=self.circle_name)
             instance_tuple = voteModels.CircleMember_put_forward.objects.update_or_create(voter=voter, recipient=member, group=group)
             serialized = serializers.CircleMember_put_forwardSer(instance_tuple[0])
@@ -158,13 +178,17 @@ class CircleConsumer(AsyncWebsocketConsumer):
         except:
             vote = serializers.UserSerializer(voter)
             return {"status": "error","action":"put_forward", "message": "Could not vote for delegate.","user":vote.data}
-        
+
     @database_sync_to_async
     def undo_put_forward(self, data):
         """ undo the circle delegate vote."""
         try:
             voter = self.scope['user']
-            member = voteModels.GroupMember.objects.get(pk = data['member'])
+            member = voteModels.GroupMember.objects.get(
+                pk=data['member'],
+                group__code=self.circle_name,
+                is_member=True
+            )
             instance = voteModels.CircleMember_put_forward.objects.get(voter= voter, recipient=member)
             instance.delete()
             serialized = serializers.CircleMember_put_forwardSer(instance)
@@ -179,7 +203,11 @@ class CircleConsumer(AsyncWebsocketConsumer):
         """removing this Circle."""
         try:
             # this is the only member which is fdel as well. same as voter
-            member = voteModels.GroupMember.objects.get(pk = data['member'])
+            member = voteModels.GroupMember.objects.get(
+                user=self.scope['user'],
+                group__code=self.circle_name,
+                is_member=True
+            )
             # get the circle
             if member.is_delegate and member.group.groupmember_set.all().count() == 1:
                 member.group.delete()
@@ -269,7 +297,7 @@ class CircleConsumer(AsyncWebsocketConsumer):
                         }
                     )
                 return
-            
+
             case "undo_vote_out":
                  # vote in the candidate and return the circle members
                 res = await self.undo_vote_out(data["payload"])
@@ -311,7 +339,7 @@ class CircleConsumer(AsyncWebsocketConsumer):
                         }
                     )
                 return
-            
+
             case "undo_putForward":
                 res = await self.undo_put_forward(data["payload"])
                 if res['status'] == 'error':
