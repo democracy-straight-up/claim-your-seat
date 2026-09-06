@@ -7,6 +7,7 @@ from django.utils.http import urlsafe_base64_encode
 from vote.token import account_activation_token
 from django.core.mail import send_mail
 from django.conf import settings
+from django.db import transaction
 from rest_framework.validators import UniqueValidator
 from django.contrib.auth.password_validation import validate_password
 import vote.models as voteModels
@@ -47,7 +48,8 @@ class RegisterSerializer(serializers.ModelSerializer):
                 {"password": "Password fields didn't match."})
 
         return attrs
-
+    
+    @transaction.atomic
     def create(self, validated_data):
         dist = Districts.objects.filter(
             code=validated_data['district'].upper()).first()
