@@ -202,19 +202,11 @@ class CreateCIRCLE(APIView):
     it set the userType to 1.
     it set the user as a delegate circle member
     """
-
+    permission_classes = [IsAuthenticated]
     def post(self, request):
         try:
-            user = NUL
-            district = NUL
-           
-            if 'user' in request.data and 'district' in request.data:
-                user = User.objects.get(username=request.data['user'])
-                district = voteModels.Districts.objects.get(
-                    code=request.data['district'])
-            else:
-                messages = "User and District are required."
-                return Response({"message:": messages}, status=status.HTTP_400_BAD_REQUEST)
+            user = request.user
+            district = user.users.district
 
             # check if the userType is not U0D0 (user is already in a circle)
             if user.users.userType != 'U0D0':
@@ -354,16 +346,17 @@ def circle_joining_validation(user, circle):
 
 
 class JoinCIRCLE(APIView):
+    permission_classes = [IsAuthenticated]
     def post(self, request):
         try:
             group = NUL
             user = NUL
-            if 'circle' in request.data and 'user' in request.data:
+            if 'circle' in request.data:
                 group = voteModels.Group.objects.get(
                     invitation_code=request.data['circle'])
-                user = User.objects.get(username=request.data['user'])
+                user = request.user
             else:
-                messages = "CIRCLE  and user are required."
+                messages = "CIRCLE is required."
                 return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
 
             # get the circle and add the user as the member or candidate
@@ -410,16 +403,17 @@ def circle_desolve_check(user, circle):
 
 
 class DesolveCircle(APIView):
+    permission_classes = [IsAuthenticated]
     def post(self, request):
 
         try:
             circle = NUL
             user = NUL
-            if 'circle' in request.data and 'user' in request.data:
+            if 'circle' in request.data:
                 circle = voteModels.Group.objects.get(code=request.data['circle'])
-                user = User.objects.get(username=request.data['user'])
+                user = request.user
             else:
-                messages = "Circle  and user are required."
+                messages = "Circle is required."
                 return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
 
             # get the circle and check weather the circle is eligible to be desolved!
