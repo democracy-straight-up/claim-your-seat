@@ -205,16 +205,8 @@ class CreateCIRCLE(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
         try:
-            user = NUL
-            district = NUL
-           
-            if 'district' in request.data:
-                user = request.user
-                district = voteModels.Districts.objects.get(
-                    code=request.data['district'])
-            else:
-                messages = "District is required."
-                return Response({"message:": messages}, status=status.HTTP_400_BAD_REQUEST)
+            user = request.user
+            district = user.users.district
 
             # check if the userType is not U0D0 (user is already in a circle)
             if user.users.userType != 'U0D0':
