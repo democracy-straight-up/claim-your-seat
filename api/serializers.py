@@ -49,6 +49,12 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        dist = Districts.objects.filter(
+            code=validated_data['district'].upper()).first()
+
+        if not dist:
+            raise serializers.ValidationError(
+                {"district": "district didn't match."})
         user = User.objects.create(
             username=entry_code_generator(),
             email=validated_data['email'],
@@ -64,13 +70,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.users.address = validated_data['address']
 
         # add user district
-        from vote.models import Districts
-        dist = Districts.objects.filter(
-            code=validated_data['district'].upper()).first()
-        if not dist:
-            raise serializers.ValidationError(
-                {"district": "district didn't match."})
-
+ 
         user.users.district = dist
 
         # set if user should be notified within 30 days
