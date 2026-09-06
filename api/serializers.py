@@ -76,7 +76,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.users.district = dist
 
         # set if user should be notified within 30 days
-        if validated_data['is_reg1']:
+        if validated_data.get('is_reg1', False):
             user.users.is_reg = True
 
         def get_vvat_number():
