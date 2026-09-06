@@ -32,7 +32,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     legalName = serializers.CharField(write_only=True)
     is_reg = serializers.BooleanField(required=False)
     is_reg1 = serializers.BooleanField(required=False)
-    eligibility_attested = serializers.BooleanField(write_only=True, required=False)
+    eligibility_attested = serializers.BooleanField(write_only=True, required=True)
     address = serializers.CharField(write_only=True)
 
     class Meta:
@@ -48,9 +48,12 @@ class RegisterSerializer(serializers.ModelSerializer):
         if attrs['password'] != attrs['password2']:
             raise serializers.ValidationError(
                 {"password": "Password fields didn't match."})
-
+        if not attrs.get('eligibility_attested'):
+            raise serializers.ValidationError({
+                "eligibility_attested": "You must certify that you are legally eligible to vote in this district."
+            })
         return attrs
-    
+
     @transaction.atomic
     def create(self, validated_data):
         dist = Districts.objects.filter(
@@ -62,7 +65,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         user = User.objects.create(
             username=entry_code_generator(),
             email=validated_data['email'],
-            is_active=False, 
+            is_active=False,
             # first_name=validated_data['first_name'],
             # last_name=validated_data['last_name']
         )
@@ -74,7 +77,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.users.address = validated_data['address']
 
         # add user district
- 
+
         user.users.district = dist
         if validated_data.get('eligibility_attested', False):
             user.users.eligibility_attested = True
@@ -202,7 +205,7 @@ class CircleMember_VoteOutSer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-    
+
 class CIRCLEMemberSer(serializers.ModelSerializer):
     user = UserSerializer()
     circle = CircleSerializer()
