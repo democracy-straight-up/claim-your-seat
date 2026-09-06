@@ -1,7 +1,6 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
-from django.contrib.auth.models import User
 from vote import models as voteModels
 from api import serializers
 from api import views as apiViews
@@ -83,7 +82,7 @@ class CircleConsumer(AsyncWebsocketConsumer):
         the candidate a member
         """
         try:
-            voter = User.objects.get(username = data['voter'])
+            voter = self.scope['user']
             candidate = voteModels.GroupMember.objects.get(pk = data['candidate'])
             group = voteModels.Group.objects.get(code = self.circle_name)
             isinstance_tuple = voteModels.CircleMember_vote_in.objects.update_or_create(voter=voter, group=group, recipient=candidate)
@@ -100,7 +99,7 @@ class CircleConsumer(AsyncWebsocketConsumer):
         she/he shall be removed.
         """
         try:
-            voter = User.objects.get(username = data['voter'])
+            voter = self.scope['user']
             member = voteModels.GroupMember.objects.get(pk = data['member'])
             group = voteModels.Group.objects.get(code=self.circle_name)
             instance =  voteModels.CircleMember_vote_out.objects.update_or_create(voter=voter, candidate=member, group=group)
@@ -116,7 +115,7 @@ class CircleConsumer(AsyncWebsocketConsumer):
     def undo_vote_out(self, data):
         """removing the vote of the member (undoing the voting out)"""
         try:
-            voter = User.objects.get(username = data['voter'])
+            voter = self.scope['user']
             member = voteModels.GroupMember.objects.get(pk = data['member'])
             instance = voteModels.CircleMember_vote_out.objects.get(voter=voter, candidate=member)
             instance.delete()
@@ -132,7 +131,7 @@ class CircleConsumer(AsyncWebsocketConsumer):
         """ remove the candidate or members from this circle
         """
         try:
-            remover = User.objects.get(username = data['remover'])
+            remover = self.scope['user']
             member = voteModels.GroupMember.objects.get(pk = data['candidate'])
             # set back the userType to 0 while removing.
             # member.user.users.userType = 'U0D0'
@@ -149,7 +148,7 @@ class CircleConsumer(AsyncWebsocketConsumer):
     def put_forward(self, data):
         """ change the circle gelegation."""
         try:
-            voter = User.objects.get(username = data['voter'])
+            voter = self.scope['user']
             member = voteModels.GroupMember.objects.get(pk = data['member'])
             group = voteModels.Group.objects.get(code=self.circle_name)
             instance_tuple = voteModels.CircleMember_put_forward.objects.update_or_create(voter=voter, recipient=member, group=group)
@@ -164,7 +163,7 @@ class CircleConsumer(AsyncWebsocketConsumer):
     def undo_put_forward(self, data):
         """ undo the circle delegate vote."""
         try:
-            voter = User.objects.get(username = data['voter'])
+            voter = self.scope['user']
             member = voteModels.GroupMember.objects.get(pk = data['member'])
             instance = voteModels.CircleMember_put_forward.objects.get(voter= voter, recipient=member)
             instance.delete()
