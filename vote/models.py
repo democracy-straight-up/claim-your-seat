@@ -87,11 +87,57 @@ class Group(models.Model):
             member.user.users.verificationScore = score
             member.user.users.save()
 
-    
+
     @property
     def member_count(self):
         return self.groupmember_set.filter(is_member = True).count()
 
+class CircleKey(models.Model):
+    group = models.ForeignKey(
+        Group,
+        on_delete=models.CASCADE,
+        related_name='encryption_keys'
+    )
+    version = models.PositiveIntegerField(default=1)
+    public_key = models.TextField()
+    algorithm = models.CharField(max_length=50)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['group', 'version'],
+                name='unique_circle_key_version'
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.group.code} key v{self.version}"
+
+
+class AccountKey(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='encryption_keys'
+    )
+    version = models.PositiveIntegerField(default=1)
+    public_key = models.TextField()
+    algorithm = models.CharField(max_length=50)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'version'],
+                name='unique_account_key_version'
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} key v{self.version}"
 
 # for maximum f-link membership validation
 from django.core.exceptions import ValidationError
@@ -116,7 +162,7 @@ class GroupMember(models.Model):
         ordering = ['-is_delegate', 'date_joined']
 
     def save(self, *args, **kwargs):
-        # check for max membership 
+        # check for max membership
         if GroupMember.objects.filter(is_member=True, group = self.group).count() > 12:
             raise MaxMembershipReached()  # Raise maxMember validation
         # on each first member, make the member the delegate member by default.
@@ -147,26 +193,26 @@ class GroupMember(models.Model):
         self.user.users.save()
         super().delete(*args, **kwargs)
 
-        # once the member is removed, check the grou status and update the status and that will update the 
+        # once the member is removed, check the grou status and update the status and that will update the
         # members connection scores (verification score) as well.
         if self.group:
             self.group.is_active
 
-        
-    def check_for_majority(self): 
+
+    def check_for_majority(self):
         total_members = GroupMember.objects.filter(group=self.group).filter(is_member = True).count()
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_vote_in() >= majority_threshold:
             self.is_member = True
             # set the user.users userType to U1D0 (member, not delegate)
             self.user.users.userType = 'U1D0'
-            
+
             # Set verification score based on group status
             if self.group.is_active:
                 self.user.users.verificationScore = 10
             # else:
             #     self.user.users.verificationScore = 2
-                
+
             self.user.users.save()
             self.save()
             # Delete related CircleMember_vote_in instances
@@ -188,7 +234,7 @@ class GroupMember(models.Model):
         if self.count_vote_out() >= majority_threshold:
             # Delete related vote instances
             CircleMember_vote_out.objects.filter(candidate=self).delete()
-            
+
             # Delete the member - this will trigger the custom delete method
             self.delete()
 
@@ -201,7 +247,7 @@ class GroupMember(models.Model):
             # find the current delegate and set is_delegate false.
             current_delegate = GroupMember.objects.filter(group=self.group).filter(is_delegate = True).first()
             old_delegate_user = current_delegate.user
-            
+
             current_delegate.is_delegate = False
             current_delegate.save()
             # set the current delegate user.users userType to U1D0
@@ -214,14 +260,14 @@ class GroupMember(models.Model):
             self.save()
             # Delete related CircleMember_put_forward instances
             CircleMember_put_forward.objects.filter(recipient=self).delete()
-            
+
             # Trigger succession line for higher groups
             try:
                 from succession_line import succession_manager
                 succession_manager.handle_delegate_change(
-                    'circle', 
-                    old_delegate_user, 
-                    self.user, 
+                    'circle',
+                    old_delegate_user,
+                    self.user,
                     self.group
                 )
             except Exception as e:
@@ -235,6 +281,52 @@ class GroupMember(models.Model):
         return CircleMember_vote_out.objects.filter(candidate=self).count()
     def count_put_forward(self):
         return CircleMember_put_forward.objects.filter(recipient=self).count()
+
+class CircleCredential(models.Model):
+    group_member = models.OneToOneField(
+        GroupMember,
+        on_delete=models.CASCADE,
+        related_name='credential'
+    )
+    key_version = models.PositiveIntegerField(default=1)
+    ciphertext = models.TextField()
+    algorithm = models.CharField(max_length=50)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Credential for {self.group_member}"
+
+class CircleKeyEnvelope(models.Model):
+    circle_key = models.ForeignKey(
+        CircleKey,
+        on_delete=models.CASCADE,
+        related_name='member_envelopes'
+    )
+    group_member = models.ForeignKey(
+        GroupMember,
+        on_delete=models.CASCADE,
+        related_name='key_envelopes'
+    )
+    account_key = models.ForeignKey(
+        AccountKey,
+        on_delete=models.PROTECT,
+        related_name='circle_key_envelopes'
+    )
+    wrapped_key = models.TextField()
+    algorithm = models.CharField(max_length=50)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['circle_key', 'group_member'],
+                name='unique_circle_key_member_envelope'
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.circle_key} envelope for {self.group_member}"
 
 class CircleBackNForth(models.Model):
     circle = models.ForeignKey(Group, on_delete=models.CASCADE)
@@ -326,10 +418,10 @@ class SuccessionLog(models.Model):
     trigger_group_id = models.PositiveIntegerField(help_text="ID of group where change originated")
     old_delegate_username = models.CharField(max_length=150, help_text="Username of old delegate")
     new_delegate_username = models.CharField(max_length=150, help_text="Username of new delegate")
-    
+
     # Timestamp
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     # Status
     STATUS_CHOICES = [
         ('success', 'Success'),
@@ -338,7 +430,7 @@ class SuccessionLog(models.Model):
     ]
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='success')
     error_message = models.TextField(blank=True, null=True)
-    
+
     class Meta:
         ordering = ['-created_at']
         indexes = [
@@ -346,7 +438,7 @@ class SuccessionLog(models.Model):
             models.Index(fields=['trigger_group_type']),
             models.Index(fields=['old_delegate_username']),
         ]
-    
+
     def __str__(self):
         return f"Succession {self.trigger_group_type} {self.old_delegate_username}->{self.new_delegate_username}"
 
@@ -356,7 +448,7 @@ class SuccessionAction(models.Model):
     Individual action taken during succession process.
     """
     log = models.ForeignKey(SuccessionLog, on_delete=models.CASCADE, related_name='actions')
-    
+
     # Action details
     ACTION_CHOICES = [
         ('removed', 'Removed from group'),
@@ -366,23 +458,23 @@ class SuccessionAction(models.Model):
         ('user_type_update', 'Updated user type after removal'),
     ]
     action = models.CharField(max_length=25, choices=ACTION_CHOICES)
-    
+
     # Target details
     target_group_type = models.CharField(max_length=20)
     target_group_id = models.PositiveIntegerField(null=True, blank=True)
     target_username = models.CharField(max_length=150)
-    
+
     # Context
     was_delegate = models.BooleanField(default=False)
-    promotion_method = models.CharField(max_length=50, blank=True, null=True, 
+    promotion_method = models.CharField(max_length=50, blank=True, null=True,
                                       help_text="How delegate was chosen (votes, earliest_joined, etc)")
-    
+
     # Timestamp
     timestamp = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         ordering = ['timestamp']
-    
+
     def __str__(self):
         return f"{self.action} {self.target_username} in {self.target_group_type}"
 
@@ -392,23 +484,23 @@ class DelegateEligibilityCheck(models.Model):
     Track eligibility checks during succession.
     """
     log = models.ForeignKey(SuccessionLog, on_delete=models.CASCADE, related_name='eligibility_checks')
-    
+
     # Check details
     username = models.CharField(max_length=150)
     target_group_type = models.CharField(max_length=20)
     required_lower_group_type = models.CharField(max_length=20, blank=True, null=True)
-    
+
     # Result
     is_eligible = models.BooleanField()
     reason = models.CharField(max_length=200, blank=True, null=True)
-    
+
     # Timestamp
     timestamp = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         ordering = ['timestamp']
-    
+
     def __str__(self):
         status = "eligible" if self.is_eligible else "ineligible"
         return f"{self.username} {status} for {self.target_group_type}"
-    
+
