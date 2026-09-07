@@ -277,3 +277,19 @@ class CircleCredentialAPITests(APITestCase):
             self.credential.ciphertext,
             "encrypted-name-and-address"
         )
+
+    def test_circle_member_can_retrieve_candidate_encrypted_credential(self):
+        self.client.force_authenticate(user=self.founder)
+
+        response = self.client.get(
+            f"/api/circle-credential/TEST1/{self.candidate_membership.id}/"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_200_OK
+        )
+        self.assertEqual(
+            response.data["ciphertext"],
+            "encrypted-name-and-address"
+        )
