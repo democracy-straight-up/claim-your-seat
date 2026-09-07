@@ -3,7 +3,6 @@ from django.core.mail import send_mail
 import os
 from django.template.loader import render_to_string
 from django.conf import settings
-from curses.ascii import NUL
 from rest_framework import viewsets
 from vote import models as voteModels
 from api import serializers as apiSerializers
@@ -263,7 +262,7 @@ class CircleMem(APIView):
 class UserView(APIView):
     def post(self, request):
         try:
-            user = NUL
+            user = None
             if 'user' in request.data:
                 user = User.objects.get(username=request.data['user'])
             else:
@@ -297,7 +296,7 @@ class UserView(APIView):
 class HouseKeeping(APIView):
     def post(self, request):
         try:
-            circle = NUL
+            circle = None
             if 'circle' in request.data:
                 circle = voteModels.Group.objects.get(code=request.data['circle'])
             else:
@@ -350,8 +349,8 @@ class JoinCIRCLE(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
         try:
-            group = NUL
-            user = NUL
+            group = None
+            user = None
             if 'circle' in request.data:
                 group = voteModels.Group.objects.get(
                     invitation_code=request.data['circle'])
@@ -408,8 +407,8 @@ class DesolveCircle(APIView):
     def post(self, request):
 
         try:
-            circle = NUL
-            user = NUL
+            circle = None
+            user = None
             if 'circle' in request.data:
                 circle = voteModels.Group.objects.get(code=request.data['circle'])
                 user = request.user
@@ -770,4 +769,12 @@ class CircleKeyView(APIView):
         return Response(
             apiSerializers.CircleKeySerializer(key).data,
             status=status.HTTP_201_CREATED
+        )
+class CircleCredentialView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, circle_code):
+        return Response(
+            {"message": "Circle credential endpoint not implemented yet."},
+            status=status.HTTP_404_NOT_FOUND
         )
