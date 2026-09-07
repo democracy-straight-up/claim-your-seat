@@ -160,3 +160,37 @@ class CircleCredentialAPITests(APITestCase):
                 group_member=self.candidate_membership
             ).exists()
         )
+
+    def test_candidate_can_update_own_encrypted_credential(self):
+        voteModels.CircleKey.objects.create(
+            group=self.circle,
+            version=2,
+            public_key="new-test-circle-public-key",
+            algorithm="test-algorithm",
+            is_active=True
+        )
+
+        self.client.force_authenticate(user=self.candidate)
+
+        response = self.client.put(
+            "/api/circle-credential/TEST1/",
+            {
+                "key_version": 2,
+                "ciphertext": "replacement-encrypted-name-and-address",
+                "algorithm": "test-algorithm",
+            },
+            format="json"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_200_OK
+        )
+
+        self.credential.refresh_from_db()
+
+        self.assertEqual(
+            self.credential.ciphertext,
+            "replacement-encrypted-name-and-address"
+        )
+        self.assertEqual(self.credential.key_version, 2)
