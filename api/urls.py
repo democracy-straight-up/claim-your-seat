@@ -37,6 +37,7 @@ urlpatterns = [
     path('house-keeping/', apiViews.HouseKeeping.as_view()),
     path('join-circle/', apiViews.JoinCIRCLE.as_view()),
     path('userinfo/', apiViews.UserView.as_view()),
+    path('account-key/', apiViews.AccountKeyView.as_view()),
     path('circle-desolve/', apiViews.DesolveCircle.as_view()),
     path('circlemember/', apiViews.CircleMem.as_view()),
     path('circle-vote-in-list/',apiViews.CircleMemeber_voteIn.as_view()),

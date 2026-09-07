@@ -295,3 +295,20 @@ class GroupMemberContactInfoSerializer(serializers.ModelSerializer):
                   'contact', 'phone', 'email', 'created_at']
         read_only_fields = ['created_at',]
 
+class AccountKeySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = voteModels.AccountKey
+        fields = [
+            "id",
+            "version",
+            "public_key",
+            "algorithm",
+            "is_active",
+            "created_at",
+        ]
+        read_only_fields = [
+            "id",
+            "version",
+            "is_active",
+            "created_at",
+        ]

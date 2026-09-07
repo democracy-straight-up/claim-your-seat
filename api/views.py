@@ -14,6 +14,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import generics
 from rest_framework.pagination import PageNumberPagination
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -659,3 +660,50 @@ class GroupMemberContactViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Only delegates can update contact information")
         
         serializer.save()
+
+class AccountKeyView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        key = voteModels.AccountKey.objects.filter(
+            user=request.user,
+            is_active=True
+        ).order_by("-version").first()
+
+        if key is None:
+            return Response(
+                {"message": "No active account key found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = apiSerializers.AccountKeySerializer(key)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = apiSerializers.AccountKeySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        with transaction.atomic():
+            User.objects.select_for_update().get(pk=request.user.pk)
+
+            latest_key = voteModels.AccountKey.objects.filter(
+                user=request.user
+            ).order_by("-version").first()
+
+            next_version = 1 if latest_key is None else latest_key.version + 1
+
+            voteModels.AccountKey.objects.filter(
+                user=request.user,
+                is_active=True
+            ).update(is_active=False)
+
+            key = serializer.save(
+                user=request.user,
+                version=next_version,
+                is_active=True
+            )
+
+        return Response(
+            apiSerializers.AccountKeySerializer(key).data,
+            status=status.HTTP_201_CREATED
+        )
