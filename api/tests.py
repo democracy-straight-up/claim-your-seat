@@ -304,3 +304,41 @@ class CircleCredentialAPITests(APITestCase):
             response.status_code,
             status.HTTP_404_NOT_FOUND
         )
+    def test_circle_member_cannot_review_credential_from_another_circle(self):
+        other_user = User.objects.create_user(
+            username="otheruser",
+            password="testpass"
+        )
+        other_user.users.district = self.district
+        other_user.users.save()
+
+        other_circle = voteModels.Group.objects.create(
+            code="TEST2",
+            district=self.district,
+            invitation_code="INVITE456",
+            group_type=0,
+            parent_group=None
+        )
+
+        other_membership = voteModels.GroupMember.objects.create(
+            user=other_user,
+            group=other_circle
+        )
+
+        voteModels.CircleCredential.objects.create(
+            group_member=other_membership,
+            key_version=1,
+            ciphertext="other-circle-secret",
+            algorithm="test-algorithm"
+        )
+
+        self.client.force_authenticate(user=self.founder)
+
+        response = self.client.get(
+            f"/api/circle-credential/TEST1/{other_membership.id}/"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_404_NOT_FOUND
+        )
