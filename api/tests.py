@@ -293,3 +293,14 @@ class CircleCredentialAPITests(APITestCase):
             response.data["ciphertext"],
             "encrypted-name-and-address"
         )
+    def test_candidate_cannot_review_another_circle_credential(self):
+        self.client.force_authenticate(user=self.candidate)
+
+        response = self.client.get(
+            f"/api/circle-credential/TEST1/{self.founder_membership.id}/"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_404_NOT_FOUND
+        )
