@@ -804,7 +804,8 @@ class CircleCredentialView(APIView):
 
         if not voteModels.CircleKey.objects.filter(
             group=membership.group,
-            version=key_version
+            version=key_version,
+            is_active=True
         ).exists():
             return Response(
                 {"key_version": ["No such key version exists for this Circle."]},
