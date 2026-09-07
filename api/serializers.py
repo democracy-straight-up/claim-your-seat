@@ -330,3 +330,17 @@ class CircleKeySerializer(serializers.ModelSerializer):
             "is_active",
             "created_at",
         ]
+class CircleCredentialSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = voteModels.CircleCredential
+        fields = [
+            "key_version",
+            "ciphertext",
+            "algorithm",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "created_at",
+            "updated_at",
+        ]

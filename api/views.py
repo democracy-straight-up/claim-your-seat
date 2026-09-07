@@ -774,7 +774,48 @@ class CircleCredentialView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, circle_code):
+        membership = get_object_or_404(
+            voteModels.GroupMember,
+            user=request.user,
+            group__code=circle_code
+        )
+
+        credential = get_object_or_404(
+            voteModels.CircleCredential,
+            group_member=membership
+        )
+
         return Response(
-            {"message": "Circle credential endpoint not implemented yet."},
-            status=status.HTTP_404_NOT_FOUND
+            apiSerializers.CircleCredentialSerializer(credential).data,
+            status=status.HTTP_200_OK
+        )
+    def post(self, request, circle_code):
+        membership = get_object_or_404(
+            voteModels.GroupMember,
+            user=request.user,
+            group__code=circle_code
+        )
+
+        serializer = apiSerializers.CircleCredentialSerializer(
+            data=request.data
+        )
+        serializer.is_valid(raise_exception=True)
+        key_version = serializer.validated_data["key_version"]
+
+        if not voteModels.CircleKey.objects.filter(
+            group=membership.group,
+            version=key_version
+        ).exists():
+            return Response(
+                {"key_version": ["No such key version exists for this Circle."]},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        credential = serializer.save(
+            group_member=membership
+        )
+
+        return Response(
+            apiSerializers.CircleCredentialSerializer(credential).data,
+            status=status.HTTP_201_CREATED
         )
