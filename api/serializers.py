@@ -312,3 +312,21 @@ class AccountKeySerializer(serializers.ModelSerializer):
             "is_active",
             "created_at",
         ]
+
+class CircleKeySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = voteModels.CircleKey
+        fields = [
+            "id",
+            "version",
+            "public_key",
+            "algorithm",
+            "is_active",
+            "created_at",
+        ]
+        read_only_fields = [
+            "id",
+            "version",
+            "is_active",
+            "created_at",
+        ]
