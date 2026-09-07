@@ -707,3 +707,67 @@ class AccountKeyView(APIView):
             apiSerializers.AccountKeySerializer(key).data,
             status=status.HTTP_201_CREATED
         )
+
+class CircleKeyView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, circle_code):
+        membership = get_object_or_404(
+            voteModels.GroupMember,
+            user=request.user,
+            group__code=circle_code
+        )
+
+        key = voteModels.CircleKey.objects.filter(
+            group=membership.group,
+            is_active=True
+        ).order_by("-version").first()
+
+        if key is None:
+            return Response(
+                {"message": "No active Circle key found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        return Response(
+            apiSerializers.CircleKeySerializer(key).data
+        )
+
+    def post(self, request, circle_code):
+        serializer = apiSerializers.CircleKeySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        with transaction.atomic():
+            membership = get_object_or_404(
+                voteModels.GroupMember.objects.select_for_update(),
+                user=request.user,
+                group__code=circle_code,
+                is_member=True,
+                is_delegate=True
+            )
+
+            group = voteModels.Group.objects.select_for_update().get(
+                pk=membership.group_id
+            )
+
+            latest_key = voteModels.CircleKey.objects.filter(
+                group=group
+            ).order_by("-version").first()
+
+            next_version = 1 if latest_key is None else latest_key.version + 1
+
+            voteModels.CircleKey.objects.filter(
+                group=group,
+                is_active=True
+            ).update(is_active=False)
+
+            key = serializer.save(
+                group=group,
+                version=next_version,
+                is_active=True
+            )
+
+        return Response(
+            apiSerializers.CircleKeySerializer(key).data,
+            status=status.HTTP_201_CREATED
+        )
