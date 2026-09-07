@@ -236,3 +236,44 @@ class CircleCredentialAPITests(APITestCase):
                 group_member=self.candidate_membership
             ).exists()
         )
+
+    def test_candidate_cannot_update_to_inactive_circle_key(self):
+        voteModels.CircleKey.objects.create(
+            group=self.circle,
+            version=1,
+            public_key="old-circle-public-key",
+            algorithm="test-algorithm",
+            is_active=False
+        )
+
+        voteModels.CircleKey.objects.create(
+            group=self.circle,
+            version=2,
+            public_key="current-circle-public-key",
+            algorithm="test-algorithm",
+            is_active=True
+        )
+
+        self.client.force_authenticate(user=self.candidate)
+
+        response = self.client.put(
+            "/api/circle-credential/TEST1/",
+            {
+                "key_version": 1,
+                "ciphertext": "updated-with-old-key",
+                "algorithm": "test-algorithm",
+            },
+            format="json"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_400_BAD_REQUEST
+        )
+
+        self.credential.refresh_from_db()
+
+        self.assertEqual(
+            self.credential.ciphertext,
+            "encrypted-name-and-address"
+        )
