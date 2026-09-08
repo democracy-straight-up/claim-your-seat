@@ -342,3 +342,35 @@ class CircleCredentialAPITests(APITestCase):
             response.status_code,
             status.HTTP_404_NOT_FOUND
         )
+
+    def test_candidate_cannot_create_second_circle_credential(self):
+        voteModels.CircleKey.objects.create(
+            group=self.circle,
+            version=1,
+            public_key="test-circle-public-key",
+            algorithm="test-algorithm",
+            is_active=True
+        )
+
+        self.client.force_authenticate(user=self.candidate)
+
+        response = self.client.post(
+            "/api/circle-credential/TEST1/",
+            {
+                "key_version": 1,
+                "ciphertext": "replacement-via-post",
+                "algorithm": "test-algorithm",
+            },
+            format="json"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_400_BAD_REQUEST
+        )
+
+        self.credential.refresh_from_db()
+        self.assertEqual(
+            self.credential.ciphertext,
+            "encrypted-name-and-address"
+        )

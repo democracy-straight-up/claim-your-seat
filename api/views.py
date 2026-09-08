@@ -795,6 +795,15 @@ class CircleCredentialView(APIView):
             user=request.user,
             group__code=circle_code
         )
+        if voteModels.CircleCredential.objects.filter(
+            group_member=membership
+        ).exists():
+            return Response(
+                {
+                    "detail": "Circle credential already exists. Use PUT to update it."
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         serializer = apiSerializers.CircleCredentialSerializer(
             data=request.data
