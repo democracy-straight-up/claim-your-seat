@@ -770,6 +770,104 @@ class CircleKeyView(APIView):
             apiSerializers.CircleKeySerializer(key).data,
             status=status.HTTP_201_CREATED
         )
+class CircleKeyEnvelopeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, circle_code):
+        membership = get_object_or_404(
+            voteModels.GroupMember,
+            user=request.user,
+            group__code=circle_code,
+            is_member=True
+        )
+
+        envelope = get_object_or_404(
+            voteModels.CircleKeyEnvelope,
+            group_member=membership,
+            circle_key__group=membership.group,
+            circle_key__is_active=True
+        )
+
+        return Response(
+            {
+                "wrapped_key": envelope.wrapped_key,
+                "algorithm": envelope.algorithm,
+                "circle_key_version": envelope.circle_key.version,
+                "account_key_version": envelope.account_key.version,
+            },
+            status=status.HTTP_200_OK
+        )
+class CircleKeyEnvelopeCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, circle_code, member_id):
+        delegate_membership = get_object_or_404(
+            voteModels.GroupMember,
+            user=request.user,
+            group__code=circle_code,
+            is_member=True,
+            is_delegate=True
+        )
+
+        target_membership = get_object_or_404(
+            voteModels.GroupMember,
+            id=member_id,
+            group=delegate_membership.group,
+            is_member=True
+        )
+
+        circle_key = get_object_or_404(
+            voteModels.CircleKey,
+            group=delegate_membership.group,
+            is_active=True
+        )
+
+        account_key = get_object_or_404(
+            voteModels.AccountKey,
+            user=target_membership.user,
+            is_active=True
+        )
+        if voteModels.CircleKeyEnvelope.objects.filter(
+            circle_key=circle_key,
+            group_member=target_membership
+        ).exists():
+            return Response(
+                {
+                    "detail": "Circle key envelope already exists for this member."
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        wrapped_key = request.data.get("wrapped_key")
+        if not wrapped_key:
+            return Response(
+                {
+                    "wrapped_key": ["This field is required."]
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        algorithm = request.data.get("algorithm")
+        if not algorithm:
+            return Response(
+                {
+                    "algorithm": ["This field is required."]
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        envelope = voteModels.CircleKeyEnvelope.objects.create(
+            circle_key=circle_key,
+            group_member=target_membership,
+            account_key=account_key,
+            wrapped_key=wrapped_key,
+            algorithm=algorithm
+        )
+
+        return Response(
+            {
+                "wrapped_key": envelope.wrapped_key,
+                "algorithm": envelope.algorithm,
+            },
+            status=status.HTTP_201_CREATED
+        )
 class CircleCredentialView(APIView):
     permission_classes = [IsAuthenticated]
 
