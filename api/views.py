@@ -3,7 +3,6 @@ from django.core.mail import send_mail
 import os
 from django.template.loader import render_to_string
 from django.conf import settings
-from curses.ascii import NUL
 from rest_framework import viewsets
 from vote import models as voteModels
 from api import serializers as apiSerializers
@@ -263,7 +262,7 @@ class CircleMem(APIView):
 class UserView(APIView):
     def post(self, request):
         try:
-            user = NUL
+            user = None
             if 'user' in request.data:
                 user = User.objects.get(username=request.data['user'])
             else:
@@ -297,7 +296,7 @@ class UserView(APIView):
 class HouseKeeping(APIView):
     def post(self, request):
         try:
-            circle = NUL
+            circle = None
             if 'circle' in request.data:
                 circle = voteModels.Group.objects.get(code=request.data['circle'])
             else:
@@ -350,8 +349,8 @@ class JoinCIRCLE(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
         try:
-            group = NUL
-            user = NUL
+            group = None
+            user = None
             if 'circle' in request.data:
                 group = voteModels.Group.objects.get(
                     invitation_code=request.data['circle'])
@@ -408,8 +407,8 @@ class DesolveCircle(APIView):
     def post(self, request):
 
         try:
-            circle = NUL
-            user = NUL
+            circle = None
+            user = None
             if 'circle' in request.data:
                 circle = voteModels.Group.objects.get(code=request.data['circle'])
                 user = request.user
@@ -771,3 +770,115 @@ class CircleKeyView(APIView):
             apiSerializers.CircleKeySerializer(key).data,
             status=status.HTTP_201_CREATED
         )
+class CircleCredentialView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, circle_code):
+        membership = get_object_or_404(
+            voteModels.GroupMember,
+            user=request.user,
+            group__code=circle_code
+        )
+
+        credential = get_object_or_404(
+            voteModels.CircleCredential,
+            group_member=membership
+        )
+
+        return Response(
+            apiSerializers.CircleCredentialSerializer(credential).data,
+            status=status.HTTP_200_OK
+        )
+    def post(self, request, circle_code):
+        membership = get_object_or_404(
+            voteModels.GroupMember,
+            user=request.user,
+            group__code=circle_code
+        )
+
+        serializer = apiSerializers.CircleCredentialSerializer(
+            data=request.data
+        )
+        serializer.is_valid(raise_exception=True)
+        key_version = serializer.validated_data["key_version"]
+
+        if not voteModels.CircleKey.objects.filter(
+            group=membership.group,
+            version=key_version,
+            is_active=True
+        ).exists():
+            return Response(
+                {"key_version": ["No such key version exists for this Circle."]},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        credential = serializer.save(
+            group_member=membership
+        )
+
+        return Response(
+            apiSerializers.CircleCredentialSerializer(credential).data,
+            status=status.HTTP_201_CREATED
+        )
+    def put(self, request, circle_code):
+        membership = get_object_or_404(
+            voteModels.GroupMember,
+            user=request.user,
+            group__code=circle_code
+        )
+
+        credential = get_object_or_404(
+            voteModels.CircleCredential,
+            group_member=membership
+        )
+
+        serializer = apiSerializers.CircleCredentialSerializer(
+            credential,
+            data=request.data
+        )
+        serializer.is_valid(raise_exception=True)
+
+        key_version = serializer.validated_data["key_version"]
+
+        if not voteModels.CircleKey.objects.filter(
+            group=membership.group,
+            version=key_version,
+            is_active=True
+        ).exists():
+            return Response(
+                {"key_version": ["No such key version exists for this Circle."]},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        credential = serializer.save()
+
+        return Response(
+            apiSerializers.CircleCredentialSerializer(credential).data,
+            status=status.HTTP_200_OK
+        )
+class CircleCredentialReviewView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, circle_code, member_id):
+        reviewer_membership = get_object_or_404(
+            voteModels.GroupMember,
+            user=request.user,
+            group__code=circle_code,
+            is_member=True
+        )
+
+        target_membership = get_object_or_404(
+            voteModels.GroupMember,
+            id=member_id,
+            group=reviewer_membership.group
+        )
+
+        credential = get_object_or_404(
+            voteModels.CircleCredential,
+            group_member=target_membership
+        )
+
+        return Response(
+            apiSerializers.CircleCredentialSerializer(credential).data,
+            status=status.HTTP_200_OK
+        )    
