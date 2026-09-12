@@ -41,6 +41,7 @@ urlpatterns = [
     path('circle-key/<str:circle_code>/', apiViews.CircleKeyView.as_view()),
     path('circle-key-envelope/<str:circle_code>/', apiViews.CircleKeyEnvelopeView.as_view()),
     path('circle-key-envelope/<str:circle_code>/<int:member_id>/', apiViews.CircleKeyEnvelopeCreateView.as_view()),
+    path('circle-member-account-key/<str:circle_code>/<int:member_id>/', apiViews.CircleMemberAccountKeyView.as_view()),
     path('circle-credential/<str:circle_code>/', apiViews.CircleCredentialView.as_view()),
     path('circle-credential/<str:circle_code>/<int:member_id>/', apiViews.CircleCredentialReviewView.as_view()),
     path('circle-desolve/', apiViews.DesolveCircle.as_view()),

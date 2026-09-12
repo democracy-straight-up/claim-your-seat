@@ -988,4 +988,37 @@ class CircleCredentialReviewView(APIView):
         return Response(
             apiSerializers.CircleCredentialSerializer(credential).data,
             status=status.HTTP_200_OK
-        )    
+        )
+class CircleMemberAccountKeyView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, circle_code, member_id):
+        delegate_membership = get_object_or_404(
+            voteModels.GroupMember,
+            user=request.user,
+            group__code=circle_code,
+            is_member=True,
+            is_delegate=True
+        )
+
+        target_membership = get_object_or_404(
+            voteModels.GroupMember,
+            id=member_id,
+            group=delegate_membership.group,
+            is_member=True
+        )
+
+        account_key = get_object_or_404(
+            voteModels.AccountKey,
+            user=target_membership.user,
+            is_active=True
+        )
+
+        return Response(
+            {
+                "public_key": account_key.public_key,
+                "version": account_key.version,
+                "algorithm": account_key.algorithm,
+            },
+            status=status.HTTP_200_OK
+        )
