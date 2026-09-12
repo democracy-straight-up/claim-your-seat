@@ -501,7 +501,7 @@ class CircleKeyEnvelopeAPITests(APITestCase):
         self.assertEqual(
             response.data["account_key_version"],
             1
-        )        
+        )
     def test_circle_delegate_can_create_envelope_for_member(self):
         target = User.objects.create_user(
             username="target-member",
@@ -693,4 +693,186 @@ class CircleKeyEnvelopeAPITests(APITestCase):
         self.assertEqual(
             response.status_code,
             status.HTTP_404_NOT_FOUND
-        )        
+        )
+class CircleMemberAccountKeyAPITests(APITestCase):
+    def setUp(self):
+        self.district = voteModels.Districts.objects.create(
+            name="Vermont At-Large",
+            code="VT01"
+        )
+
+        self.delegate = User.objects.create_user(
+            username="delegate",
+            password="testpass"
+        )
+        self.delegate.users.district = self.district
+        self.delegate.users.save()
+
+        self.target = User.objects.create_user(
+            username="target",
+            password="testpass"
+        )
+        self.target.users.district = self.district
+        self.target.users.save()
+
+        self.circle = voteModels.Group.objects.create(
+            code="TEST1",
+            district=self.district,
+            invitation_code="INVITE123",
+            group_type=0,
+            parent_group=None
+        )
+
+        self.delegate_membership = voteModels.GroupMember.objects.create(
+            user=self.delegate,
+            group=self.circle,
+            is_member=True,
+            is_delegate=True
+        )
+
+        self.target_membership = voteModels.GroupMember.objects.create(
+            user=self.target,
+            group=self.circle,
+            is_member=True,
+            is_delegate=False
+        )
+
+        self.target_account_key = voteModels.AccountKey.objects.create(
+            user=self.target,
+            version=1,
+            public_key="target-public-key",
+            algorithm="test-algorithm",
+            is_active=True
+        )
+
+    def test_delegate_can_get_member_active_account_public_key(self):
+        self.client.force_authenticate(user=self.delegate)
+
+        response = self.client.get(
+            f"/api/circle-member-account-key/TEST1/{self.target_membership.id}/"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_200_OK
+        )
+        self.assertEqual(
+            response.data["public_key"],
+            "target-public-key"
+        )
+        self.assertEqual(
+            response.data["version"],
+            1
+        )
+        self.assertEqual(
+            response.data["algorithm"],
+            "test-algorithm"
+        )
+    def test_non_delegate_cannot_get_member_account_public_key(self):
+        ordinary_member = User.objects.create_user(
+            username="ordinary-member",
+            password="testpass"
+        )
+        ordinary_member.users.district = self.district
+        ordinary_member.users.save()
+
+        voteModels.GroupMember.objects.create(
+            user=ordinary_member,
+            group=self.circle,
+            is_member=True,
+            is_delegate=False
+        )
+
+        self.client.force_authenticate(user=ordinary_member)
+
+        response = self.client.get(
+            f"/api/circle-member-account-key/TEST1/{self.target_membership.id}/"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_404_NOT_FOUND
+        )
+    def test_delegate_cannot_get_account_key_for_member_in_another_circle(self):
+        other_circle = voteModels.Group.objects.create(
+            code="TEST2",
+            district=self.district,
+            invitation_code="OTHER123",
+            group_type=0,
+            parent_group=None
+        )
+
+        outsider = User.objects.create_user(
+            username="outsider",
+            password="testpass"
+        )
+        outsider.users.district = self.district
+        outsider.users.save()
+
+        outsider_membership = voteModels.GroupMember.objects.create(
+            user=outsider,
+            group=other_circle,
+            is_member=True,
+            is_delegate=False
+        )
+
+        voteModels.AccountKey.objects.create(
+            user=outsider,
+            version=1,
+            public_key="outsider-public-key",
+            algorithm="test-algorithm",
+            is_active=True
+        )
+
+        self.client.force_authenticate(user=self.delegate)
+
+        response = self.client.get(
+            f"/api/circle-member-account-key/TEST1/{outsider_membership.id}/"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_404_NOT_FOUND
+        )
+    def test_delegate_cannot_get_account_key_for_candidate(self):
+        candidate = User.objects.create_user(
+            username="candidate",
+            password="testpass"
+        )
+        candidate.users.district = self.district
+        candidate.users.save()
+
+        candidate_membership = voteModels.GroupMember.objects.create(
+            user=candidate,
+            group=self.circle,
+            is_member=False,
+            is_delegate=False
+        )
+
+        voteModels.AccountKey.objects.create(
+            user=candidate,
+            version=1,
+            public_key="candidate-public-key",
+            algorithm="test-algorithm",
+            is_active=True
+        )
+
+        self.client.force_authenticate(user=self.delegate)
+
+        response = self.client.get(
+            f"/api/circle-member-account-key/TEST1/{candidate_membership.id}/"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_404_NOT_FOUND
+        )
+    def test_unauthenticated_user_cannot_get_member_account_public_key(self):
+        response = self.client.get(
+            f"/api/circle-member-account-key/TEST1/{self.target_membership.id}/"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_401_UNAUTHORIZED
+        )
