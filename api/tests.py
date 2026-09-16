@@ -768,7 +768,7 @@ class CircleMemberAccountKeyAPITests(APITestCase):
             response.data["algorithm"],
             "test-algorithm"
         )
-    def test_non_delegate_cannot_get_member_account_public_key(self):
+    def test_non_delegate_member_can_get_member_account_public_key(self):
         ordinary_member = User.objects.create_user(
             username="ordinary-member",
             password="testpass"
@@ -791,7 +791,11 @@ class CircleMemberAccountKeyAPITests(APITestCase):
 
         self.assertEqual(
             response.status_code,
-            status.HTTP_404_NOT_FOUND
+            status.HTTP_200_OK
+        )
+        self.assertEqual(
+            response.data["public_key"],
+            self.target_account_key.public_key
         )
     def test_delegate_cannot_get_account_key_for_member_in_another_circle(self):
         other_circle = voteModels.Group.objects.create(
