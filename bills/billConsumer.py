@@ -9,6 +9,11 @@ from vote import models as voteModels
 
 class BillConsumer(AsyncWebsocketConsumer):
     async def connect(self):
+        user = self.scope.get("user")
+        if user is None or not user.is_authenticated or not user.is_active:
+            await self.close(code=4401)
+            return
+
         self.bill_id = self.scope['url_route']['kwargs']['bill_id']
         self.room_group_name = f'bill_{self.bill_id}'
 
@@ -87,7 +92,15 @@ class BillConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         data = json.loads(text_data)
         vote_type = data['vote_type']
-        username = data['username']
+        username = self.scope["user"].username
+
+        if data.get("username") != username:
+            await self.send(
+                text_data=json.dumps(
+                    {"error": "You can only submit your own vote."}
+                )
+            )
+            return
 
         # Fetch existing votes for the bill using database_sync_to_async
         try:

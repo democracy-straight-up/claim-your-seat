@@ -1,5 +1,5 @@
 import random
-from django.db import models
+from django.db import models, transaction
 from vote.models import Districts
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -21,31 +21,104 @@ def generate_unique_invitation_key():
         if not HolcModel.objects.filter(invitation_key=invitation_key).exists():
             return invitation_key
 
-
+class CaucusNumberSequence(models.Model):
+    district = models.OneToOneField(
+        Districts,
+        on_delete=models.CASCADE,
+        related_name="caucus_number_sequence",
+    )
+    last_issued = models.PositiveIntegerField(
+        default=1,
+        validators=[MinValueValidator(1), MaxValueValidator(99)],
+    )
 class HolcModel(models.Model):
     code = models.PositiveIntegerField(
-        unique=True, 
-        default=generate_unique_code,
-        validators=[MinValueValidator(1), MaxValueValidator(10)]
+        validators=[MinValueValidator(1), MaxValueValidator(99)],
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     district = models.ForeignKey(Districts, on_delete=models.DO_NOTHING)
     invitation_key = models.PositiveBigIntegerField(unique=False, null=True, blank=True)
     status = models.BooleanField(default=False, null=True, blank=True)
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["district", "code"],
+                name="unique_caucus_code_per_district",
+            ),
+        ]
 
     def save(self, *args, **kwargs):
-        # Generate code if not provided
-        if not self.code:
-            self.code = generate_unique_code()
-        
-        # Validate code is between 1 and 10
-        if self.code < 1 or self.code > 10:
-            raise ValidationError(f"Code must be between 1 and 10. Got: {self.code}")
-        
-        # Call full_clean to trigger validators
-        self.full_clean()
-        super().save(*args, **kwargs)
+        if not self._state.adding:
+            original = HolcModel.objects.get(pk=self.pk)
+            if self.district_id != original.district_id:
+                raise ValidationError(
+                    "A Caucus district cannot be changed after creation."
+                )
+            if self.code != original.code:
+                raise ValidationError(
+                    "A Caucus number cannot be changed after creation."
+                )
+
+            self.full_clean()
+            return super().save(*args, **kwargs)
+
+        if not self.district_id:
+            raise ValidationError("A Caucus must belong to a district.")
+
+
+        with transaction.atomic():
+            # Serialize Caucus creation within this district.
+            Districts.objects.select_for_update().get(pk=self.district_id)
+
+            existing_codes = set(
+                HolcModel.objects.filter(
+                    district_id=self.district_id,
+                ).values_list("code", flat=True)
+            )
+
+            sequence, _ = CaucusNumberSequence.objects.get_or_create(
+                district_id=self.district_id,
+                defaults={
+                    "last_issued": max(existing_codes, default=1),
+                },
+            )
+
+            if self.code != 1:
+                if sequence.last_issued < 99:
+                    next_code = sequence.last_issued + 1
+                else:
+                    next_code = next(
+                        (
+                            number
+                            for number in range(2, 100)
+                            if number not in existing_codes
+                        ),
+                        None,
+                    )
+
+                if next_code is None:
+                    raise ValidationError(
+                        "All ordinary Caucus numbers (02–99) "
+                        "are currently in use in this district."
+                    )
+
+                if self.code is not None and self.code != next_code:
+                    raise ValidationError(
+                        f"The next available ordinary Caucus number "
+                        f"is {next_code:02d}."
+                    )
+
+                self.code = next_code
+
+            self.full_clean()
+            result = super().save(*args, **kwargs)
+
+            if self.code > sequence.last_issued:
+                sequence.last_issued = self.code
+                sequence.save(update_fields=["last_issued"])
+
+            return result
 
     def __str__(self):
         return str(self.code)

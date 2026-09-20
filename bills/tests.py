@@ -7,6 +7,7 @@ from rest_framework.response import Response   # added by siva
 from django.test import TransactionTestCase
 from django.contrib.auth.models import User
 from rest_framework_simplejwt.tokens import RefreshToken
+from vote.models import Districts
 import json
 
 
@@ -14,16 +15,11 @@ import json
 class BillViewTestCase(APITestCase):
 
     def setUp(self):
-        from django.core.management import call_command
-        call_command('loaddata', 'districts_data.json')
-        # call_command('loaddata', 'dummy_users_data.json')
-
-        self.url = '/bill/bills/'
-        # self.bill = Bill.objects.last()
-        # self.bill.id = 1
-        # self.bill.number = "9999"
-        # self.bill.title = "test"
-        # self.bill.save()
+        Districts.objects.get_or_create(
+            code="NY01",
+            defaults={"name": "New York First"},
+        )
+        self.url = "/bill/bills/"
 
     def authenticate(self):
 
@@ -38,17 +34,32 @@ class BillViewTestCase(APITestCase):
                 "legalName": "test",
                 "is_reg": "true",
                 "is_reg1": "true",
-                "address": "test"
+                "address": "test",
+                "eligibility_attested": True,
             }
         )
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.content)
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_201_CREATED,
+            response.content,
+        )
+        user = User.objects.get(username=response.data["username"])
+        self.assertTrue(
+            user.check_password("muWMpROTX.."),
+            "Registration did not preserve the test user's password.",
+        )
+        user.is_active = True
+        user.save(update_fields=["is_active"])
         token_response = self.client.post('/api/token/',{
             "username": response.data['username'],
             "password": "muWMpROTX..",
         }, format='json')
-        # self.assertEqual(token_response.data, status.HTTP_200_OK, token_response.content)
-        self.assertFalse('token' in token_response.data, token_response.content)
+        self.assertEqual(
+            token_response.status_code,
+            status.HTTP_200_OK,
+            token_response.content,
+        )
         token = token_response.data["access"]
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
 
@@ -76,7 +87,7 @@ class BillViewTestCase(APITestCase):
             "bill_type":
                 "test"
             ,
-            "url":
+            "congress_url":
                 "https://api.congress.gov/v3/bill/118/hr/6127?format=json"
             ,
             "latest_action_date":
@@ -101,8 +112,16 @@ class BillViewTestCase(APITestCase):
             #     "This field is required."
         }
 
-        response = self.client.post(self.url,json.dumps(self.sample_bill),content_type="application/json")
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        response = self.client.post(
+            self.url,
+            json.dumps(self.sample_bill),
+            content_type="application/json",
+        )
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_201_CREATED,
+            response.content,
+        )
         self.assertEqual(response.data["title"], self.sample_bill["title"])
 
 

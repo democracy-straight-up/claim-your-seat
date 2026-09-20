@@ -46,7 +46,7 @@ class ModaModel(models.Model):
     def is_active(self):
         # check if the member <= 12 and return true
         member_count = self.modamembers_set.filter(is_member = True).count()
-        is_currently_active = 3 <= member_count <= 12
+        is_currently_active = 6 <= member_count <= 12
         if is_currently_active:
             if(self.status == False):
                 self.status = True
@@ -61,68 +61,34 @@ class ModaModel(models.Model):
             return False
     
     def _update_member_verification_scores(self, score):
-        """Helper method to update verification scores for all moda members and handle HOLC assignment"""
+        """Update member scores and assign newly activated delegates."""
         from holc.models import HolcModel, HolcMembers
-        
+
         members = self.modamembers_set.filter(is_member=True)
+
         for member in members:
             member.user.users.verificationScore = score
             member.user.users.save()
-            
-            # If moda becomes active (score = 1000) and member is delegate, handle HOLC assignment
-            if score == 1000 and member.is_delegate:
-                # Check if delegate is already in a HOLC
-                existing_holc_membership = HolcMembers.objects.filter(user=member.user).first()
-                if not existing_holc_membership:
-                    # Check for existing HOLCs in the same district
-                    existing_holcs = HolcModel.objects.filter(district=self.district)
-                    
-                    if existing_holcs.exists():
-                        # Try to find a HOLC that is not maxed out (< 20 members)
-                        available_holc = None
-                        for holc in existing_holcs:
-                            if holc.member_count < 12:
-                                available_holc = holc
-                                break
-                        
-                        if available_holc:
-                            # Add delegate as member to available HOLC
-                            HolcMembers.objects.create(
-                                user=member.user,
-                                holc=available_holc,
-                                is_member=True,
-                                is_delegate=False
-                            )
-                        else:
-                            # All HOLCs are maxed out, create new one
-                            try:
-                                new_holc = HolcModel.objects.create(district=self.district)
-                                HolcMembers.objects.create(
-                                    user=member.user,
-                                    holc=new_holc,
-                                    is_member=True,
-                                    is_delegate=True
-                                )
-                            except ValidationError as e:
-                                # All HOLC codes (1-10) are used up
-                                import logging
-                                logger = logging.getLogger(__name__)
-                                logger.error(f"Cannot create HOLC: {str(e)}")
-                    else:
-                        # No HOLC exists, create new one and make delegate the HOLC delegate
-                        try:
-                            new_holc = HolcModel.objects.create(district=self.district)
-                            HolcMembers.objects.create(
-                                user=member.user,
-                                holc=new_holc,
-                                is_member=True,
-                                is_delegate=True
-                            )
-                        except ValidationError as e:
-                            # All HOLC codes (1-10) are used up
-                            import logging
-                            logger = logging.getLogger(__name__)
-                            logger.error(f"Cannot create HOLC: {str(e)}")
+
+            if score != 1000 or not member.is_delegate:
+                continue
+
+            # Preserve an existing Caucus membership.
+            if HolcMembers.objects.filter(user=member.user).exists():
+                continue
+
+            general_caucus, _ = HolcModel.objects.get_or_create(
+                district=self.district,
+                code=1,
+            )
+
+            # HolcMembers.save() makes the first member its HoLC.
+            HolcMembers.objects.create(
+                user=member.user,
+                holc=general_caucus,
+                is_member=True,
+                is_delegate=False,
+            )
 
 
     @property
@@ -170,7 +136,7 @@ class ModaMembers(models.Model):
         if not self.pk and not self.moda.modamembers_set.exists():
             self.is_delegate = True
             self.is_member = True
-            self.user.users.userType = 'U3D3'
+            self.user.users.userType = 'U4D3'
             self.user.users.save()
         
         super(ModaMembers, self).save(*args, **kwargs)
