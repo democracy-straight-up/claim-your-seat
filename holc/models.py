@@ -133,9 +133,9 @@ class HolcModel(models.Model):
 
     @property
     def is_active(self):
-        # check if the member <= 12 and return true
-        member_count = self.holcmembers_set.filter(is_member = True).count()
-        is_currently_active = 3 <= member_count <= 12
+        # A Caucus is active with at least one accepted member.
+        member_count = self.holcmembers_set.filter(is_member=True).count()
+        is_currently_active = member_count >= 1
         if is_currently_active:
             if(self.status == False):
                 self.status = True
@@ -193,9 +193,7 @@ class HolcMembers(models.Model):
             self.holc.is_active
 
     def save(self, *args, **kwargs):
-        # check for max membership 
-        if HolcMembers.objects.filter(is_member=True).count() > 12:
-            raise MaxMembershipReached()  # Raise maxMember validation
+
         
         # on each first member, make the member the delegate member by default.
         if not self.pk and not self.holc.holcmembers_set.exists():
