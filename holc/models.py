@@ -257,6 +257,36 @@ class HolcMembers(models.Model):
                 logger.error(f"Error in succession line: {str(e)}")
 
 
+class CaucusAdmissionVote(models.Model):
+    voter = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="caucus_admission_votes",
+    )
+    application = models.ForeignKey(
+        HolcMembers,
+        on_delete=models.CASCADE,
+        related_name="admission_votes",
+    )
+    voted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["voted_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["voter", "application"],
+                name="unique_caucus_admission_vote",
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.voter.username} -> "
+            f"{self.application.user.username} "
+            f"for Caucus {self.application.holc.code}"
+        )
+
+
 class PutForwardHolcMember(models.Model):
     voter = models.ForeignKey(User, on_delete=models.CASCADE)
     candidate = models.ForeignKey(HolcMembers, related_name='put_forward', on_delete=models.CASCADE)

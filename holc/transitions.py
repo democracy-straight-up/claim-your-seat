@@ -1,7 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
-from holc.models import HolcMembers, HolcModel
+from holc.models import CaucusAdmissionVote, HolcMembers, HolcModel
 from moda.models import ModaMembers
 
 
@@ -92,6 +92,77 @@ def return_eligible_delegate_to_general(membership):
     general_caucus.is_active
 
     return general_membership
+
+
+@transaction.atomic
+def cast_caucus_admission_vote(*, voter, pending_membership):
+    """
+    Record one admission vote from an accepted member of the destination
+    Caucus and complete the transfer when a majority is reached.
+    """
+    pending_membership = (
+        HolcMembers.objects.select_for_update()
+        .select_related("holc", "user")
+        .get(pk=pending_membership.pk)
+    )
+
+    if pending_membership.is_member:
+        raise ValidationError(
+            "Admission votes can only be cast on a pending application."
+        )
+
+    destination_caucus = pending_membership.holc
+
+    if destination_caucus.code == 1:
+        raise ValidationError(
+            "General Caucus membership is assigned automatically."
+        )
+
+    is_accepted_member = HolcMembers.objects.select_for_update().filter(
+        user=voter,
+        holc=destination_caucus,
+        is_member=True,
+    ).exists()
+
+    if not is_accepted_member:
+        raise ValidationError(
+            "Only an accepted member of the destination Caucus "
+            "may vote on an application."
+        )
+
+    _, created = CaucusAdmissionVote.objects.get_or_create(
+        voter=voter,
+        application=pending_membership,
+    )
+
+    if not created:
+        raise ValidationError(
+            "This member has already voted on this application."
+        )
+
+    accepted_member_count = HolcMembers.objects.filter(
+        holc=destination_caucus,
+        is_member=True,
+    ).count()
+    majority_votes = accepted_member_count // 2 + 1
+
+    current_accepted_voter_ids = HolcMembers.objects.filter(
+        holc=destination_caucus,
+        is_member=True,
+    ).values_list("user_id", flat=True)
+
+    admission_vote_count = CaucusAdmissionVote.objects.filter(
+        application=pending_membership,
+        voter_id__in=current_accepted_voter_ids,
+    ).count()
+
+    if admission_vote_count >= majority_votes:
+        return accept_eligible_delegate_into_caucus(
+            pending_membership
+        )
+
+    return pending_membership
+
 
 @transaction.atomic
 def accept_eligible_delegate_into_caucus(pending_membership):
