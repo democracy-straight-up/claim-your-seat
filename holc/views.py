@@ -14,6 +14,7 @@ from moda.models import ModaMembers
 from holc.transitions import (
     cast_caucus_admission_vote,
     cast_caucus_expulsion_vote,
+    cast_holc_replacement_vote,
     return_eligible_delegate_to_general,
 )
 
@@ -261,6 +262,33 @@ class HolcMembersViewSet(viewsets.ModelViewSet):
             result = cast_caucus_expulsion_vote(
                 voter=user,
                 target_membership=target_membership,
+            )
+        except ValidationError as exc:
+            message = exc.messages[0] if exc.messages else str(exc)
+            return Response(
+                {"message": message},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = self.get_serializer(result)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["POST"])
+    def vote_holc_replacement(self, request, pk=None):
+        user = request.user
+
+        if not user.is_authenticated or not user.is_active:
+            return Response(
+                {"message": "Authentication is required."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        candidate_membership = self.get_object()
+
+        try:
+            result = cast_holc_replacement_vote(
+                voter=user,
+                candidate_membership=candidate_membership,
             )
         except ValidationError as exc:
             message = exc.messages[0] if exc.messages else str(exc)

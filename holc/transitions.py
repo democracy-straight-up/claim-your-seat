@@ -6,6 +6,7 @@ from holc.models import (
     CaucusExpulsionVote,
     HolcMembers,
     HolcModel,
+    PutForwardHolcMember,
 )
 
 from moda.models import ModaMembers
@@ -269,6 +270,79 @@ def accept_eligible_delegate_into_caucus(pending_membership):
     destination_caucus.is_active
 
     return pending_membership
+
+
+@transaction.atomic
+def cast_holc_replacement_vote(*, voter, candidate_membership):
+    """
+    Record one HoLC replacement vote from a currently accepted member
+    of the candidate's Caucus.
+    """
+    candidate_membership = (
+        HolcMembers.objects.select_for_update()
+        .select_related("holc", "user")
+        .get(pk=candidate_membership.pk)
+    )
+
+    if not candidate_membership.is_member:
+        raise ValidationError(
+            "HoLC replacement votes can only target an accepted member."
+        )
+
+    if candidate_membership.is_delegate:
+        raise ValidationError(
+            "The current HoLC cannot be a replacement candidate."
+        )
+
+    caucus = candidate_membership.holc
+
+    has_active_delegate_mandate = (
+        ModaMembers.objects.select_for_update()
+        .filter(
+            user=candidate_membership.user,
+            is_member=True,
+            is_delegate=True,
+            moda__district=caucus.district,
+            moda__status=True,
+        )
+        .exists()
+    )
+
+    if not has_active_delegate_mandate:
+        raise ValidationError(
+            "An active Second Link delegate mandate is required "
+            "to become HoLC."
+        )
+
+    is_accepted_voter = HolcMembers.objects.select_for_update().filter(
+        user=voter,
+        holc=caucus,
+        is_member=True,
+    ).exists()
+
+    if not is_accepted_voter:
+        raise ValidationError(
+            "Only an accepted member of the Caucus may vote "
+            "for HoLC replacement."
+        )
+
+    if PutForwardHolcMember.objects.filter(
+        voter=voter,
+        candidate=candidate_membership,
+        holc=caucus,
+    ).exists():
+        raise ValidationError(
+            "This member has already voted for this HoLC candidate."
+        )
+
+    PutForwardHolcMember.objects.create(
+        voter=voter,
+        candidate=candidate_membership,
+        holc=caucus,
+    )
+
+    candidate_membership.refresh_from_db()
+    return candidate_membership
 
 
 @transaction.atomic

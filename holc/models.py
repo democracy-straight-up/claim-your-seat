@@ -219,11 +219,35 @@ class HolcMembers(models.Model):
             )
     
     def count_put_forward(self):
-        return PutForwardHolcMember.objects.filter(candidate=self).count()
+        current_accepted_voter_ids = HolcMembers.objects.filter(
+            holc=self.holc,
+            is_member=True,
+        ).values_list("user_id", flat=True)
+
+        return PutForwardHolcMember.objects.filter(
+            candidate=self,
+            voter_id__in=current_accepted_voter_ids,
+        ).count()
 
     def check_put_forward(self):
-        total_members = HolcMembers.objects.filter(holc=self.holc).filter(is_member = True).count()
-        majority_votes = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
+        from moda.models import ModaMembers
+
+        has_active_delegate_mandate = ModaMembers.objects.filter(
+            user=self.user,
+            is_member=True,
+            is_delegate=True,
+            moda__district=self.holc.district,
+            moda__status=True,
+        ).exists()
+
+        if not has_active_delegate_mandate:
+            return
+
+        total_members = HolcMembers.objects.filter(
+            holc=self.holc,
+            is_member=True,
+        ).count()
+        majority_votes = total_members // 2 + 1
         if self.count_put_forward() >= majority_votes:
             # find the current delegate and set is_delegate false.
             current_delegate = HolcMembers.objects.filter(holc=self.holc).filter(is_delegate = True).first()
@@ -331,12 +355,57 @@ class CaucusExpulsionVote(models.Model):
 
 class PutForwardHolcMember(models.Model):
     voter = models.ForeignKey(User, on_delete=models.CASCADE)
-    candidate = models.ForeignKey(HolcMembers, related_name='put_forward', on_delete=models.CASCADE)
-    holc = models.ForeignKey(HolcModel, on_delete=models.CASCADE, null=True, blank=True)
+    candidate = models.ForeignKey(
+        HolcMembers,
+        related_name="put_forward",
+        on_delete=models.CASCADE,
+    )
+    holc = models.ForeignKey(
+        HolcModel,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
     voted_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["voter", "candidate", "holc"],
+                name="unique_holc_replacement_vote",
+            ),
+        ]
+
     def save(self, *args, **kwargs):
-        super(PutForwardHolcMember, self).save(*args, **kwargs)
+        if not self.candidate.is_member:
+            return
+
+        if self.candidate.is_delegate:
+            return
+
+        if self.holc_id != self.candidate.holc_id:
+            return
+
+        is_accepted_voter = HolcMembers.objects.filter(
+            user=self.voter,
+            holc=self.candidate.holc,
+            is_member=True,
+        ).exists()
+
+        if not is_accepted_voter:
+            return
+
+        if (
+            self._state.adding
+            and PutForwardHolcMember.objects.filter(
+                voter=self.voter,
+                candidate=self.candidate,
+                holc=self.holc,
+            ).exists()
+        ):
+            return
+
+        super().save(*args, **kwargs)
         self.candidate.check_put_forward()
 
 
