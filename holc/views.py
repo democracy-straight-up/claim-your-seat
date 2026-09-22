@@ -8,41 +8,135 @@ from rest_framework import status
 from django.http import JsonResponse
 from rest_framework.decorators import action
 from django.shortcuts import get_object_or_404
-
+from django.db import transaction
+from django.core.exceptions import ValidationError
+from moda.models import ModaMembers
 
 class HolcViewSet(viewsets.ModelViewSet):
     queryset = models.HolcModel.objects.all()
     serializer_class = serializers.HolcSerializer
     
     def create(self, request, *args, **kwargs):
+        user = request.user
+        profile = getattr(user, "users", None)
+
+        if (
+            not user.is_authenticated
+            or not user.is_active
+            or getattr(profile, "userType", None) != "U4D3"
+        ):
+            return Response(
+                {
+                    "message": (
+                        "Only a Caucus Delegate who is not a HoLC "
+                        "may create a Caucus."
+                    )
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if request.data.get("user") != request.user.username:
+            return Response(
+                {"message": "You can only create a Caucus for yourself."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         try:
-            user=None 
-            district =None
-            if 'user' in request.data and 'district' in request.data:
-                user = User.objects.get(username=request.data['user'])
-                district = Districts.objects.get(
-                    code=request.data['district'])
-            else:
-                messages = "District is required."
-                return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
+            district = Districts.objects.get(code=request.data["district"])
+        except KeyError:
+            return Response(
+                {"message": "District is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except Districts.DoesNotExist:
+            return Response(
+                {"message": "District not found."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-            # check if the userType is not 0 return
-            if user.users.userType[:2] == 'U4':
-                messages = "Already belong to another Holc."
-                return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
-            # create a sec_del object
-            holc =  models.HolcModel.objects.create(district=district)
-    
-            # set the userType attribute of the creator to 1
-            # add the user to circle member as delegate. it does not require to save. create automatically saves as well
-            models.HolcMembers.objects.create(user=user, holc=holc, is_member=True)
+        if getattr(profile, "district_id", None) != district.pk:
+            return Response(
+                {"message": "You may only create a Caucus in your own district."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
-            obj = serializers.HolcSerializer(holc)
-    
-            return JsonResponse(obj.data)
-        except:
-            messages = "Something Went Wrong."
-            return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            with transaction.atomic():
+                has_active_delegate_mandate = (
+                    ModaMembers.objects.select_for_update()
+                    .filter(
+                        user=user,
+                        is_member=True,
+                        is_delegate=True,
+                        moda__district=district,
+                        moda__status=True,
+                    )
+                    .exists()
+                )
+
+                if not has_active_delegate_mandate:
+                    return Response(
+                        {
+                            "message": (
+                                "An active Second Link delegate mandate is "
+                                "required to create a Caucus."
+                            )
+                        },
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+
+                current_memberships = list(
+                    models.HolcMembers.objects.select_for_update().filter(
+                        user=user,
+                        is_member=True,
+                        holc__district=district,
+                    )
+                )
+
+                if any(
+                    membership.is_delegate
+                    for membership in current_memberships
+                ):
+                    return Response(
+                        {
+                            "message": (
+                                "A HoLC must relinquish that office before "
+                                "creating another Caucus."
+                            )
+                        },
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+
+                current_membership_ids = [
+                    membership.pk
+                    for membership in current_memberships
+                ]
+
+                if current_membership_ids:
+                    models.HolcMembers.objects.filter(
+                        pk__in=current_membership_ids
+                    ).delete()
+
+                holc = models.HolcModel.objects.create(district=district)
+
+                models.HolcMembers.objects.create(
+                    user=user,
+                    holc=holc,
+                    is_member=True,
+                )
+
+                # Persist the new Caucus's active status immediately.
+                holc.is_active
+
+        except ValidationError as exc:
+            message = exc.messages[0] if exc.messages else str(exc)
+            return Response(
+                {"message": message},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        obj = serializers.HolcSerializer(holc)
+        return JsonResponse(obj.data)
 
 
     @action(detail=False, methods=['POST'])
