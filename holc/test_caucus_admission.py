@@ -4,7 +4,10 @@ from rest_framework.test import APIRequestFactory, force_authenticate
 from moda.models import ModaMembers, ModaModel
 from holc.models import HolcMembers, HolcModel
 from holc.views import HolcViewSet, HolcMembersViewSet
-from holc.transitions import expel_eligible_delegate_to_general
+from holc.transitions import (
+    accept_eligible_delegate_into_caucus,
+    expel_eligible_delegate_to_general,
+)
 from vote.models import Districts
 
 
@@ -262,8 +265,130 @@ class CaucusCreationTests(TestCase):
         creator.users.refresh_from_db()
         self.assertEqual(creator.users.userType, "U4D3")
 
-
 class CaucusAdmissionTests(TestCase):
+    def test_accepting_pending_delegate_transfers_accepted_membership(self):
+        district = Districts.objects.create(
+            name="Vermont At-Large",
+            code="VT00",
+        )
+
+        applicant = User.objects.create_user(
+            username="accepted-transfer-applicant",
+            email="accepted-transfer-applicant@example.com",
+        )
+        applicant.users.district = district
+        applicant.users.legalName = "Accepted Transfer Applicant"
+        applicant.users.address = "1 Test Street"
+        applicant.users.userType = "U2D2"
+        applicant.users.save()
+
+        # This test isolates the admission transition. Second Link
+        # activation behavior is covered separately.
+        second_link = ModaModel.objects.create(
+            district=district,
+            status=True,
+        )
+        ModaMembers.objects.create(
+            user=applicant,
+            moda=second_link,
+            is_member=True,
+        )
+
+        applicant.users.refresh_from_db()
+        self.assertEqual(applicant.users.userType, "U4D3")
+
+        general_holc = User.objects.create_user(
+            username="general-transfer-holc",
+            email="general-transfer-holc@example.com",
+        )
+        general_holc.users.district = district
+        general_holc.users.legalName = "General HoLC"
+        general_holc.users.address = "2 Test Street"
+        general_holc.users.userType = "U4D3"
+        general_holc.users.save()
+
+        general = HolcModel.objects.create(
+            district=district,
+            code=1,
+        )
+        HolcMembers.objects.create(
+            user=general_holc,
+            holc=general,
+            is_member=True,
+        )
+
+        source_membership = HolcMembers.objects.create(
+            user=applicant,
+            holc=general,
+            is_member=True,
+            is_delegate=False,
+        )
+
+        destination_holc = User.objects.create_user(
+            username="destination-transfer-holc",
+            email="destination-transfer-holc@example.com",
+        )
+        destination_holc.users.district = district
+        destination_holc.users.legalName = "Destination HoLC"
+        destination_holc.users.address = "3 Test Street"
+        destination_holc.users.userType = "U4D3"
+        destination_holc.users.save()
+
+        destination = HolcModel.objects.create(district=district)
+        HolcMembers.objects.create(
+            user=destination_holc,
+            holc=destination,
+            is_member=True,
+        )
+
+        pending_membership = HolcMembers.objects.create(
+            user=applicant,
+            holc=destination,
+        )
+
+        self.assertTrue(source_membership.is_member)
+        self.assertFalse(pending_membership.is_member)
+        self.assertFalse(pending_membership.is_delegate)
+
+        accepted_membership = accept_eligible_delegate_into_caucus(
+            pending_membership
+        )
+
+        accepted_membership.refresh_from_db()
+
+        self.assertTrue(accepted_membership.is_member)
+        self.assertFalse(accepted_membership.is_delegate)
+        self.assertEqual(accepted_membership.holc, destination)
+
+        self.assertFalse(
+            HolcMembers.objects.filter(
+                user=applicant,
+                holc=general,
+                is_member=True,
+            ).exists()
+        )
+
+        self.assertEqual(
+            HolcMembers.objects.filter(
+                user=applicant,
+                is_member=True,
+            ).count(),
+            1,
+        )
+
+        applicant.users.refresh_from_db()
+        self.assertEqual(applicant.users.userType, "U4D3")
+
+        self.assertTrue(
+            ModaMembers.objects.filter(
+                user=applicant,
+                is_member=True,
+                is_delegate=True,
+                moda=second_link,
+                moda__status=True,
+            ).exists()
+        )
+
     def test_delegate_cannot_apply_another_user_to_existing_caucus(self):
         district = Districts.objects.create(
             name="Vermont At-Large",
@@ -495,6 +620,239 @@ class CaucusAdmissionTests(TestCase):
         applicant.users.refresh_from_db()
         self.assertEqual(applicant.users.userType, "U4D3")
 
+    def test_delegate_cannot_apply_to_general_caucus(self):
+        district = Districts.objects.create(
+            name="Vermont At-Large",
+            code="VT00",
+        )
+
+        applicant = User.objects.create_user(
+            username="general-application-delegate",
+            email="general-application-delegate@example.com",
+        )
+        applicant.users.district = district
+        applicant.users.legalName = "General Application Delegate"
+        applicant.users.address = "1 Test Street"
+        applicant.users.userType = "U2D2"
+        applicant.users.save()
+
+        second_link = ModaModel.objects.create(
+            district=district,
+            status=True,
+        )
+        ModaMembers.objects.create(
+            user=applicant,
+            moda=second_link,
+            is_member=True,
+        )
+
+        applicant.users.refresh_from_db()
+        self.assertEqual(applicant.users.userType, "U4D3")
+
+        general = HolcModel.objects.create(
+            district=district,
+            code=1,
+            invitation_key=4567890123,
+        )
+
+        request = APIRequestFactory().post(
+            "/holc-members/join_invite_key/",
+            {
+                "inviteKey": general.invitation_key,
+                "user": applicant.username,
+            },
+            format="json",
+        )
+        force_authenticate(request, user=applicant)
+
+        response = HolcMembersViewSet.as_view(
+            {"post": "join_invite_key"}
+        )(request)
+
+        self.assertEqual(response.status_code, 403)
+
+        self.assertFalse(
+            HolcMembers.objects.filter(
+                user=applicant,
+                holc=general,
+            ).exists()
+        )
+
+        applicant.users.refresh_from_db()
+        self.assertEqual(applicant.users.userType, "U4D3")
+
+    def test_duplicate_pending_application_is_rejected(self):
+        district = Districts.objects.create(
+            name="Vermont At-Large",
+            code="VT00",
+        )
+
+        applicant = User.objects.create_user(
+            username="duplicate-pending-delegate",
+            email="duplicate-pending-delegate@example.com",
+        )
+        applicant.users.district = district
+        applicant.users.legalName = "Duplicate Pending Delegate"
+        applicant.users.address = "1 Test Street"
+        applicant.users.userType = "U2D2"
+        applicant.users.save()
+
+        second_link = ModaModel.objects.create(
+            district=district,
+            status=True,
+        )
+        ModaMembers.objects.create(
+            user=applicant,
+            moda=second_link,
+            is_member=True,
+        )
+
+        destination_holc = User.objects.create_user(
+            username="duplicate-destination-holc",
+            email="duplicate-destination-holc@example.com",
+        )
+        destination_holc.users.district = district
+        destination_holc.users.legalName = "Destination HoLC"
+        destination_holc.users.address = "2 Test Street"
+        destination_holc.users.userType = "U4D3"
+        destination_holc.users.save()
+
+        destination = HolcModel.objects.create(
+            district=district,
+            invitation_key=5678901234,
+        )
+        HolcMembers.objects.create(
+            user=destination_holc,
+            holc=destination,
+            is_member=True,
+        )
+
+        HolcMembers.objects.create(
+            user=applicant,
+            holc=destination,
+            is_member=False,
+            is_delegate=False,
+        )
+
+        request = APIRequestFactory().post(
+            "/holc-members/join_invite_key/",
+            {
+                "inviteKey": destination.invitation_key,
+                "user": applicant.username,
+            },
+            format="json",
+        )
+        force_authenticate(request, user=applicant)
+
+        response = HolcMembersViewSet.as_view(
+            {"post": "join_invite_key"}
+        )(request)
+
+        self.assertEqual(response.status_code, 400)
+
+        self.assertEqual(
+            HolcMembers.objects.filter(
+                user=applicant,
+                holc=destination,
+                is_member=False,
+            ).count(),
+            1,
+        )
+
+        applicant.users.refresh_from_db()
+        self.assertEqual(applicant.users.userType, "U4D3")
+
+    def test_actual_holc_cannot_apply_even_with_u4d3_role_code(self):
+        district = Districts.objects.create(
+            name="Vermont At-Large",
+            code="VT00",
+        )
+
+        applicant = User.objects.create_user(
+            username="actual-holc-applicant",
+            email="actual-holc-applicant@example.com",
+        )
+        applicant.users.district = district
+        applicant.users.legalName = "Actual HoLC Applicant"
+        applicant.users.address = "1 Test Street"
+        applicant.users.userType = "U2D2"
+        applicant.users.save()
+
+        second_link = ModaModel.objects.create(
+            district=district,
+            status=True,
+        )
+        ModaMembers.objects.create(
+            user=applicant,
+            moda=second_link,
+            is_member=True,
+        )
+
+        source = HolcModel.objects.create(district=district)
+        source_membership = HolcMembers.objects.create(
+            user=applicant,
+            holc=source,
+            is_member=True,
+        )
+
+        self.assertTrue(source_membership.is_delegate)
+
+        # Simulate a stale or inconsistent cached role code. Authorization
+        # must still respect the actual HoLC office.
+        applicant.users.userType = "U4D3"
+        applicant.users.save(update_fields=["userType"])
+
+        destination_holc = User.objects.create_user(
+            username="actual-holc-destination-owner",
+            email="actual-holc-destination-owner@example.com",
+        )
+        destination_holc.users.district = district
+        destination_holc.users.legalName = "Destination HoLC"
+        destination_holc.users.address = "2 Test Street"
+        destination_holc.users.userType = "U4D3"
+        destination_holc.users.save()
+
+        destination = HolcModel.objects.create(
+            district=district,
+            invitation_key=6789012345,
+        )
+        HolcMembers.objects.create(
+            user=destination_holc,
+            holc=destination,
+            is_member=True,
+        )
+
+        request = APIRequestFactory().post(
+            "/holc-members/join_invite_key/",
+            {
+                "inviteKey": destination.invitation_key,
+                "user": applicant.username,
+            },
+            format="json",
+        )
+        force_authenticate(request, user=applicant)
+
+        response = HolcMembersViewSet.as_view(
+            {"post": "join_invite_key"}
+        )(request)
+
+        self.assertEqual(response.status_code, 403)
+
+        self.assertFalse(
+            HolcMembers.objects.filter(
+                user=applicant,
+                holc=destination,
+            ).exists()
+        )
+
+        self.assertTrue(
+            HolcMembers.objects.filter(
+                user=applicant,
+                holc=source,
+                is_member=True,
+                is_delegate=True,
+            ).exists()
+        )
 
 class CaucusExitTests(TestCase):
     def test_eligible_delegate_leaving_ordinary_caucus_returns_to_general(self):

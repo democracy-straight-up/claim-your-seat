@@ -234,6 +234,16 @@ class HolcMembersViewSet(viewsets.ModelViewSet):
             holc = models.HolcModel.objects.get(
                 invitation_key=request.data['inviteKey']
             )
+            if holc.code == 1:
+                return Response(
+                    {
+                        "message": (
+                            "General Caucus membership is assigned "
+                            "automatically."
+                        )
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
 
             profile = getattr(user, "users", None)
 
@@ -266,6 +276,39 @@ class HolcMembersViewSet(viewsets.ModelViewSet):
                     },
                     status=status.HTTP_403_FORBIDDEN,
                 )
+
+            holds_holc_office = models.HolcMembers.objects.filter(
+                user=user,
+                is_member=True,
+                is_delegate=True,
+                holc__district=holc.district,
+            ).exists()
+
+            if holds_holc_office:
+                return Response(
+                    {
+                        "message": (
+                            "A HoLC must relinquish that office before "
+                            "applying to another Caucus."
+                        )
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            if models.HolcMembers.objects.filter(
+                user=user,
+                holc=holc,
+            ).exists():
+                return Response(
+                    {
+                        "message": (
+                            "You already have a membership or pending "
+                            "application for this Caucus."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             models.HolcMembers.objects.create(user=user, holc=holc)
             members = models.HolcMembers.objects.filter(holc=holc)
             serializer = self.get_serializer(members, many=True)

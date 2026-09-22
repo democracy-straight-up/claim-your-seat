@@ -93,6 +93,106 @@ def return_eligible_delegate_to_general(membership):
 
     return general_membership
 
+@transaction.atomic
+def accept_eligible_delegate_into_caucus(pending_membership):
+    """
+    Accept a pending Caucus application and transfer the eligible
+    delegate from their current accepted Caucus to the destination.
+
+    The applicant keeps the existing Caucus membership until this
+    transition completes successfully.
+    """
+    pending_membership = (
+        HolcMembers.objects.select_for_update()
+        .select_related("holc", "user", "user__users")
+        .get(pk=pending_membership.pk)
+    )
+
+    if pending_membership.is_member:
+        raise ValidationError(
+            "Only a pending Caucus application can be accepted."
+        )
+
+    if pending_membership.is_delegate:
+        raise ValidationError(
+            "A pending Caucus applicant cannot already hold HoLC office."
+        )
+
+    destination_caucus = pending_membership.holc
+
+    if destination_caucus.code == 1:
+        raise ValidationError(
+            "General Caucus membership is assigned automatically."
+        )
+
+    user = pending_membership.user
+    district = destination_caucus.district
+
+    has_active_delegate_mandate = (
+        ModaMembers.objects.select_for_update()
+        .filter(
+            user=user,
+            is_member=True,
+            is_delegate=True,
+            moda__district=district,
+            moda__status=True,
+        )
+        .exists()
+    )
+
+    if not has_active_delegate_mandate:
+        raise ValidationError(
+            "An active Second Link delegate mandate is required "
+            "to join a Caucus."
+        )
+
+    current_memberships = list(
+        HolcMembers.objects.select_for_update()
+        .select_related("holc")
+        .filter(
+            user=user,
+            is_member=True,
+            holc__district=district,
+        )
+    )
+
+    if len(current_memberships) != 1:
+        raise ValidationError(
+            "A Caucus Delegate must have exactly one accepted "
+            "Caucus membership before transferring."
+        )
+
+    current_membership = current_memberships[0]
+
+    if current_membership.is_delegate:
+        raise ValidationError(
+            "A HoLC must relinquish that office before switching Caucuses."
+        )
+
+    source_caucus = current_membership.holc
+
+    # Bypass the legacy HolcMembers.delete() role transition,
+    # which still writes obsolete U3D3.
+    HolcMembers.objects.filter(pk=current_membership.pk).delete()
+
+    pending_membership.is_member = True
+    pending_membership.is_delegate = False
+    pending_membership.save(
+        update_fields=[
+            "is_member",
+            "is_delegate",
+            "updated_at",
+        ]
+    )
+
+    user.users.userType = "U4D3"
+    user.users.save(update_fields=["userType"])
+
+    source_caucus.is_active
+    destination_caucus.is_active
+
+    return pending_membership
+
 
 def expel_eligible_delegate_to_general(membership):
     """
