@@ -11,6 +11,7 @@ from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from moda.models import ModaMembers
+from holc.transitions import return_eligible_delegate_to_general
 
 class HolcViewSet(viewsets.ModelViewSet):
     queryset = models.HolcModel.objects.all()
@@ -157,21 +158,123 @@ class HolcMembersViewSet(viewsets.ModelViewSet):
     queryset = models.HolcMembers.objects.all()
     serializer_class = serializers.HolcMembersSerializer
 
-    @action(detail=False, methods=['POST'])
-    def join_invite_key(self,request):
+
+    def destroy(self, request, *args, **kwargs):
+        membership = self.get_object()
+        user = request.user
+
+        if not user.is_authenticated or not user.is_active:
+            return Response(
+                {"message": "Authentication is required."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if membership.user_id != user.id:
+            return Response(
+                {"message": "You can only leave your own Caucus."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if membership.is_delegate:
+            return Response(
+                {
+                    "message": (
+                        "A HoLC must relinquish that office before "
+                        "leaving the Caucus."
+                    )
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if membership.holc.code == 1:
+            return Response(
+                {
+                    "message": (
+                        "An eligible Caucus Delegate cannot leave "
+                        "General Caucus without joining another Caucus."
+                    )
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Canceling a pending application does not change accepted
+        # Caucus membership or role.
+        if not membership.is_member:
+            models.HolcMembers.objects.filter(pk=membership.pk).delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
         try:
-            holc = models.HolcModel.objects.get(invitation_key=request.data['inviteKey'])
-            user = User.objects.get(username=request.data['user'])
+            return_eligible_delegate_to_general(membership)
+        except ValidationError as exc:
+            message = exc.messages[0] if exc.messages else str(exc)
+            return Response(
+                {"message": message},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=["POST"])
+    def join_invite_key(self, request):
+        user = request.user
+
+        if not user.is_authenticated or not user.is_active:
+            return Response(
+                {"message": "Authentication is required."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if request.data.get("user") != user.username:
+            return Response(
+                {"message": "You can only apply to a Caucus for yourself."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            holc = models.HolcModel.objects.get(
+                invitation_key=request.data['inviteKey']
+            )
+
+            profile = getattr(user, "users", None)
+
+            if getattr(profile, "userType", None) != "U4D3":
+                return Response(
+                    {
+                        "message": (
+                            "Only an eligible Caucus Delegate may apply "
+                            "to join a Caucus."
+                        )
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            has_active_delegate_mandate = ModaMembers.objects.filter(
+                user=user,
+                is_member=True,
+                is_delegate=True,
+                moda__district=holc.district,
+                moda__status=True,
+            ).exists()
+
+            if not has_active_delegate_mandate:
+                return Response(
+                    {
+                        "message": (
+                            "An active Second Link delegate mandate is "
+                            "required to apply to a Caucus."
+                        )
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             models.HolcMembers.objects.create(user=user, holc=holc)
             members = models.HolcMembers.objects.filter(holc=holc)
             serializer = self.get_serializer(members, many=True)
             return Response(serializer.data)
         except models.HolcModel.DoesNotExist:
-            return Response({"message": "Holc not found."}, status=status.HTTP_404_NOT_FOUND)
-        except models.HolcMembers.DoesNotExist:
-            return Response({"message": "Holc members not found."}, status=status.HTTP_404_NOT_FOUND)
-        except models.MaxMembershipReached:
-            return Response({"message": "This Holc has reached its maximum membership and does not accept new candidate!"}, status=status.HTTP_406_NOT_ACCEPTABLE)
+            return Response(
+                {"message": "Caucus not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
 
 class HolcMemberContactViewSet(viewsets.ModelViewSet):
