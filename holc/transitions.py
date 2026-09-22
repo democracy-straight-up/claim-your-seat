@@ -1,7 +1,13 @@
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
-from holc.models import CaucusAdmissionVote, HolcMembers, HolcModel
+from holc.models import (
+    CaucusAdmissionVote,
+    CaucusExpulsionVote,
+    HolcMembers,
+    HolcModel,
+)
+
 from moda.models import ModaMembers
 
 
@@ -263,6 +269,85 @@ def accept_eligible_delegate_into_caucus(pending_membership):
     destination_caucus.is_active
 
     return pending_membership
+
+
+@transaction.atomic
+def cast_caucus_expulsion_vote(*, voter, target_membership):
+    """
+    Record one expulsion vote from an accepted member of an ordinary
+    Caucus and return the target to General Caucus when a majority
+    is reached.
+    """
+    target_membership = (
+        HolcMembers.objects.select_for_update()
+        .select_related("holc", "user")
+        .get(pk=target_membership.pk)
+    )
+
+    if not target_membership.is_member:
+        raise ValidationError(
+            "Expulsion votes can only target an accepted Caucus member."
+        )
+
+    if target_membership.is_delegate:
+        raise ValidationError(
+            "A HoLC must relinquish that office before ordinary expulsion."
+        )
+
+    caucus = target_membership.holc
+
+    if caucus.code == 1:
+        raise ValidationError(
+            "General Caucus membership cannot use ordinary expulsion."
+        )
+
+    is_accepted_member = HolcMembers.objects.select_for_update().filter(
+        user=voter,
+        holc=caucus,
+        is_member=True,
+    ).exists()
+
+    if not is_accepted_member:
+        raise ValidationError(
+            "Only an accepted member of the Caucus may vote "
+            "on an expulsion."
+        )
+
+    _, created = CaucusExpulsionVote.objects.get_or_create(
+        voter=voter,
+        target_user=target_membership.user,
+        caucus=caucus,
+        target_membership_id=target_membership.pk,
+    )
+
+    if not created:
+        raise ValidationError(
+            "This member has already voted on this expulsion."
+        )
+
+    accepted_member_count = HolcMembers.objects.filter(
+        holc=caucus,
+        is_member=True,
+    ).count()
+    majority_votes = accepted_member_count // 2 + 1
+
+    current_accepted_voter_ids = HolcMembers.objects.filter(
+        holc=caucus,
+        is_member=True,
+    ).values_list("user_id", flat=True)
+
+    expulsion_vote_count = CaucusExpulsionVote.objects.filter(
+        caucus=caucus,
+        target_membership_id=target_membership.pk,
+        voter_id__in=current_accepted_voter_ids,
+    ).count()
+
+    if expulsion_vote_count >= majority_votes:
+        return expel_eligible_delegate_to_general(
+            target_membership
+        )
+
+    return target_membership
 
 
 def expel_eligible_delegate_to_general(membership):

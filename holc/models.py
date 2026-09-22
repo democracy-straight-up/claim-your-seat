@@ -287,6 +287,48 @@ class CaucusAdmissionVote(models.Model):
         )
 
 
+class CaucusExpulsionVote(models.Model):
+    voter = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="caucus_expulsion_votes",
+    )
+    target_user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="caucus_expulsion_votes_received",
+    )
+    caucus = models.ForeignKey(
+        HolcModel,
+        on_delete=models.CASCADE,
+        related_name="expulsion_votes",
+    )
+    # Store the membership ID as a snapshot rather than a foreign key so
+    # the vote history survives removal of the target membership.
+    target_membership_id = models.PositiveBigIntegerField()
+    voted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["voted_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "voter",
+                    "caucus",
+                    "target_membership_id",
+                ],
+                name="unique_caucus_expulsion_vote",
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.voter.username} -> "
+            f"{self.target_user.username} "
+            f"from Caucus {self.caucus.code}"
+        )
+
+
 class PutForwardHolcMember(models.Model):
     voter = models.ForeignKey(User, on_delete=models.CASCADE)
     candidate = models.ForeignKey(HolcMembers, related_name='put_forward', on_delete=models.CASCADE)
