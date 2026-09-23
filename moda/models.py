@@ -110,6 +110,7 @@ class ModaMembers(models.Model):
     is_member = models.BooleanField(default=False)
     joined_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    succession_position = models.PositiveSmallIntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ['-is_delegate', 'joined_at']
@@ -128,31 +129,62 @@ class ModaMembers(models.Model):
             self.moda.is_active
 
     def save(self, *args, **kwargs):
-        # check for max membership 
+        was_member = False
+        if self.pk:
+            was_member = (
+                ModaMembers.objects.filter(pk=self.pk)
+                .values_list("is_member", flat=True)
+                .first()
+                is True
+            )
+
+        # Check for max membership.
         if ModaMembers.objects.filter(is_member=True).count() > 12:
-            raise MaxMembershipReached()  # Raise maxMember validation
-        
-        # on each first member, make the member the delegate member by default.
+            raise MaxMembershipReached()
+
+        # The first member becomes the Second Link delegate automatically.
         if not self.pk and not self.moda.modamembers_set.exists():
             self.is_delegate = True
             self.is_member = True
-            self.user.users.userType = 'U4D3'
+            self.user.users.userType = "U4D3"
             self.user.users.save()
-        
+
+        # Assign succession position when a member is first accepted.
+        if (
+            self.is_member
+            and not was_member
+            and self.succession_position is None
+        ):
+            max_position = (
+                ModaMembers.objects.filter(
+                    moda=self.moda,
+                    is_member=True,
+                    succession_position__isnull=False,
+                )
+                .exclude(pk=self.pk)
+                .aggregate(models.Max("succession_position"))[
+                    "succession_position__max"
+                ]
+            )
+
+            self.succession_position = (
+                0 if max_position is None else max_position + 1
+            )
+
         super(ModaMembers, self).save(*args, **kwargs)
-        
-        # Create contact if member becomes a member (either first delegate or through voting)
+
+        # Create contact if member becomes a member.
         if self.is_member:
             ModaMemberContact.objects.get_or_create(
                 member=self,
                 defaults={
-                    'moda': self.moda,
-                    'legal_name': self.user.users.legalName,
-                    'address': self.user.users.address,
-                    'email': self.user.email,
-                    'contact_rules': 'Please contact during regular hours.',
-                    'contact': 'Available via email.',
-                }
+                    "moda": self.moda,
+                    "legal_name": self.user.users.legalName,
+                    "address": self.user.users.address,
+                    "email": self.user.email,
+                    "contact_rules": "Please contact during regular hours.",
+                    "contact": "Available via email.",
+                },
             )
     
     def count_vote_out(self):
