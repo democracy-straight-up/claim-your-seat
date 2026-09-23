@@ -90,6 +90,7 @@ class SecDelMembers(models.Model):
     is_member = models.BooleanField(default=False)
     joined_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    succession_position = models.PositiveSmallIntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ['-is_delegate', 'joined_at']
@@ -110,26 +111,60 @@ class SecDelMembers(models.Model):
             self.sec_del.is_active
     
     def save(self, *args, **kwargs):
-        # check for max membership 
-        if SecDelMembers.objects.filter(is_member=True, sec_del = self.sec_del).count() > 12:
-            raise MaxMembershipReached()  # Raise maxMember validation
-        # on each first member, make the member the delegate member by default.
+        was_member = False
+        if self.pk:
+            was_member = (
+                SecDelMembers.objects.filter(pk=self.pk)
+                .values_list("is_member", flat=True)
+                .first()
+                is True
+            )
+
+        # Check for max membership.
+        if SecDelMembers.objects.filter(
+            is_member=True,
+            sec_del=self.sec_del,
+        ).count() > 12:
+            raise MaxMembershipReached()
+
+        # The first member becomes the First Link delegate automatically.
         if not self.pk and not self.sec_del.secdelmembers_set.exists():
             self.is_delegate = True
             self.is_member = True
-            self.user.users.userType = 'U2D2'
+            self.user.users.userType = "U2D2"
             self.user.users.save()
 
+        # Assign succession position when a member is first accepted.
+        if (
+            self.is_member
+            and not was_member
+            and self.succession_position is None
+        ):
+            max_position = (
+                SecDelMembers.objects.filter(
+                    sec_del=self.sec_del,
+                    is_member=True,
+                    succession_position__isnull=False,
+                )
+                .exclude(pk=self.pk)
+                .aggregate(models.Max("succession_position"))[
+                    "succession_position__max"
+                ]
+            )
+
+            self.succession_position = (
+                0 if max_position is None else max_position + 1
+            )
 
         super(SecDelMembers, self).save(*args, **kwargs)
-        
+
         if self.is_member:
             ContactInfo.objects.get_or_create(
                 member=self,
                 legal_name=self.user.users.legalName,
                 address=self.user.users.address,
                 email=self.user.email,
-                sec_del=self.sec_del
+                sec_del=self.sec_del,
             )
 
     def count_vote_out(self):
