@@ -154,6 +154,7 @@ class GroupMember(models.Model):
     member_type = models.CharField(max_length=10, null=True, blank=True)
     is_delegate     = models.BooleanField(default=False)
     member_number   = models.PositiveSmallIntegerField(null=True, blank=True)
+    succession_position = models.PositiveSmallIntegerField(null=True, blank=True)
 
     def __str__(self):
         return str(self.user.username)
@@ -162,18 +163,50 @@ class GroupMember(models.Model):
         ordering = ['-is_delegate', 'date_joined']
 
     def save(self, *args, **kwargs):
-        # check for max membership
-        if GroupMember.objects.filter(is_member=True, group = self.group).count() > 12:
-            raise MaxMembershipReached()  # Raise maxMember validation
-        # on each first member, make the member the delegate member by default.
+        was_member = False
+        if self.pk:
+            was_member = (
+                GroupMember.objects.filter(pk=self.pk)
+                .values_list("is_member", flat=True)
+                .first()
+                is True
+            )
+
+        # Check for max membership.
+        if GroupMember.objects.filter(is_member=True, group=self.group).count() > 12:
+            raise MaxMembershipReached()
+
+        # The first member becomes the Circle delegate automatically.
         if not self.pk and not self.group.groupmember_set.exists():
             self.is_delegate = True
             self.is_member = True
-            self.user.users.userType = 'U1D1'
+            self.user.users.userType = "U1D1"
             self.user.users.save()
 
+        # Assign succession position when a member is first accepted.
+        if (
+            self.is_member
+            and not was_member
+            and self.succession_position is None
+        ):
+            max_position = (
+                GroupMember.objects.filter(
+                    group=self.group,
+                    is_member=True,
+                    succession_position__isnull=False,
+                )
+                .exclude(pk=self.pk)
+                .aggregate(models.Max("succession_position"))[
+                    "succession_position__max"
+                ]
+            )
+
+            self.succession_position = (
+                0 if max_position is None else max_position + 1
+            )
 
         super(GroupMember, self).save(*args, **kwargs)
+
         if self.group:
             self.group.is_active
 
@@ -183,7 +216,7 @@ class GroupMember(models.Model):
                 legal_name=self.user.users.legalName,
                 address=self.user.users.address,
                 email=self.user.email,
-                group=self.group
+                group=self.group,
             )
 
     def delete(self, *args, **kwargs):
