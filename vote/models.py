@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 from django.contrib.auth.models import User
 
 # District model (table) is for listing of all US districts
@@ -218,6 +218,48 @@ class GroupMember(models.Model):
                 email=self.user.email,
                 group=self.group,
             )
+
+    def move_forward_one_position(self):
+        with transaction.atomic():
+            current_member = GroupMember.objects.select_for_update().get(
+                pk=self.pk
+            )
+
+            if (
+                not current_member.is_member
+                or current_member.succession_position is None
+                or current_member.succession_position <= 1
+            ):
+                return False
+
+            member_ahead = (
+                GroupMember.objects.select_for_update()
+                .filter(
+                    group=current_member.group,
+                    is_member=True,
+                    succession_position=(
+                        current_member.succession_position - 1
+                    ),
+                )
+                .first()
+            )
+
+            if member_ahead is None:
+                return False
+
+            current_position = current_member.succession_position
+            ahead_position = member_ahead.succession_position
+
+            GroupMember.objects.filter(pk=member_ahead.pk).update(
+                succession_position=current_position
+            )
+            GroupMember.objects.filter(pk=current_member.pk).update(
+                succession_position=ahead_position
+            )
+
+            self.succession_position = ahead_position
+
+            return True
 
     def delete(self, *args, **kwargs):
         # set the userType to U0D0 and verification score to 0

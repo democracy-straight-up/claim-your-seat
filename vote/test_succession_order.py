@@ -95,3 +95,46 @@ class CircleSuccessionOrderTests(TestCase):
             self.first_application.succession_position,
             2,
         )
+
+    def test_member_can_move_forward_one_succession_position(self):
+        self.first_application.is_member = True
+        self.first_application.save()
+
+        self.second_application.is_member = True
+        self.second_application.save()
+
+        self.assertEqual(
+            self.founder_membership.succession_position,
+            0,
+        )
+        self.assertEqual(
+            self.first_application.succession_position,
+            1,
+        )
+        self.assertEqual(
+            self.second_application.succession_position,
+            2,
+        )
+
+        self.second_application.move_forward_one_position()
+
+        self.founder_membership.refresh_from_db()
+        self.first_application.refresh_from_db()
+        self.second_application.refresh_from_db()
+
+        self.assertEqual(
+            self.founder_membership.succession_position,
+            0,
+        )
+        self.assertEqual(
+            self.second_application.succession_position,
+            1,
+        )
+        self.assertEqual(
+            self.first_application.succession_position,
+            2,
+        )
+
+        self.assertTrue(self.founder_membership.is_delegate)
+        self.assertFalse(self.first_application.is_delegate)
+        self.assertFalse(self.second_application.is_delegate)
