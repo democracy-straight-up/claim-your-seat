@@ -1,5 +1,5 @@
 import random
-from django.db import models
+from django.db import models, transaction
 from vote.models import Districts
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -166,6 +166,69 @@ class SecDelMembers(models.Model):
                 email=self.user.email,
                 sec_del=self.sec_del,
             )
+
+    def move_forward_one_position(self):
+        with transaction.atomic():
+            current_member = SecDelMembers.objects.select_for_update().get(
+                pk=self.pk
+            )
+
+            if (
+                not current_member.is_member
+                or current_member.succession_position is None
+                or current_member.succession_position == 0
+            ):
+                return False
+
+            member_ahead = (
+                SecDelMembers.objects.select_for_update()
+                .filter(
+                    sec_del=current_member.sec_del,
+                    is_member=True,
+                    succession_position=(
+                        current_member.succession_position - 1
+                    ),
+                )
+                .first()
+            )
+
+            if member_ahead is None:
+                return False
+
+            current_position = current_member.succession_position
+            ahead_position = member_ahead.succession_position
+
+            if ahead_position == 0:
+                SecDelMembers.objects.filter(pk=member_ahead.pk).update(
+                    succession_position=current_position,
+                    is_delegate=False,
+                )
+                SecDelMembers.objects.filter(pk=current_member.pk).update(
+                    succession_position=0,
+                    is_delegate=True,
+                )
+
+                member_ahead.user.users.userType = "U2D1"
+                member_ahead.user.users.save(update_fields=["userType"])
+
+                current_member.user.users.userType = "U2D2"
+                current_member.user.users.save(update_fields=["userType"])
+
+                self.succession_position = 0
+                self.is_delegate = True
+
+                return True
+
+            SecDelMembers.objects.filter(pk=member_ahead.pk).update(
+                succession_position=current_position
+            )
+            SecDelMembers.objects.filter(pk=current_member.pk).update(
+                succession_position=ahead_position
+            )
+
+            self.succession_position = ahead_position
+
+            return True
 
     def count_vote_out(self):
         return VoteOutSecDelMember.objects.filter(candidate=self).count()
