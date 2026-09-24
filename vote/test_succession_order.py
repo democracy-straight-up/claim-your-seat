@@ -183,3 +183,40 @@ class CircleSuccessionOrderTests(TestCase):
             self.founder.users.userType,
             "U1D0",
         )
+
+    def test_pending_applicant_cannot_move_forward(self):
+        self.assertFalse(self.first_application.is_member)
+        self.assertIsNone(self.first_application.succession_position)
+
+        moved = self.first_application.move_forward_one_position()
+
+        self.assertFalse(moved)
+
+        self.first_application.refresh_from_db()
+        self.founder_membership.refresh_from_db()
+
+        self.assertIsNone(self.first_application.succession_position)
+        self.assertEqual(
+            self.founder_membership.succession_position,
+            0,
+        )
+        self.assertTrue(self.founder_membership.is_delegate)
+
+    def test_circle_delegate_cannot_move_forward(self):
+        self.assertEqual(
+            self.founder_membership.succession_position,
+            0,
+        )
+        self.assertTrue(self.founder_membership.is_delegate)
+
+        moved = self.founder_membership.move_forward_one_position()
+
+        self.assertFalse(moved)
+
+        self.founder_membership.refresh_from_db()
+
+        self.assertEqual(
+            self.founder_membership.succession_position,
+            0,
+        )
+        self.assertTrue(self.founder_membership.is_delegate)
