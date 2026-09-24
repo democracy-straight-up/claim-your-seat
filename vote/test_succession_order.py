@@ -138,3 +138,48 @@ class CircleSuccessionOrderTests(TestCase):
         self.assertTrue(self.founder_membership.is_delegate)
         self.assertFalse(self.first_application.is_delegate)
         self.assertFalse(self.second_application.is_delegate)
+
+    def test_first_successor_can_replace_circle_delegate(self):
+        self.first_application.is_member = True
+        self.first_application.save()
+
+        self.assertEqual(
+            self.founder_membership.succession_position,
+            0,
+        )
+        self.assertEqual(
+            self.first_application.succession_position,
+            1,
+        )
+        self.assertTrue(self.founder_membership.is_delegate)
+        self.assertFalse(self.first_application.is_delegate)
+
+        moved = self.first_application.move_forward_one_position()
+
+        self.assertTrue(moved)
+
+        self.founder_membership.refresh_from_db()
+        self.first_application.refresh_from_db()
+        self.founder.users.refresh_from_db()
+        self.first_applicant.users.refresh_from_db()
+
+        self.assertEqual(
+            self.first_application.succession_position,
+            0,
+        )
+        self.assertEqual(
+            self.founder_membership.succession_position,
+            1,
+        )
+
+        self.assertTrue(self.first_application.is_delegate)
+        self.assertFalse(self.founder_membership.is_delegate)
+
+        self.assertEqual(
+            self.first_applicant.users.userType,
+            "U1D1",
+        )
+        self.assertEqual(
+            self.founder.users.userType,
+            "U1D0",
+        )

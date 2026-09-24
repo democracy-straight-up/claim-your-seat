@@ -228,7 +228,7 @@ class GroupMember(models.Model):
             if (
                 not current_member.is_member
                 or current_member.succession_position is None
-                or current_member.succession_position <= 1
+                or current_member.succession_position == 0
             ):
                 return False
 
@@ -249,6 +249,27 @@ class GroupMember(models.Model):
 
             current_position = current_member.succession_position
             ahead_position = member_ahead.succession_position
+
+            if ahead_position == 0:
+                GroupMember.objects.filter(pk=member_ahead.pk).update(
+                    succession_position=current_position,
+                    is_delegate=False,
+                )
+                GroupMember.objects.filter(pk=current_member.pk).update(
+                    succession_position=0,
+                    is_delegate=True,
+                )
+
+                member_ahead.user.users.userType = "U1D0"
+                member_ahead.user.users.save(update_fields=["userType"])
+
+                current_member.user.users.userType = "U1D1"
+                current_member.user.users.save(update_fields=["userType"])
+
+                self.succession_position = 0
+                self.is_delegate = True
+
+                return True
 
             GroupMember.objects.filter(pk=member_ahead.pk).update(
                 succession_position=current_position
