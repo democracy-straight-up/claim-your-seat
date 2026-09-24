@@ -247,7 +247,70 @@ class HolcMembers(models.Model):
                     "contact": "Available via email.",
                 },
             )
-    
+
+    def move_forward_one_position(self):
+        with transaction.atomic():
+            current_member = HolcMembers.objects.select_for_update().get(
+                pk=self.pk
+            )
+
+            if (
+                not current_member.is_member
+                or current_member.succession_position is None
+                or current_member.succession_position == 0
+            ):
+                return False
+
+            member_ahead = (
+                HolcMembers.objects.select_for_update()
+                .filter(
+                    holc=current_member.holc,
+                    is_member=True,
+                    succession_position=(
+                        current_member.succession_position - 1
+                    ),
+                )
+                .first()
+            )
+
+            if member_ahead is None:
+                return False
+
+            current_position = current_member.succession_position
+            ahead_position = member_ahead.succession_position
+
+            if ahead_position == 0:
+                HolcMembers.objects.filter(pk=member_ahead.pk).update(
+                    succession_position=current_position,
+                    is_delegate=False,
+                )
+                HolcMembers.objects.filter(pk=current_member.pk).update(
+                    succession_position=0,
+                    is_delegate=True,
+                )
+
+                member_ahead.user.users.userType = "U4D3"
+                member_ahead.user.users.save(update_fields=["userType"])
+
+                current_member.user.users.userType = "U4D4"
+                current_member.user.users.save(update_fields=["userType"])
+
+                self.succession_position = 0
+                self.is_delegate = True
+
+                return True
+
+            HolcMembers.objects.filter(pk=member_ahead.pk).update(
+                succession_position=current_position
+            )
+            HolcMembers.objects.filter(pk=current_member.pk).update(
+                succession_position=ahead_position
+            )
+
+            self.succession_position = ahead_position
+
+            return True
+
     def count_put_forward(self):
         current_accepted_voter_ids = HolcMembers.objects.filter(
             holc=self.holc,
