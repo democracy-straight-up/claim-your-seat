@@ -260,6 +260,34 @@ class GroupMember(models.Model):
                     is_delegate=True,
                 )
 
+                # First-Link membership depends on holding a Circle
+                # delegate mandate. Remove accepted memberships when
+                # that mandate is lost. The incoming Circle delegate
+                # does not automatically inherit them.
+                from api.models import SecDelMembers, SecDelModel
+
+                dependent_memberships = SecDelMembers.objects.filter(
+                    user=member_ahead.user,
+                    is_member=True,
+                )
+
+                affected_first_link_ids = list(
+                    dependent_memberships.values_list(
+                        "sec_del_id",
+                        flat=True,
+                    )
+                )
+
+                # Use queryset deletion here so the legacy
+                # SecDelMembers.delete() role transition does not
+                # overwrite the new Circle-member role.
+                dependent_memberships.delete()
+
+                for first_link in SecDelModel.objects.filter(
+                    pk__in=affected_first_link_ids
+                ):
+                    first_link.is_active
+
                 member_ahead.user.users.userType = "U1D0"
                 member_ahead.user.users.save(update_fields=["userType"])
 
