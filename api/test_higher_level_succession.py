@@ -137,3 +137,137 @@ class FirstLinkDelegateHigherLevelSuccessionTests(TestCase):
             self.second_link_delegate_membership.succession_position,
             0,
         )
+
+    def test_second_link_successor_replaces_removed_delegate(self):
+        successor_first_link = SecDelModel.objects.create(
+            district=self.district,
+        )
+
+        SecDelMembers.objects.create(
+            user=self.second_link_delegate,
+            sec_del=successor_first_link,
+            is_member=True,
+            is_delegate=True,
+        )
+
+        # For this scenario, the outgoing First-Link delegate is also
+        # the Second-Link delegate, and the existing Second-Link member
+        # is first in that Second Link's succession line.
+        ModaMembers.objects.filter(
+            pk=self.outgoing_second_link_membership.pk,
+        ).update(
+            is_delegate=True,
+            succession_position=0,
+        )
+        ModaMembers.objects.filter(
+            pk=self.second_link_delegate_membership.pk,
+        ).update(
+            is_delegate=False,
+            succession_position=1,
+        )
+
+        self.outgoing_first_link_delegate.users.userType = "U4D3"
+        self.outgoing_first_link_delegate.users.save(
+            update_fields=["userType"]
+        )
+
+        self.second_link_delegate.users.userType = "U3D2"
+        self.second_link_delegate.users.save(
+            update_fields=["userType"]
+        )
+
+        moved = (
+            self.incoming_first_link_membership
+            .move_forward_one_position()
+        )
+
+        self.assertTrue(moved)
+
+        self.assertFalse(
+            ModaMembers.objects.filter(
+                pk=self.outgoing_second_link_membership.pk,
+            ).exists()
+        )
+
+        self.second_link_delegate_membership.refresh_from_db()
+        self.second_link_delegate.users.refresh_from_db()
+
+        self.assertTrue(
+            self.second_link_delegate_membership.is_delegate
+        )
+        self.assertEqual(
+            self.second_link_delegate_membership.succession_position,
+            0,
+        )
+        self.assertEqual(
+            self.second_link_delegate.users.userType,
+            "U4D3",
+        )
+
+    def test_second_link_succession_positions_compact_after_delegate_removal(self):
+        later_successor = User.objects.create_user(
+            username="later-second-link-successor",
+            password="testpass",
+        )
+        later_successor.users.district = self.district
+        later_successor.users.save()
+
+        later_successor_first_link = SecDelModel.objects.create(
+            district=self.district,
+        )
+
+        SecDelMembers.objects.create(
+            user=later_successor,
+            sec_del=later_successor_first_link,
+            is_member=True,
+            is_delegate=True,
+        )
+
+        later_successor_membership = ModaMembers.objects.create(
+            user=later_successor,
+            moda=self.second_link,
+            is_member=True,
+            is_delegate=False,
+        )
+
+        # Make the outgoing First-Link delegate the current Second-Link
+        # delegate. The existing Second-Link member is first successor,
+        # and the newly added member is second successor.
+        ModaMembers.objects.filter(
+            pk=self.outgoing_second_link_membership.pk,
+        ).update(
+            is_delegate=True,
+            succession_position=0,
+        )
+        ModaMembers.objects.filter(
+            pk=self.second_link_delegate_membership.pk,
+        ).update(
+            is_delegate=False,
+            succession_position=1,
+        )
+
+        later_successor_membership.refresh_from_db()
+
+        self.assertEqual(
+            later_successor_membership.succession_position,
+            2,
+        )
+
+        moved = (
+            self.incoming_first_link_membership
+            .move_forward_one_position()
+        )
+
+        self.assertTrue(moved)
+
+        self.second_link_delegate_membership.refresh_from_db()
+        later_successor_membership.refresh_from_db()
+
+        self.assertEqual(
+            self.second_link_delegate_membership.succession_position,
+            0,
+        )
+        self.assertEqual(
+            later_successor_membership.succession_position,
+            1,
+        )
