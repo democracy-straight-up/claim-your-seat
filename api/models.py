@@ -208,6 +208,34 @@ class SecDelMembers(models.Model):
                     is_delegate=True,
                 )
 
+                # Second-Link membership depends on holding a First-Link
+                # delegate mandate. Remove accepted memberships when
+                # that mandate is lost. The incoming First-Link delegate
+                # does not automatically inherit them.
+                from moda.models import ModaMembers, ModaModel
+
+                dependent_memberships = ModaMembers.objects.filter(
+                    user=member_ahead.user,
+                    is_member=True,
+                )
+
+                affected_second_link_ids = list(
+                    dependent_memberships.values_list(
+                        "moda_id",
+                        flat=True,
+                    )
+                )
+
+                # Use queryset deletion so the legacy
+                # ModaMembers.delete() role transition does not
+                # overwrite the new First-Link-member role.
+                dependent_memberships.delete()
+
+                for second_link in ModaModel.objects.filter(
+                    pk__in=affected_second_link_ids
+                ):
+                    second_link.is_active
+
                 member_ahead.user.users.userType = "U2D1"
                 member_ahead.user.users.save(update_fields=["userType"])
 
