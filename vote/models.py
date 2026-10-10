@@ -1,4 +1,5 @@
-from django.db import models
+from django.db import models, transaction
+from succession_helpers import remove_dependent_memberships
 from django.contrib.auth.models import User
 
 # District model (table) is for listing of all US districts
@@ -154,6 +155,7 @@ class GroupMember(models.Model):
     member_type = models.CharField(max_length=10, null=True, blank=True)
     is_delegate     = models.BooleanField(default=False)
     member_number   = models.PositiveSmallIntegerField(null=True, blank=True)
+    succession_position = models.PositiveSmallIntegerField(null=True, blank=True)
 
     def __str__(self):
         return str(self.user.username)
@@ -162,18 +164,50 @@ class GroupMember(models.Model):
         ordering = ['-is_delegate', 'date_joined']
 
     def save(self, *args, **kwargs):
-        # check for max membership
-        if GroupMember.objects.filter(is_member=True, group = self.group).count() > 12:
-            raise MaxMembershipReached()  # Raise maxMember validation
-        # on each first member, make the member the delegate member by default.
+        was_member = False
+        if self.pk:
+            was_member = (
+                GroupMember.objects.filter(pk=self.pk)
+                .values_list("is_member", flat=True)
+                .first()
+                is True
+            )
+
+        # Check for max membership.
+        if GroupMember.objects.filter(is_member=True, group=self.group).count() > 12:
+            raise MaxMembershipReached()
+
+        # The first member becomes the Circle delegate automatically.
         if not self.pk and not self.group.groupmember_set.exists():
             self.is_delegate = True
             self.is_member = True
-            self.user.users.userType = 'U1D1'
+            self.user.users.userType = "U1D1"
             self.user.users.save()
 
+        # Assign succession position when a member is first accepted.
+        if (
+            self.is_member
+            and not was_member
+            and self.succession_position is None
+        ):
+            max_position = (
+                GroupMember.objects.filter(
+                    group=self.group,
+                    is_member=True,
+                    succession_position__isnull=False,
+                )
+                .exclude(pk=self.pk)
+                .aggregate(models.Max("succession_position"))[
+                    "succession_position__max"
+                ]
+            )
+
+            self.succession_position = (
+                0 if max_position is None else max_position + 1
+            )
 
         super(GroupMember, self).save(*args, **kwargs)
+
         if self.group:
             self.group.is_active
 
@@ -183,8 +217,83 @@ class GroupMember(models.Model):
                 legal_name=self.user.users.legalName,
                 address=self.user.users.address,
                 email=self.user.email,
-                group=self.group
+                group=self.group,
             )
+
+    def move_forward_one_position(self):
+        with transaction.atomic():
+            current_member = GroupMember.objects.select_for_update().get(
+                pk=self.pk
+            )
+
+            if (
+                not current_member.is_member
+                or current_member.succession_position is None
+                or current_member.succession_position == 0
+            ):
+                return False
+
+            member_ahead = (
+                GroupMember.objects.select_for_update()
+                .filter(
+                    group=current_member.group,
+                    is_member=True,
+                    succession_position=(
+                        current_member.succession_position - 1
+                    ),
+                )
+                .first()
+            )
+
+            if member_ahead is None:
+                return False
+
+            current_position = current_member.succession_position
+            ahead_position = member_ahead.succession_position
+
+            if ahead_position == 0:
+                GroupMember.objects.filter(pk=member_ahead.pk).update(
+                    succession_position=current_position,
+                    is_delegate=False,
+                )
+                GroupMember.objects.filter(pk=current_member.pk).update(
+                    succession_position=0,
+                    is_delegate=True,
+                )
+
+                # First-Link membership depends on holding a Circle
+                # delegate mandate. The incoming Circle delegate does
+                # not automatically inherit that membership.
+                from api.models import SecDelMembers
+
+                remove_dependent_memberships(
+                    membership_model=SecDelMembers,
+                    user=member_ahead.user,
+                    group_field="sec_del",
+                    delegate_user_type="U2D2",
+                )
+
+                member_ahead.user.users.userType = "U1D0"
+                member_ahead.user.users.save(update_fields=["userType"])
+
+                current_member.user.users.userType = "U1D1"
+                current_member.user.users.save(update_fields=["userType"])
+
+                self.succession_position = 0
+                self.is_delegate = True
+
+                return True
+
+            GroupMember.objects.filter(pk=member_ahead.pk).update(
+                succession_position=current_position
+            )
+            GroupMember.objects.filter(pk=current_member.pk).update(
+                succession_position=ahead_position
+            )
+
+            self.succession_position = ahead_position
+
+            return True
 
     def delete(self, *args, **kwargs):
         # set the userType to U0D0 and verification score to 0
