@@ -266,26 +266,60 @@ class GroupMember(models.Model):
                 # does not automatically inherit them.
                 from api.models import SecDelMembers, SecDelModel
 
-                dependent_memberships = SecDelMembers.objects.filter(
-                    user=member_ahead.user,
-                    is_member=True,
-                )
-
-                affected_first_link_ids = list(
-                    dependent_memberships.values_list(
-                        "sec_del_id",
-                        flat=True,
+                dependent_memberships = list(
+                    SecDelMembers.objects.select_for_update().filter(
+                        user=member_ahead.user,
+                        is_member=True,
                     )
                 )
 
-                # Use queryset deletion here so the legacy
-                # SecDelMembers.delete() role transition does not
-                # overwrite the new Circle-member role.
-                dependent_memberships.delete()
+                for dependent_membership in dependent_memberships:
+                    first_link = dependent_membership.sec_del
+                    was_delegate = dependent_membership.is_delegate
+                    removed_position = (
+                        dependent_membership.succession_position
+                    )
 
-                for first_link in SecDelModel.objects.filter(
-                    pk__in=affected_first_link_ids
-                ):
+                    # Use queryset deletion so the legacy
+                    # SecDelMembers.delete() role transition does not
+                    # overwrite the new Circle-member role.
+                    SecDelMembers.objects.filter(
+                        pk=dependent_membership.pk
+                    ).delete()
+
+                    if was_delegate:
+                        successor = (
+                            SecDelMembers.objects.select_for_update()
+                            .filter(
+                                sec_del=first_link,
+                                is_member=True,
+                                succession_position=1,
+                            )
+                            .first()
+                        )
+
+                        if successor is not None:
+                            SecDelMembers.objects.filter(
+                                pk=successor.pk
+                            ).update(
+                                succession_position=0,
+                                is_delegate=True,
+                            )
+
+                            successor.user.users.userType = "U2D2"
+                            successor.user.users.save(
+                                update_fields=["userType"]
+                            )
+                    if removed_position is not None:
+                        SecDelMembers.objects.filter(
+                            sec_del=first_link,
+                            is_member=True,
+                            succession_position__gt=removed_position,
+                        ).update(
+                            succession_position=(
+                                models.F("succession_position") - 1
+                            )
+                        )
                     first_link.is_active
 
                 member_ahead.user.users.userType = "U1D0"
