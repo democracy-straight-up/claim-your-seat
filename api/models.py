@@ -1,5 +1,6 @@
 import random
 from django.db import models, transaction
+from succession_helpers import remove_dependent_memberships
 from vote.models import Districts
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -209,68 +210,16 @@ class SecDelMembers(models.Model):
                 )
 
                 # Second-Link membership depends on holding a First-Link
-                # delegate mandate. Remove accepted memberships when
-                # that mandate is lost. The incoming First-Link delegate
-                # does not automatically inherit them.
+                # delegate mandate. The incoming First-Link delegate
+                # does not automatically inherit that membership.
                 from moda.models import ModaMembers
 
-                dependent_memberships = list(
-                    ModaMembers.objects.select_for_update().filter(
-                        user=member_ahead.user,
-                        is_member=True,
-                    )
+                remove_dependent_memberships(
+                    membership_model=ModaMembers,
+                    user=member_ahead.user,
+                    group_field="moda",
+                    delegate_user_type="U4D3",
                 )
-
-                for dependent_membership in dependent_memberships:
-                    second_link = dependent_membership.moda
-                    was_delegate = dependent_membership.is_delegate
-                    removed_position = (
-                        dependent_membership.succession_position
-                    )
-
-                    # Use queryset deletion so the legacy
-                    # ModaMembers.delete() role transition does not
-                    # overwrite the new First-Link-member role.
-                    ModaMembers.objects.filter(
-                        pk=dependent_membership.pk
-                    ).delete()
-
-                    if was_delegate:
-                        successor = (
-                            ModaMembers.objects.select_for_update()
-                            .filter(
-                                moda=second_link,
-                                is_member=True,
-                                succession_position=1,
-                            )
-                            .first()
-                        )
-
-                        if successor is not None:
-                            ModaMembers.objects.filter(
-                                pk=successor.pk
-                            ).update(
-                                succession_position=0,
-                                is_delegate=True,
-                            )
-
-                            successor.user.users.userType = "U4D3"
-                            successor.user.users.save(
-                                update_fields=["userType"]
-                            )
-
-                    if removed_position is not None:
-                        ModaMembers.objects.filter(
-                            moda=second_link,
-                            is_member=True,
-                            succession_position__gt=removed_position,
-                        ).update(
-                            succession_position=(
-                                models.F("succession_position") - 1
-                            )
-                        )
-
-                    second_link.is_active
 
                 member_ahead.user.users.userType = "U2D1"
                 member_ahead.user.users.save(update_fields=["userType"])

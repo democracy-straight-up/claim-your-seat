@@ -1,5 +1,6 @@
 import random
 from django.db import models, transaction
+from succession_helpers import remove_dependent_memberships
 from vote.models import Districts
 from django.contrib.auth.models import User
 
@@ -229,67 +230,16 @@ class ModaMembers(models.Model):
                 )
 
                 # Caucus membership depends on holding a Second-Link
-                # delegate mandate. Remove accepted memberships when
-                # that mandate is lost. The incoming Second-Link
-                # delegate does not automatically inherit them.
+                # delegate mandate. The incoming Second-Link delegate
+                # does not automatically inherit that membership.
                 from holc.models import HolcMembers
 
-                dependent_memberships = list(
-                    HolcMembers.objects.select_for_update().filter(
-                        user=member_ahead.user,
-                        is_member=True,
-                    )
+                remove_dependent_memberships(
+                    membership_model=HolcMembers,
+                    user=member_ahead.user,
+                    group_field="holc",
+                    delegate_user_type="U4D4",
                 )
-
-                for dependent_membership in dependent_memberships:
-                    caucus = dependent_membership.holc
-                    was_delegate = dependent_membership.is_delegate
-                    removed_position = (
-                        dependent_membership.succession_position
-                    )
-                    # Use queryset deletion so the legacy
-                    # HolcMembers.delete() role transition does not
-                    # overwrite the new Second-Link-member role.
-                    HolcMembers.objects.filter(
-                        pk=dependent_membership.pk
-                    ).delete()
-
-                    if was_delegate:
-                        successor = (
-                            HolcMembers.objects.select_for_update()
-                            .filter(
-                                holc=caucus,
-                                is_member=True,
-                                succession_position=1,
-                            )
-                            .first()
-                        )
-
-                        if successor is not None:
-                            HolcMembers.objects.filter(
-                                pk=successor.pk
-                            ).update(
-                                succession_position=0,
-                                is_delegate=True,
-                            )
-
-                            successor.user.users.userType = "U4D4"
-                            successor.user.users.save(
-                                update_fields=["userType"]
-                            )
-
-                    if removed_position is not None:
-                        HolcMembers.objects.filter(
-                            holc=caucus,
-                            is_member=True,
-                            succession_position__gt=removed_position,
-                        ).update(
-                            succession_position=(
-                                models.F("succession_position") - 1
-                            )
-                        )
-
-                    caucus.is_active
 
                 member_ahead.user.users.userType = "U3D2"
                 member_ahead.user.users.save(update_fields=["userType"])
