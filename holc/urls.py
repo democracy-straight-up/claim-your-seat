@@ -16,13 +16,10 @@ urlpatterns = [
     path('holc/<int:holc_code>/backnforth/messages/', 
          backnforth_views.HolcBackNForthChatViewSet.as_view({'get': 'list', 'post': 'create'}), 
          name='holc-backnforth-list'),
-    path('holc/<int:holc_code>/backnforth/messages/<int:pk>/', 
+    path('holc/<int:holc_code>/backnforth/messages/<int:pk>/',
          backnforth_views.HolcBackNForthChatViewSet.as_view({
-             'get': 'retrieve', 
-             'put': 'update', 
-             'patch': 'partial_update', 
-             'delete': 'destroy'
-         }), 
+             'get': 'retrieve',
+         }),
          name='holc-backnforth-detail'),
     path('holc/<int:holc_code>/backnforth/search/', 
          backnforth_views.HolcBackNForthChatViewSet.as_view({'get': 'search'}), 

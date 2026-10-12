@@ -1,5 +1,11 @@
 import random
 from django.db import models, transaction
+from succession_notifications import (
+    notify_delegate_change,
+    notify_delegate_promotion_after_removal,
+    post_succession_update,
+    user_display_name,
+)
 from succession_helpers import remove_dependent_memberships
 from vote.models import Districts
 from django.contrib.auth.models import User
@@ -83,7 +89,7 @@ class MaxMembershipReached(ValidationError):
     def __init__(self, message="F-link has reached the max membership status. No longer accepting candidates."):
         super().__init__(message)
 
-# the user can be changed to be Circle delegate only. but being a user is much better
+# the user can be changed to be F-Del only. but being a user is much better
 class SecDelMembers(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     sec_del = models.ForeignKey(SecDelModel, on_delete=models.CASCADE)
@@ -128,7 +134,7 @@ class SecDelMembers(models.Model):
         ).count() > 12:
             raise MaxMembershipReached()
 
-        # The first member becomes the First Link delegate automatically.
+        # The first member becomes the Sec-Del delegate automatically.
         if not self.pk and not self.sec_del.secdelmembers_set.exists():
             self.is_delegate = True
             self.is_member = True
@@ -210,15 +216,22 @@ class SecDelMembers(models.Model):
                 )
 
                 # Second-Link membership depends on holding a First-Link
-                # delegate mandate. The incoming First-Link delegate
+                # delegate mandate. The incoming Sec-Del
                 # does not automatically inherit that membership.
-                from moda.models import ModaMembers
+                from moda.models import (
+                    ModaBackNForthChat,
+                    ModaMembers,
+                )
 
                 remove_dependent_memberships(
                     membership_model=ModaMembers,
                     user=member_ahead.user,
                     group_field="moda",
                     delegate_user_type="U4D3",
+                    message_model=ModaBackNForthChat,
+                    dependent_group_title="Second Link",
+                    required_mandate_title="Sec-Del",
+                    delegate_title="Caucus Delegate",
                 )
 
                 member_ahead.user.users.userType = "U2D1"
@@ -226,6 +239,17 @@ class SecDelMembers(models.Model):
 
                 current_member.user.users.userType = "U2D2"
                 current_member.user.users.save(update_fields=["userType"])
+
+                notify_delegate_change(
+                    message_model=BackNForthChat,
+                    group_field="sec_del",
+                    group=current_member.sec_del,
+                    group_name=f"First Link {current_member.sec_del.code}",
+                    delegate_title="Sec-Del",
+                    outgoing_user=member_ahead.user,
+                    incoming_user=current_member.user,
+                    outgoing_position=current_position,
+                )
 
                 self.succession_position = 0
                 self.is_delegate = True
@@ -237,6 +261,28 @@ class SecDelMembers(models.Model):
             )
             SecDelMembers.objects.filter(pk=current_member.pk).update(
                 succession_position=ahead_position
+            )
+
+            current_name = (
+                current_member.user.users.legalName
+                or current_member.user.username
+            )
+            ahead_name = (
+                member_ahead.user.users.legalName
+                or member_ahead.user.username
+            )
+
+            post_succession_update(
+                message_model=BackNForthChat,
+                group_field="sec_del",
+                group=current_member.sec_del,
+                message=(
+                    f"Succession update: {current_name} advanced from "
+                    f"position {current_position} to position "
+                    f"{ahead_position}; {ahead_name} moved from "
+                    f"position {ahead_position} to position "
+                    f"{current_position}."
+                ),
             )
 
             self.succession_position = ahead_position
@@ -274,51 +320,179 @@ class SecDelMembers(models.Model):
         return self
     
     def check_for_removing(self):
-        total_members = SecDelMembers.objects.filter(sec_del=self.sec_del).filter(is_member = True).count()
-        majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
+        total_members = SecDelMembers.objects.filter(
+            sec_del=self.sec_del,
+            is_member=True,
+        ).count()
+        majority_threshold = total_members // 2 + 1
+
         if self.count_vote_out() >= majority_threshold:
-            self.user.users.userType = 'U1D1'
-            self.user.users.verificationScore = 10
-            self.user.users.save()
-            self.delete()
+            with transaction.atomic():
+                first_link = self.sec_del
+                removed_position = self.succession_position
+                removed_name = user_display_name(self.user)
+                was_delegate = self.is_delegate
+
+                successor = None
+                if was_delegate:
+                    successor = SecDelMembers.objects.filter(
+                        sec_del=first_link,
+                        is_member=True,
+                        succession_position=1,
+                    ).first()
+
+                compacted_memberships = []
+
+                if removed_position is not None:
+                    compacted_memberships = list(
+                        SecDelMembers.objects.filter(
+                            sec_del=first_link,
+                            is_member=True,
+                            succession_position__gt=removed_position,
+                        ).order_by("succession_position")
+                    )
+
+                if was_delegate:
+                    from moda.models import (
+                        ModaBackNForthChat,
+                        ModaMembers,
+                    )
+
+                    remove_dependent_memberships(
+                        membership_model=ModaMembers,
+                        user=self.user,
+                        group_field="moda",
+                        delegate_user_type="U4D3",
+                        message_model=ModaBackNForthChat,
+                        dependent_group_title="Second Link",
+                        required_mandate_title="Sec-Del",
+                        delegate_title="Caucus Delegate",
+                    )
+
+                self.delete()
+
+                if removed_position is not None:
+                    SecDelMembers.objects.filter(
+                        sec_del=first_link,
+                        is_member=True,
+                        succession_position__gt=removed_position,
+                    ).update(
+                        succession_position=(
+                            models.F("succession_position") - 1
+                        )
+                    )
+
+                    for compacted_member in compacted_memberships:
+                        old_position = compacted_member.succession_position
+                        new_position = old_position - 1
+
+                        post_succession_update(
+                            message_model=BackNForthChat,
+                            group_field="sec_del",
+                            group=first_link,
+                            message=(
+                                f"Succession update: "
+                                f"{user_display_name(compacted_member.user)} "
+                                f"moved from position {old_position} to "
+                                f"position {new_position} after "
+                                f"{removed_name} was removed."
+                            ),
+                        )
+
+                if was_delegate and successor is not None:
+                    SecDelMembers.objects.filter(
+                        pk=successor.pk
+                    ).update(
+                        is_delegate=True,
+                    )
+
+                    successor.user.users.userType = "U2D2"
+                    successor.user.users.save(
+                        update_fields=["userType"]
+                    )
+                    notify_delegate_promotion_after_removal(
+                        message_model=BackNForthChat,
+                        group_field="sec_del",
+                        group=first_link,
+                        group_name=f"First Link {first_link.code}",
+                        delegate_title="Sec-Del",
+                        outgoing_user=self.user,
+                        incoming_user=successor.user,
+                    )
 
     def check_put_farward(self):
         total_members = SecDelMembers.objects.filter(sec_del=self.sec_del).filter(is_member = True).count()
         majority_votes = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_put_forward() >= majority_votes:
-            # find the current delegate and set is_delegate false.
-            current_delegate = SecDelMembers.objects.filter(sec_del=self.sec_del).filter(is_delegate = True).first()
-            old_delegate_user = current_delegate.user
-            
-            current_delegate.is_delegate = False
-            current_delegate.save()
-            # set the user.users userType to U1D1
-            current_delegate.user.users.userType = 'U2D1'
-            current_delegate.user.users.save()
-            # set the current member to delegate and set is_delegate true.
-            self.is_delegate = True
+            current_delegate = SecDelMembers.objects.filter(
+                sec_del=self.sec_del,
+                is_member=True,
+                is_delegate=True,
+            ).first()
 
-            # set the self instance user.users userType to U2D2
-            self.user.users.userType = 'U2D2'
-            self.user.users.save()
-            # save the current member instance
-            self.save()
-            # # Delete related votes for this member instances
-            # PutFarwardSecDelMember.objects.filter(candidate=self).delete()
-            
-            # Trigger succession line for higher groups
-            try:
-                from succession_line import succession_manager
-                succession_manager.handle_delegate_change(
-                    'secdel', 
-                    old_delegate_user, 
-                    self.user, 
-                    self.sec_del
-                )
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f"Error in succession line: {str(e)}")
+            if current_delegate is None:
+                return
+
+            incumbent_position = current_delegate.succession_position
+            candidate_position = self.succession_position
+
+            current_delegate.is_delegate = False
+            current_delegate.succession_position = candidate_position
+            current_delegate.save(
+                update_fields=[
+                    "is_delegate",
+                    "succession_position",
+                    "updated_at",
+                ]
+            )
+
+            # Second-Link membership depends on holding the Sec-Del
+            # mandate. The incoming Sec-Del does not automatically
+            # inherit that membership.
+            from moda.models import (
+                ModaBackNForthChat,
+                ModaMembers,
+            )
+
+            remove_dependent_memberships(
+                membership_model=ModaMembers,
+                user=current_delegate.user,
+                group_field="moda",
+                delegate_user_type="U4D3",
+                message_model=ModaBackNForthChat,
+                dependent_group_title="Second Link",
+                required_mandate_title="Sec-Del",
+                delegate_title="Caucus Delegate",
+            )
+
+            current_delegate.user.users.userType = "U2D1"
+            current_delegate.user.users.save(
+                update_fields=["userType"]
+            )
+
+            self.is_delegate = True
+            self.succession_position = incumbent_position
+            self.user.users.userType = "U2D2"
+            self.user.users.save(
+                update_fields=["userType"]
+            )
+            self.save(
+                update_fields=[
+                    "is_delegate",
+                    "succession_position",
+                    "updated_at",
+                ]
+            )
+            notify_delegate_change(
+                message_model=BackNForthChat,
+                group_field="sec_del",
+                group=self.sec_del,
+                group_name=f"First Link {self.sec_del.code}",
+                delegate_title="Sec-Del",
+                outgoing_user=current_delegate.user,
+                incoming_user=self.user,
+                outgoing_position=candidate_position,
+            )
 
 
 class VoteOutSecDelMember(models.Model):
@@ -477,34 +651,62 @@ def create_circle(circle, district_code, voters):
         groups.append(crcl)
     return [members,groups]
 
-
-# create the backNForth Model here. 
 class BackNForthChat(models.Model):
-    """Model to store chat messages for F-Links (SecDel)"""
-    sec_del = models.ForeignKey(SecDelModel, on_delete=models.CASCADE, related_name='chat_messages')
-    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
+    """Model to store chat messages for F-Links (SecDel)."""
+
+    sec_del = models.ForeignKey(
+        SecDelModel,
+        on_delete=models.CASCADE,
+        related_name="chat_messages",
+    )
+    sender = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="sent_messages",
+        null=True,
+        blank=True,
+    )
     message = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
     is_edited = models.BooleanField(default=False)
     edited_at = models.DateTimeField(null=True, blank=True)
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
-    reply_to = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies')
-    
+    is_system = models.BooleanField(default=False)
+    reply_to = models.ForeignKey(
+        "self",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="replies",
+    )
+
     class Meta:
-        ordering = ['-timestamp']
+        ordering = ["-timestamp"]
         verbose_name = "BackNForth Chat Message"
         verbose_name_plural = "BackNForth Chat Messages"
-    
-    def __str__(self):
-        return f"{self.sender.username} in F-Link {self.sec_del.code}: {self.message[:50]}..."
-    
-    def save(self, *args, **kwargs):
-        # Verify sender is a member of the F-Link
-        if not SecDelMembers.objects.filter(user=self.sender, sec_del=self.sec_del, is_member=True).exists():
-            raise ValidationError("Only F-Link members can send messages")
-        super().save(*args, **kwargs)
 
+    def __str__(self):
+        if self.is_system:
+            return f"System in F-Link {self.sec_del.code}: {self.message[:50]}..."
+
+        return (
+            f"{self.sender.username} in F-Link "
+            f"{self.sec_del.code}: {self.message[:50]}..."
+        )
+
+    def save(self, *args, **kwargs):
+        if not self.is_system:
+            if not SecDelMembers.objects.filter(
+                user=self.sender,
+                sec_del=self.sec_del,
+                is_member=True,
+            ).exists():
+                raise ValidationError(
+                    "Only F-Link members can send messages"
+                )
+
+        super().save(*args, **kwargs)
 
 class DummyVoters(models.Model):
     text = models.TextField(null=True, blank=True)

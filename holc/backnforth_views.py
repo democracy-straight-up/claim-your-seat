@@ -107,52 +107,6 @@ class HolcBackNForthChatViewSet(viewsets.ModelViewSet):
         
         serializer.save(sender=self.request.user, holc=holc)
     
-    def destroy(self, request, *args, **kwargs):
-        """Soft delete a message (only sender or delegate can delete)"""
-        message = self.get_object()
-        holc_code = self.kwargs.get('holc_code')
-        holc = get_object_or_404(HolcModel, code=holc_code)
-        
-        # Check if user is the sender or HoLC delegate
-        is_sender = message.sender == request.user
-        is_delegate = HolcMembers.objects.filter(
-            user=request.user,
-            holc=holc,
-            is_delegate=True
-        ).exists()
-        
-        if not (is_sender or is_delegate):
-            return Response(
-                {"error": "You can only delete your own messages or if you're the HoLC delegate"},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
-        # Soft delete
-        message.is_deleted = True
-        message.deleted_at = timezone.now()
-        message.save()
-        
-        return Response(status=status.HTTP_204_NO_CONTENT)
-    
-    def update(self, request, *args, **kwargs):
-        """Update a message (only sender can edit)"""
-        message = self.get_object()
-        
-        if message.sender != request.user:
-            return Response(
-                {"error": "You can only edit your own messages"},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
-        # Update message content
-        message.message = request.data.get('message', message.message)
-        message.is_edited = True
-        message.edited_at = timezone.now()
-        message.save()
-        
-        serializer = self.get_serializer(message)
-        return Response(serializer.data)
-    
     @action(detail=False, methods=['get'])
     def search(self, request, holc_code=None):
         """Search messages by content"""

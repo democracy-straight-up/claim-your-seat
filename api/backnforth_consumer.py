@@ -64,10 +64,6 @@ class BackNForthChatConsumer(AsyncWebsocketConsumer):
             
             if message_type == 'chat_message':
                 await self.handle_chat_message(text_data_json)
-            elif message_type == 'edit_message':
-                await self.handle_edit_message(text_data_json)
-            elif message_type == 'delete_message':
-                await self.handle_delete_message(text_data_json)
             elif message_type == 'typing':
                 await self.handle_typing(text_data_json)
                 
@@ -92,40 +88,6 @@ class BackNForthChatConsumer(AsyncWebsocketConsumer):
             # Send message to room group
             await self.channel_layer.group_send(self.room_group_name,{'type':'chat_message_broadcast','message_data': message_data})
 
-    async def handle_edit_message(self, data):
-        """Handle message editing"""
-        message_id = data.get('message_id')
-        new_content = data.get('message', '').strip()
-        if not new_content:
-            await self.send(text_data=json.dumps({ 'error': 'Message cannot be empty'}))
-            return
-        success = await self.edit_message(message_id, new_content)
-        if success:
-            await self.channel_layer.group_send(
-                self.room_group_name,{
-                    'type': 'message_edited',
-                    'message_id': message_id,
-                    'new_content': new_content,
-                    'edited_by': self.scope["user"].username,
-                    'edited_at': datetime.now().isoformat()
-                }
-            )
-
-    async def handle_delete_message(self, data):
-        """Handle message deletion"""
-        message_id = data.get('message_id')
-        success = await self.delete_message(message_id)
-        if success:
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'message_deleted',
-                    'message_id': message_id,
-                    'deleted_by': self.scope["user"].username,
-                    'deleted_at': datetime.now().isoformat()
-                }
-            )
-
     async def handle_typing(self, data):
         """Handle typing indicator"""
         is_typing = data.get('is_typing', False)
@@ -143,25 +105,6 @@ class BackNForthChatConsumer(AsyncWebsocketConsumer):
     async def chat_message_broadcast(self, event):
         """Send chat message to WebSocket"""
         await self.send(text_data=json.dumps({'type': 'chat_message','message_data': event['message_data']}))
-
-    async def message_edited(self, event):
-        """Send message edit notification to WebSocket"""
-        await self.send(text_data=json.dumps({
-            'type': 'message_edited',
-            'message_id': event['message_id'],
-            'new_content': event['new_content'],
-            'edited_by': event['edited_by'],
-            'edited_at': event['edited_at']
-        }))
-
-    async def message_deleted(self, event):
-        """Send message deletion notification to WebSocket"""
-        await self.send(text_data=json.dumps({
-            'type': 'message_deleted',
-            'message_id': event['message_id'],
-            'deleted_by': event['deleted_by'],
-            'deleted_at': event['deleted_at']
-        }))
 
     async def user_status(self, event):
         """Send user status notification to WebSocket"""
@@ -228,9 +171,25 @@ class BackNForthChatConsumer(AsyncWebsocketConsumer):
                 'timestamp': message.timestamp.isoformat(),
                 'reply_to_message': {
                     'id': reply_to_message.id,
-                    'message': reply_to_message.message[:50] + '...' if len(reply_to_message.message) > 50 else reply_to_message.message,
-                    'sender': reply_to_message.sender.username,
-                    'sender_name': getattr(reply_to_message.sender.users, 'legalName', reply_to_message.sender.username)
+                    'message': (
+                        reply_to_message.message[:50] + '...'
+                        if len(reply_to_message.message) > 50
+                        else reply_to_message.message
+                    ),
+                    'sender': (
+                        reply_to_message.sender.username
+                        if reply_to_message.sender
+                        else None
+                    ),
+                    'sender_name': (
+                        getattr(
+                            reply_to_message.sender.users,
+                            'legalName',
+                            reply_to_message.sender.username,
+                        )
+                        if reply_to_message.sender
+                        else 'System'
+                    ),
                 } if reply_to_message else None,
                 'is_edited': message.is_edited,
                 'edited_at': message.edited_at.isoformat() if message.edited_at else None
@@ -243,40 +202,6 @@ class BackNForthChatConsumer(AsyncWebsocketConsumer):
             return None
 
     @database_sync_to_async
-    def edit_message(self, message_id, new_content):
-        """Edit an existing message"""
-        try:
-            user = self.scope["user"]
-            sec_del = SecDelModel.objects.get(code=self.sec_del_code)
-            message = BackNForthChat.objects.get( id=message_id,sec_del=sec_del,sender=user, is_deleted=False )
-            message.message = new_content
-            message.is_edited = True
-            message.edited_at = datetime.now()
-            message.save()
-            return True     
-        except (BackNForthChat.DoesNotExist, Exception):
-            return False
-
-    @database_sync_to_async
-    def delete_message(self, message_id):
-        """Soft delete a message"""
-        try:
-            user = self.scope["user"]
-            sec_del = SecDelModel.objects.get(code=self.sec_del_code)
-            # Allow deletion by sender or F-Link delegate
-            is_delegate = SecDelMembers.objects.filter( user=user,  sec_del=sec_del, is_delegate=True).exists()
-            if is_delegate:
-                message = BackNForthChat.objects.get(id=message_id, sec_del=sec_del, is_deleted=False)
-            else:
-                message = BackNForthChat.objects.get( id=message_id, sec_del=sec_del, sender=user,is_deleted=False)
-            message.is_deleted = True
-            message.deleted_at = datetime.now()
-            message.save()
-            return True
-        except (BackNForthChat.DoesNotExist, Exception):
-            return False
-
-    @database_sync_to_async
     def get_recent_messages(self, limit=50):
         """Get recent messages from the F-Link chat"""
         try:
@@ -285,28 +210,68 @@ class BackNForthChatConsumer(AsyncWebsocketConsumer):
             
             message_list = []
             for message in reversed(messages):
+                sender = message.sender
+                reply_sender = (
+                    message.reply_to.sender
+                    if message.reply_to
+                    else None
+                )
+
                 message_data = {
                     'id': message.id,
                     'message': message.message,
                     'sender': {
-                        'id': message.sender.id,
-                        'username': message.sender.username,
-                        'email': message.sender.email,
-                        'date_joined': message.sender.date_joined.isoformat(),
+                        'id': sender.id,
+                        'username': sender.username,
+                        'email': sender.email,
+                        'date_joined': sender.date_joined.isoformat(),
                         'users': {
-                            'legalName': getattr(message.sender.users, 'legalName', message.sender.username)
-                        }
-                    },
-                    'sender_name': getattr(message.sender.users, 'legalName', message.sender.username),
+                            'legalName': getattr(
+                                sender.users,
+                                'legalName',
+                                sender.username,
+                            )
+                        },
+                    } if sender else None,
+                    'sender_name': (
+                        getattr(
+                            sender.users,
+                            'legalName',
+                            sender.username,
+                        )
+                        if sender
+                        else 'System'
+                    ),
                     'timestamp': message.timestamp.isoformat(),
                     'reply_to_message': {
                         'id': message.reply_to.id,
-                        'message': message.reply_to.message[:50] + '...' if len(message.reply_to.message) > 50 else message.reply_to.message,
-                        'sender': message.reply_to.sender.username,
-                        'sender_name': getattr(message.reply_to.sender.users, 'legalName', message.reply_to.sender.username)
+                        'message': (
+                            message.reply_to.message[:50] + '...'
+                            if len(message.reply_to.message) > 50
+                            else message.reply_to.message
+                        ),
+                        'sender': (
+                            reply_sender.username
+                            if reply_sender
+                            else None
+                        ),
+                        'sender_name': (
+                            getattr(
+                                reply_sender.users,
+                                'legalName',
+                                reply_sender.username,
+                            )
+                            if reply_sender
+                            else 'System'
+                        ),
                     } if message.reply_to else None,
                     'is_edited': message.is_edited,
-                    'edited_at': message.edited_at.isoformat() if message.edited_at else None
+                    'edited_at': (
+                        message.edited_at.isoformat()
+                        if message.edited_at
+                        else None
+                    ),
+                    'is_system': message.is_system,
                 }
                 message_list.append(message_data)
             

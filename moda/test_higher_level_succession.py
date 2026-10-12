@@ -1,38 +1,41 @@
 from django.contrib.auth.models import User
-from django.test import TestCase
+from collections import Counter
 
-from holc.models import HolcMembers, HolcModel
+from django.core import mail
+from django.test import TestCase, override_settings
+
+from holc.models import HolcBackNForthChat, HolcMembers, HolcModel
 from moda.models import ModaMembers, ModaModel
 from vote.models import Districts
 
 
-class SecondLinkDelegateHigherLevelSuccessionTests(TestCase):
+class CaucusDelegateHigherLevelSuccessionTests(TestCase):
     def setUp(self):
         self.district = Districts.objects.create(
             name="Vermont At-Large",
             code="VT01",
         )
 
-        self.outgoing_second_link_delegate = User.objects.create_user(
-            username="outgoing-second-link-delegate",
+        self.outgoing_caucus_delegate = User.objects.create_user(
+            username="outgoing-caucus-delegate",
             password="testpass",
         )
-        self.outgoing_second_link_delegate.users.district = self.district
-        self.outgoing_second_link_delegate.users.save()
+        self.outgoing_caucus_delegate.users.district = self.district
+        self.outgoing_caucus_delegate.users.save()
 
-        self.incoming_second_link_delegate = User.objects.create_user(
-            username="incoming-second-link-delegate",
+        self.incoming_caucus_delegate = User.objects.create_user(
+            username="incoming-caucus-delegate",
             password="testpass",
         )
-        self.incoming_second_link_delegate.users.district = self.district
-        self.incoming_second_link_delegate.users.save()
+        self.incoming_caucus_delegate.users.district = self.district
+        self.incoming_caucus_delegate.users.save()
 
-        self.holc = User.objects.create_user(
-            username="existing-holc",
+        self.other_caucus_member = User.objects.create_user(
+            username="other-caucus-member",
             password="testpass",
         )
-        self.holc.users.district = self.district
-        self.holc.users.save()
+        self.other_caucus_member.users.district = self.district
+        self.other_caucus_member.users.save()
 
         self.second_link = ModaModel.objects.create(
             district=self.district,
@@ -40,7 +43,7 @@ class SecondLinkDelegateHigherLevelSuccessionTests(TestCase):
 
         self.outgoing_second_link_membership = (
             ModaMembers.objects.create(
-                user=self.outgoing_second_link_delegate,
+                user=self.outgoing_caucus_delegate,
                 moda=self.second_link,
                 is_member=True,
                 is_delegate=True,
@@ -49,15 +52,15 @@ class SecondLinkDelegateHigherLevelSuccessionTests(TestCase):
 
         self.incoming_second_link_membership = (
             ModaMembers.objects.create(
-                user=self.incoming_second_link_delegate,
+                user=self.incoming_caucus_delegate,
                 moda=self.second_link,
                 is_member=True,
                 is_delegate=False,
             )
         )
 
-        self.incoming_second_link_delegate.users.userType = "U3D2"
-        self.incoming_second_link_delegate.users.save(
+        self.incoming_caucus_delegate.users.userType = "U3D2"
+        self.incoming_caucus_delegate.users.save(
             update_fields=["userType"]
         )
 
@@ -66,26 +69,26 @@ class SecondLinkDelegateHigherLevelSuccessionTests(TestCase):
             code=2,
         )
 
-        self.holc_membership = HolcMembers.objects.create(
-            user=self.holc,
+        self.other_caucus_membership = HolcMembers.objects.create(
+            user=self.other_caucus_member,
             holc=self.caucus,
             is_member=True,
             is_delegate=True,
         )
 
         self.outgoing_caucus_membership = HolcMembers.objects.create(
-            user=self.outgoing_second_link_delegate,
+            user=self.outgoing_caucus_delegate,
             holc=self.caucus,
             is_member=True,
             is_delegate=False,
         )
 
-        self.outgoing_second_link_delegate.users.userType = "U4D3"
-        self.outgoing_second_link_delegate.users.save(
+        self.outgoing_caucus_delegate.users.userType = "U4D3"
+        self.outgoing_caucus_delegate.users.save(
             update_fields=["userType"]
         )
 
-    def test_replaced_second_link_delegate_loses_caucus_membership(self):
+    def test_replaced_caucus_delegate_loses_caucus_membership(self):
         self.assertTrue(
             HolcMembers.objects.filter(
                 pk=self.outgoing_caucus_membership.pk,
@@ -108,30 +111,30 @@ class SecondLinkDelegateHigherLevelSuccessionTests(TestCase):
 
         self.assertFalse(
             HolcMembers.objects.filter(
-                user=self.incoming_second_link_delegate,
+                user=self.incoming_caucus_delegate,
                 holc=self.caucus,
             ).exists()
         )
 
-        self.outgoing_second_link_delegate.users.refresh_from_db()
-        self.incoming_second_link_delegate.users.refresh_from_db()
+        self.outgoing_caucus_delegate.users.refresh_from_db()
+        self.incoming_caucus_delegate.users.refresh_from_db()
 
         self.assertEqual(
-            self.outgoing_second_link_delegate.users.userType,
+            self.outgoing_caucus_delegate.users.userType,
             "U3D2",
         )
         self.assertEqual(
-            self.incoming_second_link_delegate.users.userType,
+            self.incoming_caucus_delegate.users.userType,
             "U4D3",
         )
 
-        self.holc_membership.refresh_from_db()
+        self.other_caucus_membership.refresh_from_db()
 
         self.assertTrue(
-            self.holc_membership.is_delegate
+            self.other_caucus_membership.is_delegate
         )
         self.assertEqual(
-            self.holc_membership.succession_position,
+            self.other_caucus_membership.succession_position,
             0,
         )
 
@@ -141,13 +144,13 @@ class SecondLinkDelegateHigherLevelSuccessionTests(TestCase):
         )
 
         ModaMembers.objects.create(
-            user=self.holc,
+            user=self.other_caucus_member,
             moda=successor_second_link,
             is_member=True,
             is_delegate=True,
         )
 
-        # For this scenario, the outgoing Second-Link delegate is also
+        # For this scenario, the outgoing Caucus Delegate is also
         # the HoLC, and the existing Caucus member is first in that
         # Caucus's succession line.
         HolcMembers.objects.filter(
@@ -157,19 +160,19 @@ class SecondLinkDelegateHigherLevelSuccessionTests(TestCase):
             succession_position=0,
         )
         HolcMembers.objects.filter(
-            pk=self.holc_membership.pk,
+            pk=self.other_caucus_membership.pk,
         ).update(
             is_delegate=False,
             succession_position=1,
         )
 
-        self.outgoing_second_link_delegate.users.userType = "U4D4"
-        self.outgoing_second_link_delegate.users.save(
+        self.outgoing_caucus_delegate.users.userType = "U4D4"
+        self.outgoing_caucus_delegate.users.save(
             update_fields=["userType"]
         )
 
-        self.holc.users.userType = "U4D3"
-        self.holc.users.save(
+        self.other_caucus_member.users.userType = "U4D3"
+        self.other_caucus_member.users.save(
             update_fields=["userType"]
         )
 
@@ -186,18 +189,18 @@ class SecondLinkDelegateHigherLevelSuccessionTests(TestCase):
             ).exists()
         )
 
-        self.holc_membership.refresh_from_db()
-        self.holc.users.refresh_from_db()
+        self.other_caucus_membership.refresh_from_db()
+        self.other_caucus_member.users.refresh_from_db()
 
         self.assertTrue(
-            self.holc_membership.is_delegate
+            self.other_caucus_membership.is_delegate
         )
         self.assertEqual(
-            self.holc_membership.succession_position,
+            self.other_caucus_membership.succession_position,
             0,
         )
         self.assertEqual(
-            self.holc.users.userType,
+            self.other_caucus_member.users.userType,
             "U4D4",
         )
 
@@ -227,7 +230,7 @@ class SecondLinkDelegateHigherLevelSuccessionTests(TestCase):
             is_delegate=False,
         )
 
-        # Make the outgoing Second-Link delegate the current HoLC.
+        # Make the outgoing Caucus Delegate the current HoLC.
         # The existing Caucus member is first successor, and the
         # newly added member is second successor.
         HolcMembers.objects.filter(
@@ -237,7 +240,7 @@ class SecondLinkDelegateHigherLevelSuccessionTests(TestCase):
             succession_position=0,
         )
         HolcMembers.objects.filter(
-            pk=self.holc_membership.pk,
+            pk=self.other_caucus_membership.pk,
         ).update(
             is_delegate=False,
             succession_position=1,
@@ -257,14 +260,219 @@ class SecondLinkDelegateHigherLevelSuccessionTests(TestCase):
 
         self.assertTrue(moved)
 
-        self.holc_membership.refresh_from_db()
+        self.other_caucus_membership.refresh_from_db()
         later_successor_membership.refresh_from_db()
 
         self.assertEqual(
-            self.holc_membership.succession_position,
+            self.other_caucus_membership.succession_position,
             0,
         )
         self.assertEqual(
             later_successor_membership.succession_position,
             1,
+        )
+
+    def test_caucus_delegate_loss_posts_caucus_removal(self):
+        moved = (
+            self.incoming_second_link_membership
+            .move_forward_one_position()
+        )
+
+        self.assertTrue(moved)
+
+        messages = HolcBackNForthChat.objects.filter(
+            holc=self.caucus,
+        )
+
+        self.assertEqual(messages.count(), 1)
+
+        message = messages.get()
+
+        self.assertIsNone(message.sender)
+        self.assertTrue(message.is_system)
+        self.assertEqual(
+            message.message,
+            (
+                "Succession update: outgoing-caucus-delegate was "
+                "removed from Caucus after losing the Caucus Delegate "
+                "mandate required for membership."
+            ),
+        )
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"
+    )
+    def test_holc_promotion_posts_and_emails(self):
+        self.outgoing_caucus_delegate.email = "outgoing@example.com"
+        self.outgoing_caucus_delegate.save(
+            update_fields=["email"]
+        )
+
+        self.incoming_caucus_delegate.email = (
+            "incoming-second-link@example.com"
+        )
+        self.incoming_caucus_delegate.save(
+            update_fields=["email"]
+        )
+
+        self.other_caucus_member.email = "incoming-holc@example.com"
+        self.other_caucus_member.save(update_fields=["email"])
+
+        successor_second_link = ModaModel.objects.create(
+            district=self.district,
+        )
+
+        ModaMembers.objects.create(
+            user=self.other_caucus_member,
+            moda=successor_second_link,
+            is_member=True,
+            is_delegate=True,
+        )
+
+        HolcMembers.objects.filter(
+            pk=self.outgoing_caucus_membership.pk,
+        ).update(
+            is_delegate=True,
+            succession_position=0,
+        )
+        HolcMembers.objects.filter(
+            pk=self.other_caucus_membership.pk,
+        ).update(
+            is_delegate=False,
+            succession_position=1,
+        )
+
+        self.outgoing_caucus_delegate.users.userType = "U4D4"
+        self.outgoing_caucus_delegate.users.save(
+            update_fields=["userType"]
+        )
+
+        self.other_caucus_member.users.userType = "U4D3"
+        self.other_caucus_member.users.save(
+            update_fields=["userType"]
+        )
+
+        with self.captureOnCommitCallbacks(execute=True):
+            moved = (
+                self.incoming_second_link_membership
+                .move_forward_one_position()
+            )
+
+        self.assertTrue(moved)
+
+        messages = HolcBackNForthChat.objects.filter(
+            holc=self.caucus,
+        )
+
+        self.assertEqual(messages.count(), 2)
+
+        message_texts = set(
+            messages.values_list("message", flat=True)
+        )
+
+        self.assertIn(
+            (
+                "Succession update: outgoing-caucus-delegate was "
+                "removed from Caucus after losing the Caucus Delegate "
+                "mandate required for membership."
+            ),
+            message_texts,
+        )
+
+        self.assertIn(
+            (
+                "Succession update: other-caucus-member became HoLC after "
+                "outgoing-caucus-delegate was removed. "
+                "other-caucus-member moved from position 1 to position 0."
+            ),
+            message_texts,
+        )
+
+        recipients = Counter(
+            recipient
+            for email in mail.outbox
+            for recipient in email.to
+        )
+
+        self.assertEqual(
+            recipients,
+            Counter(
+                {
+                    "outgoing@example.com": 2,
+                    "incoming-second-link@example.com": 1,
+                    "incoming-holc@example.com": 1,
+                }
+            ),
+        )
+
+    def test_caucus_compaction_posts_exact_position_change(self):
+        later_successor = User.objects.create_user(
+            username="later-caucus-successor",
+            password="testpass",
+        )
+        later_successor.users.district = self.district
+        later_successor.users.save()
+
+        later_successor_second_link = ModaModel.objects.create(
+            district=self.district,
+        )
+
+        ModaMembers.objects.create(
+            user=later_successor,
+            moda=later_successor_second_link,
+            is_member=True,
+            is_delegate=True,
+        )
+
+        later_successor_membership = HolcMembers.objects.create(
+            user=later_successor,
+            holc=self.caucus,
+            is_member=True,
+            is_delegate=False,
+        )
+
+        HolcMembers.objects.filter(
+            pk=self.outgoing_caucus_membership.pk,
+        ).update(
+            is_delegate=True,
+            succession_position=0,
+        )
+        HolcMembers.objects.filter(
+            pk=self.other_caucus_membership.pk,
+        ).update(
+            is_delegate=False,
+            succession_position=1,
+        )
+
+        later_successor_membership.refresh_from_db()
+
+        self.assertEqual(
+            later_successor_membership.succession_position,
+            2,
+        )
+
+        moved = (
+            self.incoming_second_link_membership
+            .move_forward_one_position()
+        )
+
+        self.assertTrue(moved)
+
+        messages = HolcBackNForthChat.objects.filter(
+            holc=self.caucus,
+        )
+
+        self.assertEqual(messages.count(), 3)
+
+        message_texts = set(
+            messages.values_list("message", flat=True)
+        )
+
+        self.assertIn(
+            (
+                "Succession update: later-caucus-successor moved "
+                "from position 2 to position 1 after "
+                "outgoing-caucus-delegate was removed."
+            ),
+            message_texts,
         )

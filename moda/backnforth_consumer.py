@@ -66,10 +66,6 @@ class ModaBackNForthChatConsumer(AsyncWebsocketConsumer):
             
             if message_type == 'chat_message':
                 await self.handle_chat_message(text_data_json)
-            elif message_type == 'edit_message':
-                await self.handle_edit_message(text_data_json)
-            elif message_type == 'delete_message':
-                await self.handle_delete_message(text_data_json)
                 
         except json.JSONDecodeError:
             await self.send(text_data=json.dumps({
@@ -103,73 +99,12 @@ class ModaBackNForthChatConsumer(AsyncWebsocketConsumer):
                 }
             )
 
-    async def handle_edit_message(self, data):
-        """Handle message editing"""
-        message_id = data.get('message_id')
-        new_content = data.get('message', '').strip()
-        
-        if not new_content:
-            await self.send(text_data=json.dumps({
-                'error': 'Message cannot be empty'
-            }))
-            return
-        
-        success = await self.edit_message(message_id, new_content)
-        
-        if success:
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'message_edited',
-                    'message_id': message_id,
-                    'new_content': new_content,
-                    'edited_by': self.scope["user"].username,
-                    'edited_at': datetime.now().isoformat()
-                }
-            )
-
-    async def handle_delete_message(self, data):
-        """Handle message deletion"""
-        message_id = data.get('message_id')
-        
-        success = await self.delete_message(message_id)
-        
-        if success:
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'message_deleted',
-                    'message_id': message_id,
-                    'deleted_by': self.scope["user"].username,
-                    'deleted_at': datetime.now().isoformat()
-                }
-            )
-
     # Broadcast message handlers
     async def chat_message_broadcast(self, event):
         """Send chat message to WebSocket"""
         await self.send(text_data=json.dumps({
             'type': 'chat_message',
             'message_data': event['message_data']
-        }))
-
-    async def message_edited(self, event):
-        """Send message edit notification to WebSocket"""
-        await self.send(text_data=json.dumps({
-            'type': 'message_edited',
-            'message_id': event['message_id'],
-            'new_content': event['new_content'],
-            'edited_by': event['edited_by'],
-            'edited_at': event['edited_at']
-        }))
-
-    async def message_deleted(self, event):
-        """Send message deletion notification to WebSocket"""
-        await self.send(text_data=json.dumps({
-            'type': 'message_deleted',
-            'message_id': event['message_id'],
-            'deleted_by': event['deleted_by'],
-            'deleted_at': event['deleted_at']
         }))
 
     async def user_status(self, event):
@@ -260,9 +195,25 @@ class ModaBackNForthChatConsumer(AsyncWebsocketConsumer):
                 'timestamp': message.timestamp.isoformat(),
                 'reply_to_message': {
                     'id': reply_to_message.id,
-                    'message': reply_to_message.message[:50] + '...' if len(reply_to_message.message) > 50 else reply_to_message.message,
-                    'sender': reply_to_message.sender.username,
-                    'sender_name': getattr(reply_to_message.sender.users, 'legalName', reply_to_message.sender.username)
+                    'message': (
+                        reply_to_message.message[:50] + '...'
+                        if len(reply_to_message.message) > 50
+                        else reply_to_message.message
+                    ),
+                    'sender': (
+                        reply_to_message.sender.username
+                        if reply_to_message.sender
+                        else None
+                    ),
+                    'sender_name': (
+                        getattr(
+                            reply_to_message.sender.users,
+                            'legalName',
+                            reply_to_message.sender.username,
+                        )
+                        if reply_to_message.sender
+                        else 'System'
+                    ),
                 } if reply_to_message else None,
                 'is_edited': message.is_edited,
                 'edited_at': message.edited_at.isoformat() if message.edited_at else None
@@ -273,64 +224,3 @@ class ModaBackNForthChatConsumer(AsyncWebsocketConsumer):
             import traceback
             traceback.print_exc()
             return None
-
-    @database_sync_to_async
-    def edit_message(self, message_id, new_content):
-        """Edit an existing message"""
-        try:
-            user = self.scope["user"]
-            moda = ModaModel.objects.get(code=self.moda_code)
-            
-            message = ModaBackNForthChat.objects.get(
-                id=message_id,
-                moda=moda,
-                sender=user,
-                is_deleted=False
-            )
-            
-            message.message = new_content
-            message.is_edited = True
-            message.edited_at = datetime.now()
-            message.save()
-            
-            return True
-            
-        except (ModaBackNForthChat.DoesNotExist, Exception):
-            return False
-
-    @database_sync_to_async
-    def delete_message(self, message_id):
-        """Soft delete a message"""
-        try:
-            user = self.scope["user"]
-            moda = ModaModel.objects.get(code=self.moda_code)
-            
-            # Allow deletion by sender or S-Link delegate
-            is_delegate = ModaMembers.objects.filter(
-                user=user, 
-                moda=moda, 
-                is_delegate=True
-            ).exists()
-            
-            if is_delegate:
-                message = ModaBackNForthChat.objects.get(
-                    id=message_id,
-                    moda=moda,
-                    is_deleted=False
-                )
-            else:
-                message = ModaBackNForthChat.objects.get(
-                    id=message_id,
-                    moda=moda,
-                    sender=user,
-                    is_deleted=False
-                )
-            
-            message.is_deleted = True
-            message.deleted_at = datetime.now()
-            message.save()
-            
-            return True
-            
-        except (ModaBackNForthChat.DoesNotExist, Exception):
-            return False

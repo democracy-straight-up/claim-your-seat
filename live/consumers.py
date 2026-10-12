@@ -279,15 +279,35 @@ class CircleBackNForth(AsyncWebsocketConsumer):
         # construct B&F entries
         self.queryset_init = None
 
-        # connect to db and retraive old messages of that circle
+        user = self.scope["user"]
+        if user.is_anonymous:
+            await self.close(code=4401)
+            return
+
+        if not await self.user_belongs_to_circle():
+            await self.close(code=4403)
+            return
+
+        # connect to db and retrieve old messages of that Circle
         self.usrs = await database_sync_to_async(self.get_messages)()
 
-        # add user to circle room
-        await self.channel_layer.group_add(self.room_group_name, self.channel_name)
+        # add user to Circle room
+        await self.channel_layer.group_add(
+            self.room_group_name,
+            self.channel_name
+        )
         await self.accept()
 
         # send message to that web socket request only. not to the group members
         await self.send(text_data=json.dumps(self.usrs))
+
+    @database_sync_to_async
+    def user_belongs_to_circle(self):
+        return voteModels.GroupMember.objects.filter(
+            user=self.scope["user"],
+            group__code=self.circleName,
+            is_member=True,
+        ).exists()
 
     def get_messages(self):
         """ Get the B&f entries and paginate them in 10 entries per page.
@@ -321,31 +341,37 @@ class CircleBackNForth(AsyncWebsocketConsumer):
             items = list(page)
             await self.send(text_data=json.dumps(items))
         else:
-            # get the message from the client. change it to python json and send to group
+            # Persist the new entry once, then broadcast the saved entry.
             text_json = json.loads(text_data)
+            saved_message = await database_sync_to_async(
+                self.save_message
+            )(text_json)
+
             await self.channel_layer.group_send(
-                self.room_group_name, {"type": "circleChat", "message": text_json}
+                self.room_group_name,
+                {
+                    "type": "circleChat",
+                    "message": saved_message,
+                },
             )
 
-    # handling function for sending all the messages to room members
+    # Send the already-persisted entry to all connected Circle members.
     async def circleChat(self, event):
-        # save the incoming messages into DB here.
-        saved_massage = await database_sync_to_async(self.save_message)(event['message'])
-        await self.send(text_data=json.dumps(saved_massage))
+        await self.send(text_data=json.dumps(event["message"]))
 
     # Save the message into DB and return a serialized instance of the message
     def save_message(self,msg):
         # get circle and user instance
         circle = voteModels.Group.objects.get(code = self.circleName)
-        usr = User.objects.get(username = msg["sender"])
+        usr = self.scope["user"]
         # here validate if the user is a member of the circle and create a message instance to save into DB
         objects = voteModels.CircleBackNForth.objects.create( circle = circle, sender= usr, message = ""+msg['message'],)
         objects.save()
         return apiSerializers.CircleBackNForthSerializer(objects).data
 
     # when a member of the room leaves the room
-    async def disconnect(self,message):
-        await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
-        self.close()
-
-# end of the B&F
+    async def disconnect(self, message):
+        await self.channel_layer.group_discard(
+            self.room_group_name,
+            self.channel_name
+        )

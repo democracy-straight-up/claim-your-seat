@@ -18,13 +18,10 @@ urlpatterns = [
              'post': 'create'
          }), 
          name='moda-backnforth-messages'),
-    path('moda/backnforth/<str:moda_code>/messages/<int:pk>/', 
+    path('moda/backnforth/<str:moda_code>/messages/<int:pk>/',
          ModaBackNForthChatViewSet.as_view({
              'get': 'retrieve',
-             'put': 'update', 
-             'patch': 'partial_update',
-             'delete': 'destroy'
-         }), 
+         }),
          name='moda-backnforth-message-detail'),
     path('moda/backnforth/<str:moda_code>/messages/search/', 
          ModaBackNForthChatViewSet.as_view({'get': 'search'}), 

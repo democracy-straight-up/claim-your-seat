@@ -61,9 +61,6 @@ urlpatterns = [
     }), name='backnforth-chat-list'),
     path('backnforth/<str:sec_del_code>/messages/<int:pk>/', backnforth_views.BackNForthChatViewSet.as_view({
         'get': 'retrieve',
-        'put': 'update',
-        'patch': 'partial_update',
-        'delete': 'destroy'
     }), name='backnforth-chat-detail'),
     path('backnforth/<str:sec_del_code>/search/', backnforth_views.BackNForthChatViewSet.as_view({
         'get': 'search'

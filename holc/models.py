@@ -1,5 +1,9 @@
 import random
 from django.db import models, transaction
+from succession_notifications import (
+    notify_delegate_change,
+    post_succession_update,
+)
 from vote.models import Districts
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -161,13 +165,6 @@ class HolcModel(models.Model):
         return self.holcmembers_set.filter(is_member = True).count()
 
 
-# for maximum f-link membership validation
-from django.core.exceptions import ValidationError
-class MaxMembershipReached(ValidationError):
-    def __init__(self, message="Holc-Link has reached the max membership status. No longer accepting candidates."):
-        super().__init__(message)
-
-# the user can be changed to be Circle delegate only. but being a user is much better
 class HolcMembers(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     holc = models.ForeignKey(HolcModel, on_delete=models.CASCADE)
@@ -295,6 +292,17 @@ class HolcMembers(models.Model):
                 current_member.user.users.userType = "U4D4"
                 current_member.user.users.save(update_fields=["userType"])
 
+                notify_delegate_change(
+                    message_model=HolcBackNForthChat,
+                    group_field="holc",
+                    group=current_member.holc,
+                    group_name=f"Caucus {current_member.holc.code:02d}",
+                    delegate_title="HoLC",
+                    outgoing_user=member_ahead.user,
+                    incoming_user=current_member.user,
+                    outgoing_position=current_position,
+                )
+
                 self.succession_position = 0
                 self.is_delegate = True
 
@@ -305,6 +313,28 @@ class HolcMembers(models.Model):
             )
             HolcMembers.objects.filter(pk=current_member.pk).update(
                 succession_position=ahead_position
+            )
+
+            current_name = (
+                current_member.user.users.legalName
+                or current_member.user.username
+            )
+            ahead_name = (
+                member_ahead.user.users.legalName
+                or member_ahead.user.username
+            )
+
+            post_succession_update(
+                message_model=HolcBackNForthChat,
+                group_field="holc",
+                group=current_member.holc,
+                message=(
+                    f"Succession update: {current_name} advanced from "
+                    f"position {current_position} to position "
+                    f"{ahead_position}; {ahead_name} moved from "
+                    f"position {ahead_position} to position "
+                    f"{current_position}."
+                ),
             )
 
             self.succession_position = ahead_position
@@ -342,37 +372,56 @@ class HolcMembers(models.Model):
         ).count()
         majority_votes = total_members // 2 + 1
         if self.count_put_forward() >= majority_votes:
-            # find the current delegate and set is_delegate false.
-            current_delegate = HolcMembers.objects.filter(holc=self.holc).filter(is_delegate = True).first()
-            old_delegate_user = current_delegate.user
-            
-            current_delegate.is_delegate = False
-            current_delegate.save()
-            # set the user.users userType to U1D1
-            current_delegate.user.users.userType = 'U4D3'
-            current_delegate.user.users.save()
-            # set the current member to delegate and set is_delegate true.
-            self.is_delegate = True
-            # set the self instance user.users userType to U2D2
-            self.user.users.userType = 'U4D4'
-            self.user.users.save()
-            # save the current member instance
-            self.save()
-            
-            # Trigger succession line for higher groups
-            try:
-                from succession_line import succession_manager
-                succession_manager.handle_delegate_change(
-                    'holc', 
-                    old_delegate_user, 
-                    self.user, 
-                    self.holc
-                )
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f"Error in succession line: {str(e)}")
+            current_delegate = HolcMembers.objects.filter(
+                holc=self.holc,
+                is_member=True,
+                is_delegate=True,
+            ).first()
 
+            if current_delegate is None:
+                return
+
+            incumbent_position = current_delegate.succession_position
+            candidate_position = self.succession_position
+
+            current_delegate.is_delegate = False
+            current_delegate.succession_position = candidate_position
+            current_delegate.save(
+                update_fields=[
+                    "is_delegate",
+                    "succession_position",
+                    "updated_at",
+                ]
+            )
+
+            current_delegate.user.users.userType = "U4D3"
+            current_delegate.user.users.save(
+                update_fields=["userType"]
+            )
+
+            self.is_delegate = True
+            self.succession_position = incumbent_position
+            self.user.users.userType = "U4D4"
+            self.user.users.save(
+                update_fields=["userType"]
+            )
+            self.save(
+                update_fields=[
+                    "is_delegate",
+                    "succession_position",
+                    "updated_at",
+                ]
+            )
+            notify_delegate_change(
+                message_model=HolcBackNForthChat,
+                group_field="holc",
+                group=self.holc,
+                group_name=f"Caucus {self.holc.code:02d}",
+                delegate_title="HoLC",
+                outgoing_user=current_delegate.user,
+                incoming_user=self.user,
+                outgoing_position=candidate_position,
+            )
 
 class CaucusAdmissionVote(models.Model):
     voter = models.ForeignKey(
@@ -530,31 +579,58 @@ class HolcMemberContact(models.Model):
 
 class HolcBackNForthChat(models.Model):
     """
-    Chat messages for HoLC (House of Local Councils) BackNForth conversations
+    Chat messages for HoLC (House of Local Councils)
+    BackNForth conversations.
     """
-    holc = models.ForeignKey(HolcModel, on_delete=models.CASCADE, related_name='chat_messages')
-    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    holc = models.ForeignKey(
+        HolcModel,
+        on_delete=models.CASCADE,
+        related_name="chat_messages",
+    )
+    sender = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
     message = models.TextField()
-    reply_to = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='replies')
-    
+    reply_to = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="replies",
+    )
+
     # Timestamps
     timestamp = models.DateTimeField(auto_now_add=True)
-    
+
     # Edit tracking
     is_edited = models.BooleanField(default=False)
     edited_at = models.DateTimeField(null=True, blank=True)
-    
+
     # Soft delete
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
-    
+
+    is_system = models.BooleanField(default=False)
+
     class Meta:
-        ordering = ['-timestamp']
+        ordering = ["-timestamp"]
         indexes = [
-            models.Index(fields=['holc', '-timestamp']),
-            models.Index(fields=['sender']),
-            models.Index(fields=['is_deleted']),
+            models.Index(fields=["holc", "-timestamp"]),
+            models.Index(fields=["sender"]),
+            models.Index(fields=["is_deleted"]),
         ]
-    
+
     def __str__(self):
-        return f"{self.sender.username} in HoLC-{self.holc.code}: {self.message[:50]}"
+        if self.is_system:
+            return (
+                f"System in HoLC-{self.holc.code}: "
+                f"{self.message[:50]}"
+            )
+
+        return (
+            f"{self.sender.username} in HoLC-{self.holc.code}: "
+            f"{self.message[:50]}"
+        )

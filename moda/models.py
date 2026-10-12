@@ -1,6 +1,12 @@
 import random
 from django.db import models, transaction
 from succession_helpers import remove_dependent_memberships
+from succession_notifications import (
+    notify_delegate_change,
+    notify_delegate_promotion_after_removal,
+    post_succession_update,
+    user_display_name,
+)
 from vote.models import Districts
 from django.contrib.auth.models import User
 
@@ -103,7 +109,7 @@ class MaxMembershipReached(ValidationError):
     def __init__(self, message="S-Link has reached the max membership status. No longer accepting candidates."):
         super().__init__(message)
 
-# the user can be changed to be Circle delegate only. but being a user is much better
+# the user can be changed to be F-Del only. but being a user is much better
 class ModaMembers(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     moda = models.ForeignKey(ModaModel, on_delete=models.CASCADE)
@@ -143,7 +149,7 @@ class ModaMembers(models.Model):
         if ModaMembers.objects.filter(is_member=True).count() > 12:
             raise MaxMembershipReached()
 
-        # The first member becomes the Second Link delegate automatically.
+        # The first member becomes the Caucus delegate automatically.
         if not self.pk and not self.moda.modamembers_set.exists():
             self.is_delegate = True
             self.is_member = True
@@ -230,15 +236,22 @@ class ModaMembers(models.Model):
                 )
 
                 # Caucus membership depends on holding a Second-Link
-                # delegate mandate. The incoming Second-Link delegate
+                # delegate mandate. The incoming Caucus Delegate
                 # does not automatically inherit that membership.
-                from holc.models import HolcMembers
+                from holc.models import (
+                    HolcBackNForthChat,
+                    HolcMembers,
+                )
 
                 remove_dependent_memberships(
                     membership_model=HolcMembers,
                     user=member_ahead.user,
                     group_field="holc",
                     delegate_user_type="U4D4",
+                    message_model=HolcBackNForthChat,
+                    dependent_group_title="Caucus",
+                    required_mandate_title="Caucus Delegate",
+                    delegate_title="HoLC",
                 )
 
                 member_ahead.user.users.userType = "U3D2"
@@ -246,6 +259,17 @@ class ModaMembers(models.Model):
 
                 current_member.user.users.userType = "U4D3"
                 current_member.user.users.save(update_fields=["userType"])
+
+                notify_delegate_change(
+                    message_model=ModaBackNForthChat,
+                    group_field="moda",
+                    group=current_member.moda,
+                    group_name=f"Second Link {current_member.moda.code}",
+                    delegate_title="Caucus Delegate",
+                    outgoing_user=member_ahead.user,
+                    incoming_user=current_member.user,
+                    outgoing_position=current_position,
+                )
 
                 self.succession_position = 0
                 self.is_delegate = True
@@ -257,6 +281,28 @@ class ModaMembers(models.Model):
             )
             ModaMembers.objects.filter(pk=current_member.pk).update(
                 succession_position=ahead_position
+            )
+
+            current_name = (
+                current_member.user.users.legalName
+                or current_member.user.username
+            )
+            ahead_name = (
+                member_ahead.user.users.legalName
+                or member_ahead.user.username
+            )
+
+            post_succession_update(
+                message_model=ModaBackNForthChat,
+                group_field="moda",
+                group=current_member.moda,
+                message=(
+                    f"Succession update: {current_name} advanced from "
+                    f"position {current_position} to position "
+                    f"{ahead_position}; {ahead_name} moved from "
+                    f"position {ahead_position} to position "
+                    f"{current_position}."
+                ),
             )
 
             self.succession_position = ahead_position
@@ -299,48 +345,173 @@ class ModaMembers(models.Model):
         return self
 
     def check_for_removing(self):
-        total_members = ModaMembers.objects.filter(moda=self.moda).filter(is_member = True).count()
-        majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
+        total_members = ModaMembers.objects.filter(
+            moda=self.moda,
+            is_member=True,
+        ).count()
+        majority_threshold = total_members // 2 + 1
+
         if self.count_vote_out() >= majority_threshold:
-            self.user.users.userType = 'U2D2'
-            self.user.users.verificationScore = 100
-            self.user.users.save()
-            self.delete()
+            with transaction.atomic():
+                second_link = self.moda
+                removed_position = self.succession_position
+                removed_name = user_display_name(self.user)
+                was_delegate = self.is_delegate
+
+                successor = None
+                if was_delegate:
+                    successor = ModaMembers.objects.filter(
+                        moda=second_link,
+                        is_member=True,
+                        succession_position=1,
+                    ).first()
+
+                compacted_memberships = []
+
+                if removed_position is not None:
+                    compacted_memberships = list(
+                        ModaMembers.objects.filter(
+                            moda=second_link,
+                            is_member=True,
+                            succession_position__gt=removed_position,
+                        ).order_by("succession_position")
+                    )
+
+                if was_delegate:
+                    from holc.models import (
+                        HolcBackNForthChat,
+                        HolcMembers,
+                    )
+
+                    remove_dependent_memberships(
+                        membership_model=HolcMembers,
+                        user=self.user,
+                        group_field="holc",
+                        delegate_user_type="U4D4",
+                        message_model=HolcBackNForthChat,
+                        dependent_group_title="Caucus",
+                        required_mandate_title="Caucus Delegate",
+                        delegate_title="HoLC",
+                    )
+
+                self.delete()
+
+                if removed_position is not None:
+                    ModaMembers.objects.filter(
+                        moda=second_link,
+                        is_member=True,
+                        succession_position__gt=removed_position,
+                    ).update(
+                        succession_position=(
+                            models.F("succession_position") - 1
+                        )
+                    )
+
+                    for compacted_member in compacted_memberships:
+                        old_position = compacted_member.succession_position
+                        new_position = old_position - 1
+
+                        post_succession_update(
+                            message_model=ModaBackNForthChat,
+                            group_field="moda",
+                            group=second_link,
+                            message=(
+                                f"Succession update: "
+                                f"{user_display_name(compacted_member.user)} "
+                                f"moved from position {old_position} to "
+                                f"position {new_position} after "
+                                f"{removed_name} was removed."
+                            ),
+                        )
+
+                if was_delegate and successor is not None:
+                    ModaMembers.objects.filter(
+                        pk=successor.pk
+                    ).update(
+                        is_delegate=True,
+                    )
+
+                    successor.user.users.userType = "U4D3"
+                    successor.user.users.save(
+                        update_fields=["userType"]
+                    )
+                    notify_delegate_promotion_after_removal(
+                        message_model=ModaBackNForthChat,
+                        group_field="moda",
+                        group=second_link,
+                        group_name=f"Second Link {second_link.code}",
+                        delegate_title="Caucus Delegate",
+                        outgoing_user=self.user,
+                        incoming_user=successor.user,
+                        direct_removal=True,
+                    )
 
     def check_put_farward(self):
         total_members = ModaMembers.objects.filter(moda=self.moda).filter(is_member = True).count()
         majority_votes = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_put_forward() >= majority_votes:
-            # find the current delegate and set is_delegate false.
-            current_delegate = ModaMembers.objects.filter(moda=self.moda).filter(is_delegate = True).first()
-            old_delegate_user = current_delegate.user
-            
+            current_delegate = ModaMembers.objects.filter(
+                moda=self.moda,
+                is_member=True,
+                is_delegate=True,
+            ).first()
+
+            if current_delegate is None:
+                return
+
+            incumbent_position = current_delegate.succession_position
+            candidate_position = self.succession_position
+
             current_delegate.is_delegate = False
-            current_delegate.save()
-            # set the user.users userType to U1D1
-            current_delegate.user.users.userType = 'U3D2'
-            current_delegate.user.users.save()
-            # set the current member to delegate and set is_delegate true.
+            current_delegate.succession_position = candidate_position
+            current_delegate.save(
+                update_fields=[
+                    "is_delegate",
+                    "succession_position",
+                    "updated_at",
+                ]
+            )
+
+            # Caucus membership depends on holding the Caucus Delegate
+            # mandate. The incoming Caucus Delegate does not
+            # automatically inherit that membership.
+            from holc.models import HolcMembers
+
+            remove_dependent_memberships(
+                membership_model=HolcMembers,
+                user=current_delegate.user,
+                group_field="holc",
+                delegate_user_type="U4D4",
+            )
+
+            current_delegate.user.users.userType = "U3D2"
+            current_delegate.user.users.save(
+                update_fields=["userType"]
+            )
+
             self.is_delegate = True
-            # set the self instance user.users userType to U2D2
-            self.user.users.userType = 'U3D3'
-            self.user.users.save()
-            # save the current member instance
-            self.save()
-            
-            # Trigger succession line for higher groups
-            try:
-                from succession_line import succession_manager
-                succession_manager.handle_delegate_change(
-                    'moda', 
-                    old_delegate_user, 
-                    self.user, 
-                    self.moda
-                )
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f"Error in succession line: {str(e)}")
+            self.succession_position = incumbent_position
+            self.user.users.userType = "U4D3"
+            self.user.users.save(
+                update_fields=["userType"]
+            )
+            self.save(
+                update_fields=[
+                    "is_delegate",
+                    "succession_position",
+                    "updated_at",
+                ]
+            )
+            notify_delegate_change(
+                message_model=ModaBackNForthChat,
+                group_field="moda",
+                group=self.moda,
+                group_name=f"Second Link {self.moda.code}",
+                delegate_title="Caucus Delegate",
+                outgoing_user=current_delegate.user,
+                incoming_user=self.user,
+                outgoing_position=candidate_position,
+            )
 
 
 class VoteOutModaMember(models.Model):
@@ -404,31 +575,57 @@ class ModaMemberContact(models.Model):
 
 class ModaBackNForthChat(models.Model):
     """
-    Chat messages for S-Link (Moda) BackNForth conversations
+    Chat messages for S-Link (Moda) BackNForth conversations.
     """
-    moda = models.ForeignKey(ModaModel, on_delete=models.CASCADE, related_name='chat_messages')
-    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    moda = models.ForeignKey(
+        ModaModel,
+        on_delete=models.CASCADE,
+        related_name="chat_messages",
+    )
+    sender = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
     message = models.TextField()
-    reply_to = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='replies')
-    
+    reply_to = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="replies",
+    )
+
     # Timestamps
     timestamp = models.DateTimeField(auto_now_add=True)
-    
+
     # Edit tracking
     is_edited = models.BooleanField(default=False)
     edited_at = models.DateTimeField(null=True, blank=True)
-    
+
     # Soft delete
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
-    
+
+    is_system = models.BooleanField(default=False)
+
     class Meta:
-        ordering = ['-timestamp']
+        ordering = ["-timestamp"]
         indexes = [
-            models.Index(fields=['moda', '-timestamp']),
-            models.Index(fields=['sender']),
-            models.Index(fields=['is_deleted']),
+            models.Index(fields=["moda", "-timestamp"]),
+            models.Index(fields=["sender"]),
+            models.Index(fields=["is_deleted"]),
         ]
-    
+
     def __str__(self):
-        return f"{self.sender.username} in S-Link-{self.moda.code}: {self.message[:50]}"
+        if self.is_system:
+            return (
+                f"System in S-Link-{self.moda.code}: "
+                f"{self.message[:50]}"
+            )
+
+        return (
+            f"{self.sender.username} in S-Link-{self.moda.code}: "
+            f"{self.message[:50]}"
+        )

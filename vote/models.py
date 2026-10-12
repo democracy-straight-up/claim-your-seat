@@ -1,5 +1,11 @@
 from django.db import models, transaction
 from succession_helpers import remove_dependent_memberships
+from succession_notifications import (
+    notify_delegate_change,
+    notify_delegate_promotion_after_removal,
+    post_succession_update,
+    user_display_name,
+)
 from django.contrib.auth.models import User
 
 # District model (table) is for listing of all US districts
@@ -177,7 +183,7 @@ class GroupMember(models.Model):
         if GroupMember.objects.filter(is_member=True, group=self.group).count() > 12:
             raise MaxMembershipReached()
 
-        # The first member becomes the Circle delegate automatically.
+        # The first member becomes the F-Del automatically.
         if not self.pk and not self.group.groupmember_set.exists():
             self.is_delegate = True
             self.is_member = True
@@ -262,19 +268,33 @@ class GroupMember(models.Model):
                 )
 
                 # First-Link membership depends on holding a Circle
-                # delegate mandate. The incoming Circle delegate does
+                # delegate mandate. The incoming F-Del does
                 # not automatically inherit that membership.
-                from api.models import SecDelMembers
+                from api.models import BackNForthChat, SecDelMembers
 
                 remove_dependent_memberships(
                     membership_model=SecDelMembers,
                     user=member_ahead.user,
                     group_field="sec_del",
                     delegate_user_type="U2D2",
+                    message_model=BackNForthChat,
+                    dependent_group_title="First Link",
+                    required_mandate_title="F-Del",
+                    delegate_title="Sec-Del",
                 )
 
                 member_ahead.user.users.userType = "U1D0"
                 member_ahead.user.users.save(update_fields=["userType"])
+                notify_delegate_change(
+                    message_model=CircleBackNForth,
+                    group_field="circle",
+                    group=current_member.group,
+                    group_name=f"Circle {current_member.group.code}",
+                    delegate_title="F-Del",
+                    outgoing_user=member_ahead.user,
+                    incoming_user=current_member.user,
+                    outgoing_position=current_position,
+                )
 
                 current_member.user.users.userType = "U1D1"
                 current_member.user.users.save(update_fields=["userType"])
@@ -289,6 +309,28 @@ class GroupMember(models.Model):
             )
             GroupMember.objects.filter(pk=current_member.pk).update(
                 succession_position=ahead_position
+            )
+
+            current_name = (
+                current_member.user.users.legalName
+                or current_member.user.username
+            )
+            ahead_name = (
+                member_ahead.user.users.legalName
+                or member_ahead.user.username
+            )
+
+            post_succession_update(
+                message_model=CircleBackNForth,
+                group_field="circle",
+                group=current_member.group,
+                message=(
+                    f"Succession update: {current_name} advanced from "
+                    f"position {current_position} to position "
+                    f"{ahead_position}; {ahead_name} moved from "
+                    f"position {ahead_position} to position "
+                    f"{current_position}."
+                ),
             )
 
             self.succession_position = ahead_position
@@ -338,51 +380,182 @@ class GroupMember(models.Model):
 
 
     def check_for_removing(self):
-        total_members = GroupMember.objects.filter(group=self.group).filter(is_member = True).count()
-        majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
+        total_members = GroupMember.objects.filter(
+            group=self.group,
+            is_member=True,
+        ).count()
+        majority_threshold = total_members // 2 + 1
+
         if self.count_vote_out() >= majority_threshold:
-            # Delete related vote instances
-            CircleMember_vote_out.objects.filter(candidate=self).delete()
+            with transaction.atomic():
+                group = self.group
+                removed_position = self.succession_position
+                removed_name = user_display_name(self.user)
+                was_delegate = self.is_delegate
 
-            # Delete the member - this will trigger the custom delete method
-            self.delete()
+                successor = None
+                if was_delegate:
+                    successor = GroupMember.objects.filter(
+                        group=group,
+                        is_member=True,
+                        succession_position=1,
+                    ).first()
 
+                compacted_memberships = []
 
-    def check_put_farward(self):
+                if removed_position is not None:
+                    compacted_memberships = list(
+                        GroupMember.objects.filter(
+                            group=group,
+                            is_member=True,
+                            succession_position__gt=removed_position,
+                        ).order_by("succession_position")
+                    )
+
+                CircleMember_vote_out.objects.filter(
+                    candidate=self
+                ).delete()
+
+                if was_delegate:
+                    from api.models import BackNForthChat, SecDelMembers
+
+                    remove_dependent_memberships(
+                        membership_model=SecDelMembers,
+                        user=self.user,
+                        group_field="sec_del",
+                        delegate_user_type="U2D2",
+                        message_model=BackNForthChat,
+                        dependent_group_title="First Link",
+                        required_mandate_title="F-Del",
+                        delegate_title="Sec-Del",
+                    )
+
+                self.delete()
+
+                if removed_position is not None:
+                    GroupMember.objects.filter(
+                        group=group,
+                        is_member=True,
+                        succession_position__gt=removed_position,
+                    ).update(
+                        succession_position=(
+                            models.F("succession_position") - 1
+                        )
+                    )
+
+                    for compacted_member in compacted_memberships:
+                        old_position = compacted_member.succession_position
+                        new_position = old_position - 1
+
+                        post_succession_update(
+                            message_model=CircleBackNForth,
+                            group_field="circle",
+                            group=group,
+                            message=(
+                                f"Succession update: "
+                                f"{user_display_name(compacted_member.user)} "
+                                f"moved from position {old_position} to "
+                                f"position {new_position} after "
+                                f"{removed_name} was removed."
+                            ),
+                        )
+
+                if was_delegate and successor is not None:
+                    GroupMember.objects.filter(
+                        pk=successor.pk
+                    ).update(
+                        is_delegate=True,
+                    )
+
+                    successor.user.users.userType = "U1D1"
+                    successor.user.users.save(
+                        update_fields=["userType"]
+                    )
+                    notify_delegate_promotion_after_removal(
+                        message_model=CircleBackNForth,
+                        group_field="circle",
+                        group=group,
+                        group_name=f"Circle {group.code}",
+                        delegate_title="F-Del",
+                        outgoing_user=self.user,
+                        incoming_user=successor.user,
+                    )
+
+    def check_put_forward(self):
         total_members = GroupMember.objects.filter(group=self.group).filter(is_member = True).count()
         majority_threshold = total_members // 2 + 1  # Majority is (total_members // 2 + 1)
         if self.count_put_forward() >= majority_threshold:
 
-            # find the current delegate and set is_delegate false.
-            current_delegate = GroupMember.objects.filter(group=self.group).filter(is_delegate = True).first()
-            old_delegate_user = current_delegate.user
+            current_delegate = GroupMember.objects.filter(
+                group=self.group,
+                is_member=True,
+                is_delegate=True,
+            ).first()
+
+            if current_delegate is None:
+                return
+
+            incumbent_position = current_delegate.succession_position
+            candidate_position = self.succession_position
 
             current_delegate.is_delegate = False
-            current_delegate.save()
-            # set the current delegate user.users userType to U1D0
-            current_delegate.user.users.userType = 'U1D0'
-            current_delegate.user.users.save()
-            # set the current member to delegate and set is_delegate true.
-            self.is_delegate = True
-            self.user.users.userType = 'U1D1'
-            self.user.users.save()
-            self.save()
-            # Delete related CircleMember_put_forward instances
-            CircleMember_put_forward.objects.filter(recipient=self).delete()
+            current_delegate.succession_position = candidate_position
+            current_delegate.save(
+                update_fields=[
+                    "is_delegate",
+                    "succession_position",
+                    "date_updated",
+                ]
+            )
 
-            # Trigger succession line for higher groups
-            try:
-                from succession_line import succession_manager
-                succession_manager.handle_delegate_change(
-                    'circle',
-                    old_delegate_user,
-                    self.user,
-                    self.group
-                )
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f"Error in succession line: {str(e)}")
+            # First-Link membership depends on holding the F-Del
+            # mandate. The incoming F-Del does not automatically
+            # inherit that membership.
+            from api.models import BackNForthChat, SecDelMembers
+
+            remove_dependent_memberships(
+                membership_model=SecDelMembers,
+                user=current_delegate.user,
+                group_field="sec_del",
+                delegate_user_type="U2D2",
+                message_model=BackNForthChat,
+                dependent_group_title="First Link",
+                required_mandate_title="F-Del",
+                delegate_title="Sec-Del",
+            )
+
+            current_delegate.user.users.userType = "U1D0"
+            current_delegate.user.users.save(
+                update_fields=["userType"]
+            )
+
+            self.is_delegate = True
+            self.succession_position = incumbent_position
+            self.user.users.userType = "U1D1"
+            self.user.users.save(
+                update_fields=["userType"]
+            )
+            self.save(
+                update_fields=[
+                    "is_delegate",
+                    "succession_position",
+                    "date_updated",
+                ]
+            )
+
+            CircleMember_put_forward.objects.filter(
+                recipient=self
+            ).delete()
+            notify_delegate_change(
+                message_model=CircleBackNForth,
+                group_field="circle",
+                group=self.group,
+                group_name=f"Circle {self.group.code}",
+                delegate_title="F-Del",
+                outgoing_user=current_delegate.user,
+                incoming_user=self.user,
+                outgoing_position=candidate_position,
+            )
 
     def count_vote_in(self):
         return CircleMember_vote_in.objects.filter(recipient=self).count()
@@ -439,13 +612,22 @@ class CircleKeyEnvelope(models.Model):
 
 class CircleBackNForth(models.Model):
     circle = models.ForeignKey(Group, on_delete=models.CASCADE)
-    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    sender = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
     date = models.DateTimeField(auto_created=True, auto_now_add=True)
     message = models.TextField(max_length=5000)
     handle = models.PositiveSmallIntegerField(default=0)
+    is_system = models.BooleanField(default=False)
 
     def __str__(self) -> str:
-        return str(self.sender.username) + " - " + str(self.circle.code)
+        if self.is_system:
+            return f"System - {self.circle.code}"
+
+        return f"{self.sender.username} - {self.circle.code}"
 
 class CircleMember_vote_in(models.Model):
     recipient   = models.ForeignKey(GroupMember,related_name='voteIns', on_delete=models.CASCADE, default=False)
@@ -484,7 +666,7 @@ class CircleMember_put_forward(models.Model):
 
     def save(self, *args, **kwargs):
         super(CircleMember_put_forward, self).save(*args, **kwargs)
-        self.recipient.check_put_farward()
+        self.recipient.check_put_forward()
 
     def __str__(self):
         return str(self.voter) + '-'+str(self.recipient)

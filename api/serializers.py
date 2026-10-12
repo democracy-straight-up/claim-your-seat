@@ -266,7 +266,15 @@ class CircleBackNForthSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = voteModels.CircleBackNForth
-        fields = ["id", "sender", "message", "circle", 'date']
+        fields = [
+            "id",
+            "sender",
+            "message",
+            "circle",
+            "date",
+            "is_system",
+        ]
+        read_only_fields = ["is_system"]
 
 
 class CircleStatusSerializer(serializers.ModelSerializer):

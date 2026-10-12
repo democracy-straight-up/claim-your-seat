@@ -65,19 +65,45 @@ class HolcBackNForthChatSerializer(serializers.ModelSerializer):
     class Meta:
         model = holcModels.HolcBackNForthChat
         fields = [
-            'id', 'message', 'sender', 'sender_name', 'timestamp', 
-            'is_edited', 'edited_at', 'reply_to', 'reply_to_message'
+            'id',
+            'message',
+            'sender',
+            'sender_name',
+            'timestamp',
+            'is_edited',
+            'edited_at',
+            'is_system',
+            'reply_to',
+            'reply_to_message',
         ]
-        read_only_fields = ['id', 'timestamp', 'sender', 'is_edited', 'edited_at']
+        read_only_fields = [
+            'id',
+            'timestamp',
+            'sender',
+            'is_edited',
+            'edited_at',
+            'is_system',
+        ]
     
     def get_reply_to_message(self, obj):
         if obj.reply_to:
+            sender = obj.reply_to.sender
+
             return {
                 'id': obj.reply_to.id,
-                'message': obj.reply_to.message[:100] + '...' if len(obj.reply_to.message) > 100 else obj.reply_to.message,
-                'sender': obj.reply_to.sender.username,
-                'sender_name': getattr(obj.reply_to.sender.users, 'legalName', obj.reply_to.sender.username)
+                'message': (
+                    obj.reply_to.message[:100] + '...'
+                    if len(obj.reply_to.message) > 100
+                    else obj.reply_to.message
+                ),
+                'sender': sender.username if sender else None,
+                'sender_name': (
+                    getattr(sender.users, 'legalName', sender.username)
+                    if sender
+                    else 'System'
+                ),
             }
+
         return None
 
 
