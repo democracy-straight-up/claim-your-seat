@@ -8,7 +8,7 @@ from rest_framework import status
 from django.http import JsonResponse
 from rest_framework.decorators import action
 from django.shortcuts import get_object_or_404
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import F
 from succession_notifications import (
     post_succession_update,
@@ -307,7 +307,22 @@ class ModaMembersViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            models.ModaMembers.objects.create(user=user, moda=moda)
+            try:
+                with transaction.atomic():
+                    models.ModaMembers.objects.create(
+                        user=user,
+                        moda=moda,
+                    )
+            except IntegrityError:
+                return Response(
+                    {
+                        "message": (
+                            "You already belong to a Second Link "
+                            "or have a pending application."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             members = models.ModaMembers.objects.filter(moda=moda)
             serializer = self.get_serializer(members, many=True)
             return Response(serializer.data)

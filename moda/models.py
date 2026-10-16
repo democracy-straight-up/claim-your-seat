@@ -150,6 +150,12 @@ class ModaMembers(models.Model):
 
     class Meta:
         ordering = ['-is_delegate', 'joined_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user"],
+                name="moda_one_membership_per_user",
+            ),
+        ]
     
     def __str__(self):
         return f"{self.user.username} - {self.moda.code}"

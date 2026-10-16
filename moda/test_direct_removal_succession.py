@@ -1,7 +1,9 @@
 from django.contrib.auth.models import User
+from django.db import IntegrityError, transaction
 from django.core import mail
 from django.core.exceptions import ValidationError
 from django.test import TestCase, override_settings
+from unittest.mock import patch
 from rest_framework.test import APIRequestFactory, force_authenticate
 from moda.views import ModaMembersViewSet, ModaViewSet
 from holc.models import HolcMembers, HolcModel
@@ -1127,4 +1129,76 @@ class SecondLinkDirectRemovalSuccessionTests(TestCase):
                 user=self.removed_user,
             ).count(),
             1,
+        )
+
+    def test_database_prevents_multiple_second_link_memberships(self):
+        # This user already belongs to the original Second Link.
+        self.assertEqual(
+            ModaMembers.objects.filter(
+                user=self.removed_user,
+            ).count(),
+            1,
+        )
+
+        other_link = ModaModel.objects.create(
+            district=self.district,
+        )
+
+        # bulk_create bypasses ModaMembers.save(),
+        # testing database enforcement directly.
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                ModaMembers.objects.bulk_create([
+                    ModaMembers(
+                        user=self.removed_user,
+                        moda=other_link,
+                        is_member=False,
+                    )
+                ])
+
+        # The original membership must remain intact.
+        self.assertEqual(
+            ModaMembers.objects.filter(
+                user=self.removed_user,
+            ).count(),
+            1,
+        )
+
+    def test_invitation_handles_database_membership_conflict(self):
+        applicant = self.create_user(
+            "concurrent_invitation_applicant",
+            "Concurrent Invitation Applicant",
+        )
+
+        applicant.users.userType = "U2D2"
+        applicant.users.save(update_fields=["userType"])
+
+        request = APIRequestFactory().post(
+            "/moda-members/join_invite_key/",
+            {
+                "inviteKey": self.second_link.invitation_key,
+                "user": applicant.username,
+            },
+            format="json",
+        )
+
+        force_authenticate(request, user=applicant)
+
+        view = ModaMembersViewSet.as_view({
+            "post": "join_invite_key",
+        })
+
+        # Simulate the database detecting a competing
+        # membership insertion after our initial check.
+        with patch.object(
+            ModaMembers.objects,
+            "create",
+            side_effect=IntegrityError("Duplicate membership"),
+        ):
+            response = view(request)
+
+        self.assertEqual(response.status_code, 400)
+
+        self.assertFalse(
+            ModaMembers.objects.filter(user=applicant).exists()
         )
