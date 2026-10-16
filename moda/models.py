@@ -1,5 +1,6 @@
 import random
 from django.db import models, transaction
+from django.core.exceptions import ValidationError
 from succession_helpers import remove_dependent_memberships
 from succession_notifications import (
     notify_delegate_change,
@@ -40,14 +41,42 @@ class ModaModel(models.Model):
     def __str__(self):
         return str(self.code)
     
-    def delete(self):
-        members = self.modamembers_set.all()
-        for member in members:
-            member.user.users.userType ="U2D2"
-            member.user.users.verificationScore = 100
-            member.user.users.save()
-            member.delete()
+    def delete(self, *args, **kwargs):
+        with transaction.atomic():
+            # Lock the Second Link during dissolution.
+            second_link = type(self).objects.select_for_update().get(
+                pk=self.pk
+            )
 
+            accepted_members = second_link.modamembers_set.filter(
+                is_member=True,
+            )
+
+            # Dissolution requires exactly one accepted member,
+            # who must be the serving Caucus Delegate.
+            if (
+                accepted_members.count() != 1
+                or not accepted_members.filter(
+                    is_delegate=True
+                ).exists()
+            ):
+                raise ValidationError(
+                    "A Second Link may be dissolved only when "
+                    "its Caucus Delegate is the sole remaining "
+                    "accepted member."
+                )
+
+            members = list(
+                second_link.modamembers_set.select_for_update()
+            )
+
+            for member in members:
+                member.user.users.userType = "U2D2"
+                member.user.users.verificationScore = 100
+                member.user.users.save()
+                member.delete()
+
+            return super().delete(*args, **kwargs)
 
     @property
     def is_active(self):
@@ -516,9 +545,23 @@ class ModaMembers(models.Model):
 
 class VoteOutModaMember(models.Model):
     voter = models.ForeignKey(User, on_delete=models.CASCADE)
+    agent = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="moda_vote_out_actions",
+    )
     candidate = models.ForeignKey(ModaMembers, related_name='vote_outs', on_delete=models.CASCADE)
     moda = models.ForeignKey(ModaModel, on_delete=models.CASCADE, null=True, blank=True)
     voted_at = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["voter", "candidate", "moda"],
+                name="moda_vote_out_one_effective",
+            ),
+        ]
     def save(self, *args, **kwargs):
         super(VoteOutModaMember, self).save(*args, **kwargs)
         self.candidate.check_for_removing()
@@ -526,10 +569,23 @@ class VoteOutModaMember(models.Model):
 
 class VoteInModaMember(models.Model):
     voter = models.ForeignKey(User, on_delete=models.CASCADE)
+    agent = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="moda_vote_in_actions",
+    )
     candidate = models.ForeignKey(ModaMembers, related_name='vote_ins', on_delete=models.CASCADE)
     moda = models.ForeignKey(ModaModel, on_delete=models.CASCADE, null=True, blank=True)
     voted_at = models.DateTimeField(auto_now_add=True)
-
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["voter", "candidate", "moda"],
+                name="moda_vote_in_one_effective",
+            ),
+        ]
     def save(self, *args, **kwargs):
         super(VoteInModaMember, self).save(*args, **kwargs)
         self.candidate.check_for_majority()
@@ -538,10 +594,23 @@ class VoteInModaMember(models.Model):
 
 class PutFarwardModaMember(models.Model):
     voter = models.ForeignKey(User, on_delete=models.CASCADE)
+    agent = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="moda_put_forward_actions",
+    )
     candidate = models.ForeignKey(ModaMembers, related_name='put_farward', on_delete=models.CASCADE)
     moda = models.ForeignKey(ModaModel, on_delete=models.CASCADE, null=True, blank=True)
     voted_at = models.DateTimeField(auto_now_add=True)
-
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["voter", "candidate", "moda"],
+                name="moda_put_forward_one_effective",
+            ),
+        ]
     def save(self, *args, **kwargs):
         super(PutFarwardModaMember, self).save(*args, **kwargs)
         self.candidate.check_put_farward()

@@ -8,18 +8,109 @@ from rest_framework import status
 from django.http import JsonResponse
 from rest_framework.decorators import action
 from django.shortcuts import get_object_or_404
-
+from django.db import transaction
+from django.db.models import F
+from succession_notifications import (
+    post_succession_update,
+    user_display_name,
+)
 
 class ModaViewSet(viewsets.ModelViewSet):
     queryset = models.ModaModel.objects.all()
     serializer_class = serializers.ModaSerializer
+    def update(self, request, *args, **kwargs):
+        return Response(
+            {"message": "Direct Second Link updates are not permitted."},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
+
+    def partial_update(self, request, *args, **kwargs):
+        return Response(
+            {"message": "Direct Second Link updates are not permitted."},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
+    def destroy(self, request, *args, **kwargs):
+        if not request.user or not request.user.is_authenticated:
+            return Response(
+                {"message": "Authentication is required."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        with transaction.atomic():
+            second_link = self.get_object()
+            second_link = models.ModaModel.objects.select_for_update().get(
+                pk=second_link.pk
+            )
+
+            # Only the serving Caucus Delegate may dissolve the group.
+            is_delegate = models.ModaMembers.objects.filter(
+                moda=second_link,
+                user=request.user,
+                is_member=True,
+                is_delegate=True,
+            ).exists()
+
+            if not is_delegate:
+                return Response(
+                    {
+                        "message": (
+                            "Only the current Caucus Delegate "
+                            "may dissolve this Second Link."
+                        )
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            # A delegate cannot dissolve a group containing
+            # other accepted members.
+            accepted_count = models.ModaMembers.objects.filter(
+                moda=second_link,
+                is_member=True,
+            ).count()
+
+            if accepted_count != 1:
+                return Response(
+                    {
+                        "message": (
+                            "The Second Link cannot be dissolved "
+                            "while other accepted members remain."
+                        )
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
+
+            second_link.delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
     
     def create(self, request, *args, **kwargs):
+        if not request.user or not request.user.is_authenticated:
+            return Response(
+                {"message": "Authentication is required."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        supplied_username = request.data.get("user")
+
+        if (
+            supplied_username is not None
+            and supplied_username != request.user.username
+        ):
+            return Response(
+                {
+                    "message": (
+                        "You may only create a Second Link "
+                        "for your own account."
+                    )
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         try:
             user=None, 
             district =None
             if 'user' in request.data and 'district' in request.data:
-                user = User.objects.get(username=request.data['user'])
+                user = request.user
                 district = Districts.objects.get(
                     code=request.data['district'])
             else:
@@ -30,8 +121,21 @@ class ModaViewSet(viewsets.ModelViewSet):
             if user.users.userType[:2] == 'U3':
                 messages = "Already belongs to a S-Link."
                 return Response({"message": messages}, status=status.HTTP_400_BAD_REQUEST)
-            # create a sec_del object
-            moda =  models.ModaModel.objects.create(district=district)
+            # A user may not already belong to, or be
+            # an applicant for, another Second Link.
+            if models.ModaMembers.objects.filter(user=user).exists():
+                return Response(
+                    {
+                        "message": (
+                            "User already has a Second Link "
+                            "membership or application."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Create the Second Link.
+            moda = models.ModaModel.objects.create(district=district)
     
             # set the userType attribute of the creator to 1
             # add the user to circle member as delegate. it does not require to save. create automatically saves as well
@@ -62,12 +166,147 @@ class ModaViewSet(viewsets.ModelViewSet):
 class ModaMembersViewSet(viewsets.ModelViewSet):
     queryset = models.ModaMembers.objects.all()
     serializer_class = serializers.ModaMembersSerializer
+    def create(self, request, *args, **kwargs):
+        return Response(
+            {
+                "message": (
+                    "Direct membership creation is not permitted."
+                )
+            },
+            status=status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
+    def update(self, request, *args, **kwargs):
+        return Response(
+            {"message": "Direct membership updates are not permitted."},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
+
+    def partial_update(self, request, *args, **kwargs):
+        return Response(
+            {"message": "Direct membership updates are not permitted."},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
+    def destroy(self, request, *args, **kwargs):
+        if not request.user or not request.user.is_authenticated:
+            return Response(
+                {"message": "Authentication is required."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        membership = self.get_object()
+
+        if membership.user_id != request.user.pk:
+            return Response(
+                {"message": "You may only leave your own Second Link."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        with transaction.atomic():
+            membership = models.ModaMembers.objects.select_for_update().get(
+                pk=membership.pk
+            )
+            if membership.is_member and membership.is_delegate:
+                return Response(
+                    {
+                        "message": (
+                            "A Caucus Delegate must be replaced before "
+                            "voluntarily leaving the Second Link. "
+                            "If you are the sole member, use the "
+                            "group dissolution procedure."
+                        )
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            second_link = membership.moda
+            departing_position = membership.succession_position
+            departing_name = user_display_name(membership.user)
+
+            compacted_memberships = []
+
+            if membership.is_member and departing_position is not None:
+                compacted_memberships = list(
+                    models.ModaMembers.objects.select_for_update()
+                    .filter(
+                        moda=second_link,
+                        is_member=True,
+                        succession_position__gt=departing_position,
+                    )
+                    .order_by("succession_position")
+                )
+
+            membership.delete()
+
+            if compacted_memberships:
+                models.ModaMembers.objects.filter(
+                    pk__in=[
+                        member.pk
+                        for member in compacted_memberships
+                    ]
+                ).update(
+                    succession_position=F("succession_position") - 1
+                )
+
+                for member in compacted_memberships:
+                    old_position = member.succession_position
+                    new_position = old_position - 1
+
+                    post_succession_update(
+                        message_model=models.ModaBackNForthChat,
+                        group_field="moda",
+                        group=second_link,
+                        message=(
+                            f"Succession update: "
+                            f"{user_display_name(member.user)} moved "
+                            f"from position {old_position} to position "
+                            f"{new_position} after {departing_name} "
+                            f"voluntarily left the Second Link."
+                        ),
+                    )
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=['POST'])
-    def join_invite_key(self,request):
+    def join_invite_key(self, request):
+        if not request.user or not request.user.is_authenticated:
+            return Response(
+                {"message": "Authentication is required."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        supplied_username = request.data.get("user")
+
+        if not supplied_username:
+            return Response(
+                {"message": "User is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if supplied_username != request.user.username:
+            return Response(
+                {
+                    "message": (
+                        "You may only apply to join a Second Link "
+                        "using your own account."
+                    )
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         try:
             moda = models.ModaModel.objects.get(invitation_key=request.data['inviteKey'])
-            user = User.objects.get(username=request.data['user'])
+            user = request.user
+
+            if models.ModaMembers.objects.filter(user=user).exists():
+                return Response(
+                    {
+                        "message": (
+                            "You already belong to a Second Link "
+                            "or have a pending application."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             models.ModaMembers.objects.create(user=user, moda=moda)
             members = models.ModaMembers.objects.filter(moda=moda)
             serializer = self.get_serializer(members, many=True)
